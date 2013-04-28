@@ -1,0 +1,6 @@
+*.user
+ui_*.h
+object_script.*
+release/
+debug/
+
