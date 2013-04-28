@@ -1,0 +1,97 @@
+
+                              MMC2IEC Change Log
+
+================================================================================
+
+June 9, 2007: Version 0.8 : By Larsp. This version is on mmc2iec batch 1 units
+
+- Huge change to interface.c and d64driver.c and t64driver.c. A function pointer
+  interface is now utilized for the different file formats, cleaning up the code
+  and allowing elegant implementation of multiple file formats.
+  
+- Save-With-Replace implemented.
+  
+- M2I file format introduced allowing 16 char petscii filenames with read/write
+  access. The file is a simple index with the petscii filenames and
+  corresponding FAT files. 
+  
+- Command channel commands implemented. Scratch and Rename works in FAT mode and
+  in M2I mode they also work with wildcards. New disk also works and initializes
+  a new M2I file with the given name.
+
+- Error channel messages implemented. 
+
+- Device 10/8 selection jumper implemented. In conjunction with device 9/8
+  jumper, device 8, 9, 10, 11 is now selectable.
+
+- IEC_driver.c now actually uses config.h settings.
+
+================================================================================
+
+May 13, 2007: Version 0.7 : By Larsp
+
+- config.h introduced. Hardware configuration and other flags are defined in 
+  this file. It is also possible to disable v0.7 hardware features, to make 
+  hardware requirements equivalent to v0.6.
+
+- IEC protocol has been fixed to allow multiple IEC devices on the bus.
+
+- Mechanical card detect switch is taken advantage of now. When no card is 
+  present, ?FILE NOT FOUND occurs. When a card is present, it is repeatedly
+  initialized (BUSY LED flashes) until successful. This feature practically
+  eliminates the need to use load"<<",8 to initialize the card.
+  
+- Mechanical write protect switch implemented. The sdcard module will fail to 
+  write sectors if write protect.
+  
+- Minor space savings and improvements in FAT driver. If FAT driver fails to 
+  write changes back (e.g. write protect), DIRTY LED will simply keep being lit.
+
+- Device 9/8 selection jumper implemented.
+
+================================================================================
+
+April 24, 2007: Version 0.6.1 : By Spaceman Spiff
+
+- Zapped the hex2char function from util.c. This function is not used, and was
+  not correct.
+
+- Fixed a lot of string types to signed char instead of unsigned char, since this
+  is the default for the C library functions. This gets rid of the "passing arg xx
+  to function yyyyy differ in signedness" which otherwise happens with newer 
+  compilers.
+
+
+================================================================================
+
+April 5, 2007: Version 0.6 
+
+- IEC_driver.c
+The IEC protocol timing values are now set using #defines and the timing has
+been corrected to achieve better stability.
+
+Communication works with C64 as well as DTV now.
+
+
+- t64driver.c
+Support for T64 files that has the "num used" value wrong which is apparently 
+very common.
+
+
+- interface.c
+Bug fix: Before, the interface was not properly initialized at cold reset, and 
+this was not apparent to the user. Now that situation IS apparent, and the 
+interface IS properly initialized.
+
+Improved error handling and messaging.
+
+Support for P00 files.
+
+
+- sdcard.c
+Detection of failed SD/MMC communication
+
+================================================================================
+February 5, 2007: Version 0.5 
+
+- First release
