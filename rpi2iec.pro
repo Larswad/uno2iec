@@ -13,6 +13,10 @@ TEMPLATE = app
 
 DEFINES += CONSOLE_DEBUG
 
+CONFIG += extserialport
+#INCLUDEPATH += ../qextserialport/src
+#QMAKE_LIBDIR += ../qextserialport/src/build
+
 QMAKE_CXXFLAGS += -std=gnu++0x
 
 #INCLUDES += <path to wiring pi>
@@ -24,24 +28,24 @@ QMAKE_CXXFLAGS += -std=gnu++0x
 # QMAKE_CXXFLAGS +=-std=c++0x
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    util.cpp \
-    t64driver.cpp \
-    m2idriver.cpp \
-    interface.cpp \
-    d64driver.cpp \
-    filedriverbase.cpp
+				mainwindow.cpp \
+		util.cpp \
+		t64driver.cpp \
+		m2idriver.cpp \
+		interface.cpp \
+		d64driver.cpp \
+		filedriverbase.cpp
 
 HEADERS  += mainwindow.hpp \
-    util.hpp \
-    t64driver.hpp \
-    m2idriver.hpp \
-    interface.hpp \
-    d64driver.hpp \
-    filedriverbase.hpp
+		util.hpp \
+		t64driver.hpp \
+		m2idriver.hpp \
+		interface.hpp \
+		d64driver.hpp \
+		filedriverbase.hpp
 
 FORMS    += mainwindow.ui
 
 OTHER_FILES += \
-    readme.txt \
-    changes.txt
+		readme.txt \
+		changes.txt
