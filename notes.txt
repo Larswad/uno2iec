@@ -1,0 +1,27 @@
+use following guide for disabling COM port on PI:
+http://www.hobbytronics.co.uk/raspberry-pi-serial-port
+
+basically do:
+disable login:
+sudo nano /etc/inittab
+The contents of the file look like this
+
+dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline rootwait
+
+Remove all references to ttyAMA0 (which is the name of the serial port).
+The file will now look like this
+
+dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline rootwait
+
+
+test with minicom:
+minicom -b 9600 -o -D /dev/ttyAMA0
+
+--------------------------------------------------
+qt support for serial port:
+
+qextserialport is found here:
+git clone https://code.google.com/p/qextserialport/ 
+
+(simply build with qmake)
+
