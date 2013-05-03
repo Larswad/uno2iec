@@ -14,7 +14,8 @@ TEMPLATE = app
 DEFINES += CONSOLE_DEBUG
 
 CONFIG += extserialport
-#INCLUDEPATH += ../qextserialport/src
+LIBS += -L../qextserialport/lib -lqextserialport
+INCLUDEPATH += ../qextserialport/src
 #QMAKE_LIBDIR += ../qextserialport/src/build
 
 QMAKE_CXXFLAGS += -std=gnu++0x
@@ -48,4 +49,5 @@ FORMS    += mainwindow.ui
 
 OTHER_FILES += \
 		readme.txt \
-		changes.txt
+		changes.txt \
+		notes.txt
