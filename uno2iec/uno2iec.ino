@@ -1,8 +1,9 @@
 #include "log.h"
 #include "iec_driver.h"
 
-#define BAUD_RATE 115200
- // Pin 13 has an LED connected on most Arduino boards.
+#define DEFAULT_BAUD_RATE 115200
+
+// Pin 13 has an LED connected on most Arduino boards.
 const byte ledPort = 13;
 const byte numBlinks = 4;
 const char connectionString[] = "CONNECT";
@@ -13,9 +14,8 @@ IEC iec(8);
 
 void setup()
 {
-
 	// Initialize serial and wait for port to open:
-	Serial.begin(BAUD_RATE);
+	Serial.begin(DEFAULT_BAUD_RATE);
 	while (!Serial) {
 		; // wait for serial port to connect. Needed for Leonardo only
 	}
@@ -30,9 +30,9 @@ void setup()
 
 void loop()
 {
-// put your main code here, to run repeatedly:
-//  static Interface iface(iec);
-//  iface.handler();
+	// put your main code here, to run repeatedly:
+	//  static Interface iface(iec);
+	//  iface.handler();
 } // loop
 
 

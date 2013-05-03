@@ -25,7 +25,7 @@
 class M2I : public FileDriverBase
 {
 public:
-  // command channel errors
+	// command channel errors
 #define ERR_OK               0
 #define ERR_READ_ERROR       1
 #define ERR_WRITE_PROTECT_ON 2
@@ -37,42 +37,40 @@ public:
 
 
 
-  bool init(char* s);
+	bool init(char* s);
 
-  void sendListing(ISendLine& cb);
+	void sendListing(ISendLine& cb);
 
-  // command channel command
-  unsigned char  cmd(char *s);
+	// command channel command
+	unsigned char  cmd(char *s);
 
-  uchar open(char *fileName);
+	uchar open(char *fileName);
 
-  unsigned char  newFile(char *s);
+	char getc(void);
 
-  char  getc(void);
+	bool isEOF(void);
 
-  bool isEOF(void);
+	// write char to open file, returns false if failure
+	bool putc(char c);
 
-  // write char to open file, returns false if failure
-  bool putc(char c);
+	// close file
+	bool close(void);
 
-  // close file
-  bool close(void);
+	// new disk, creates empty M2I file with diskname and opens it
+	uchar newDisk(char* diskName);
 
-  // new disk, creates empty M2I file with diskname and opens it
-  uchar newDisk(char* diskName);
+	uchar newFile(char* fileName);
 
-  uchar newFile(char* fileName);
-
-  bool remove(char* fileName);
-  bool rename(char *oldName, char *newName);
+	bool remove(char* fileName);
+	bool rename(char *oldName, char *newName);
 
 private:
-  bool readFirstLine(char* dest);
-  uchar parseLine(char* dosName, char* cbmName);
-  bool createFile(char *fileName);
+	bool readFirstLine(char* dest);
+	uchar parseLine(char* dosName, char* cbmName);
+	bool createFile(char *fileName);
 
-  bool seekFile(char *dosName, char *dirName, char *seekName,
-                char openClose);
+	bool seekFile(char *dosName, char *dirName, char *seekName,
+								char openClose);
 };
 
 #endif

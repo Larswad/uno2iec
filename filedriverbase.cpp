@@ -10,11 +10,11 @@ FileDriverBase::~FileDriverBase()
 }
 
 
-FileDriverBase::sendListing(ISendLine& cb)
+bool FileDriverBase::sendListing(ISendLine& cb)
 {
 	Q_UNUSED(ISendLine);
 	return false;
-}
+} // sendListing
 
 
 ErrorMessage FileDriverBase::cmdChannel(const QString& cmd)
@@ -24,14 +24,14 @@ ErrorMessage FileDriverBase::cmdChannel(const QString& cmd)
 } // cmdChannel
 
 
-virtual bool FileDriverBase::fopen(const QString& fileName)
+bool FileDriverBase::fopen(const QString& fileName)
 {
 	Q_UNUSED(fileName);
 	return false;
 } // fopen
 
 
-virtual bool FileDriverBase::newFile(const QString& fileName)
+bool FileDriverBase::newFile(const QString& fileName)
 {
 	Q_UNUSED(fileName);
 	return false;

@@ -1,0 +1,6 @@
+#ifndef GLOBAL_DEFINES_HPP
+#define GLOBAL_DEFINES_HPP
+
+#define CONSOLE_DEBUG
+
+#endif // GLOBAL_DEFINES_HPP

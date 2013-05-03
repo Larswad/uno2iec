@@ -38,7 +38,6 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.hpp \
 		t64driver.hpp \
 		m2idriver.hpp \
-		interface.hpp \
 		d64driver.hpp \
 		filedriverbase.hpp
 

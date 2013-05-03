@@ -120,9 +120,7 @@
 
 #include <QThread>
 
-#include "util.hpp"
 #include "IEC_driver.hpp"
-#include "interface.hpp"
 
 #include "d64driver.hpp"
 #include "t64driver.hpp"

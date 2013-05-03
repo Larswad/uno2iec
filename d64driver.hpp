@@ -35,7 +35,7 @@
 class D64 : public FileDriverBase
 {
 public:
-	enum D64FileType : uchar
+	enum D64FileType
 	{
 		DEL         = 0,
 		SEQ         = 1,
@@ -45,9 +45,9 @@ public:
 		TYPE_MASK   = 0x07,
 		FILE_LOCKED = 0x40,
 		FILE_CLOSED = 0x80
-	}
+	};
 
-	enum D64Status : uchar
+	enum D64Status
 	{
 		NOT_READY = 0,
 		DISK_OK   = 1,  // The open file in fat driver is accepted as a D64
@@ -55,7 +55,7 @@ public:
 		FILE_EOF  = 4,  // The open file is ended
 		DIR_OPEN  = 8,  // A directory entry is active
 		DIR_EOF   = 16  // Last directory entry has been retrieved
-	}
+	};
 
 	// Host file system D64-image can be opened from constructor, if specified.
 	D64(const QString& fileName = QString());
@@ -80,7 +80,7 @@ public:
 	ushort blocksFree(void);
 
 	// Send realistic $ file basic listing, line by line
-	void sendListing(ISendLine& cb);
+	bool sendListing(ISendLine& cb);
 
 private:
 	typedef struct {
