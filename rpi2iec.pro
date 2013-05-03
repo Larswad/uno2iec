@@ -32,7 +32,6 @@ SOURCES += main.cpp\
 				mainwindow.cpp \
 		t64driver.cpp \
 		m2idriver.cpp \
-		interface.cpp \
 		d64driver.cpp \
 		filedriverbase.cpp
 
