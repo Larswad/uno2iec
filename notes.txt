@@ -51,14 +51,22 @@ git clone https://code.google.com/p/qextserialport/
 
 
 // Peer commands:
+// Tries continuously to connect to host with:
+// CONNECT
+// response should be: OK><date><time><CR>
+
 // Send debug string
 // D<severityId, facilityId, debug string><CR>
+
 // Register facility with abbreviating character and corresponding string to expand to on peer side.
 // !<abbreviationChar, string><CR>
+
 // Init file from LOAD"",8 command.
 // 'I'
+
 // Read byte(s) from current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
 // The host returns 'B' followed by the byte(s) being read, or answers with 'E' if end of file has been reached.
 // 'R'
+
 // Write byte(s) to current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
 // 'W<byte..n>'
