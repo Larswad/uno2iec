@@ -30,7 +30,6 @@ QMAKE_CXXFLAGS += -std=gnu++0x
 
 SOURCES += main.cpp\
 				mainwindow.cpp \
-		util.cpp \
 		t64driver.cpp \
 		m2idriver.cpp \
 		interface.cpp \
@@ -38,7 +37,6 @@ SOURCES += main.cpp\
 		filedriverbase.cpp
 
 HEADERS  += mainwindow.hpp \
-		util.hpp \
 		t64driver.hpp \
 		m2idriver.hpp \
 		interface.hpp \
