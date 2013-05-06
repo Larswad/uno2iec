@@ -33,13 +33,15 @@ SOURCES += main.cpp\
 		t64driver.cpp \
 		m2idriver.cpp \
 		d64driver.cpp \
-		filedriverbase.cpp
+		filedriverbase.cpp \
+    interface.cpp
 
 HEADERS  += mainwindow.hpp \
 		t64driver.hpp \
 		m2idriver.hpp \
 		d64driver.hpp \
-		filedriverbase.hpp
+		filedriverbase.hpp \
+    interface.hpp
 
 FORMS    += mainwindow.ui
 

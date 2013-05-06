@@ -59,49 +59,49 @@ const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3
 const char errorEnding[] = ",00,00";
 
 Interface::Interface(IEC& iec)
-	: m_iec(iec)
+  : m_iec(iec)
 {
-	reset();
+  reset();
 
-	// Say hello, flash busy led
-	//  BUSY_LED_ON();
-	//  BUSY_LED_SETDDR();
-	//  ms_spin(20);
-	//  BUSY_LED_OFF();
+  // Say hello, flash busy led
+  //  BUSY_LED_ON();
+  //  BUSY_LED_SETDDR();
+  //  ms_spin(20);
+  //  BUSY_LED_OFF();
 } // ctor
 
 
 void Interface::reset(void)
 {
-	m_openState = O_NOTHING;
-	m_queuedError = ErrIntro;
+  m_openState = O_NOTHING;
+  m_queuedError = ErrIntro;
 
-	////	if(sdReset()) {
-	////		fatReset();
-	////		fatInit();
-	////	}
+  ////	if(sdReset()) {
+  ////		fatReset();
+  ////		fatInit();
+  ////	}
 
-	//	if((fatGetStatus() bitand FAT_STATUS_OK) and sdCardOK) {
-	//		interface_state = I_FAT;
-	//	}
-	m_interfaceState = IFat;
+  //	if((fatGetStatus() bitand FAT_STATUS_OK) and sdCardOK) {
+  //		interface_state = I_FAT;
+  //	}
+  m_interfaceState = IFat;
 } // reset
 
 
 void Interface::sendStatus(void)
 {
-	byte i;
-	// Send error string
-	const char *str = (const char *)error_table[m_queuedError];
+  byte i;
+  // Send error string
+  const char *str = (const char *)error_table[m_queuedError];
 
-	while((i = *(str++)))
-		m_iec.send(i);
+  while((i = *(str++)))
+    m_iec.send(i);
 
-	// Send common ending string ,00,00
-	for(i = 0; i < 5; i++)
-		m_iec.send(errorEnding[i]);
+  // Send common ending string ,00,00
+  for(i = 0; i < 5; i++)
+    m_iec.send(errorEnding[i]);
 
-	m_iec.sendEOI(errorEnding[i]);
+  m_iec.sendEOI(errorEnding[i]);
 } // sendStatus
 
 
@@ -118,40 +118,40 @@ const char pstr_file_err[] = "ERROR: FILE FORMAT";
 
 void send_sdinfo(void (*send_line)(short line_no, unsigned char len, char *text))
 {
-	char buffer[19];
-	unsigned char c;
+  char buffer[19];
+  unsigned char c;
 
-	c = fatGetStatus();
+  c = fatGetStatus();
 
-	if(!sdCardOK) {
-		// SD Card not ok
-		memcpy(buffer, strSDState1, 13);
-		c = 13;
-	}
-	else if(!(c & FAT_STATUS_OK)) {
-		// File system not ok
-		memcpy(buffer, strSDState2, 18);
-		c = 18;
-	}
-	else {
-		// Everything OK, print fat status
-		if(c & FAT_STATUS_FAT32)
-			memcpy(buffer, strSDState4, 8);
-		else
-			memcpy(buffer, strSDState3, 8);
+  if(!sdCardOK) {
+    // SD Card not ok
+    memcpy(buffer, strSDState1, 13);
+    c = 13;
+  }
+  else if(!(c & FAT_STATUS_OK)) {
+    // File system not ok
+    memcpy(buffer, strSDState2, 18);
+    c = 18;
+  }
+  else {
+    // Everything OK, print fat status
+    if(c & FAT_STATUS_FAT32)
+      memcpy(buffer, strSDState4, 8);
+    else
+      memcpy(buffer, strSDState3, 8);
 
-		c = 8;
-	}
-	(send_line)(0, c, buffer);
+    c = 8;
+  }
+  (send_line)(0, c, buffer);
 } // send_sdinfo
 
 
 void send_file_err(void (*send_line)(word lineNo, byte len, char* text))
 {
-	char buffer[19];
+  char buffer[19];
 
-	memcpy(buffer, pstr_file_err, 18);
-	(send_line)(0, 18, buffer);
+  memcpy(buffer, pstr_file_err, 18);
+  (send_line)(0, 18, buffer);
 } // send_file_err
 
 
@@ -163,79 +163,79 @@ const char pstr_dir[] = " <DIR>";
 
 void fat_send_listing(void (*send_line)(short line_no, unsigned char len, char *text))
 {
-	unsigned short s;
-	unsigned char i;
-	char buffer[24];
+  unsigned short s;
+  unsigned char i;
+  char buffer[24];
 
-	struct diriterator di;
-	struct direntry *de;
+  struct diriterator di;
+  struct direntry *de;
 
-	// Prepare buffer
-	memset(buffer, ' ', 3);
-	buffer[3] = '"';   // quotes
+  // Prepare buffer
+  memset(buffer, ' ', 3);
+  buffer[3] = '"';   // quotes
 
-	// Iterate through directory
-	de = fatFirstDirEntry(fatGetCurDirCluster(), &di);
+  // Iterate through directory
+  de = fatFirstDirEntry(fatGetCurDirCluster(), &di);
 
-	while(de not_eq NULL) {
-		if(*de->deName == SLOT_EMPTY)
-			break; // there are no more direntries
+  while(de not_eq NULL) {
+    if(*de->deName == SLOT_EMPTY)
+      break; // there are no more direntries
 
-		if((*de->deName not_eq SLOT_DELETED) and
-			 (de->deAttributes not_eq ATTR_LONG_FILENAME)) {
-			if(de->deAttributes == ATTR_VOLUME) {
-				// Print volume label line. This will be 11 chars
-				(send_line)(0, 11, de->deName);
-			}
-			else {
-				// Regular file/directory
-				if(de->deAttributes & ATTR_DIRECTORY) {
-					// Its a dir
-					memcpy(&(buffer[4]), de->deName, 8);    // name
-					buffer[12] = ' ';                       // space
-					memcpy(&(buffer[13]), de->deName+8, 3); // ext
-					buffer[16] = 0x22;                      // quote
-					memcpy_P(&(buffer[17]), pstr_dir, 6);   // line end
+    if((*de->deName not_eq SLOT_DELETED) and
+       (de->deAttributes not_eq ATTR_LONG_FILENAME)) {
+      if(de->deAttributes == ATTR_VOLUME) {
+        // Print volume label line. This will be 11 chars
+        (send_line)(0, 11, de->deName);
+      }
+      else {
+        // Regular file/directory
+        if(de->deAttributes & ATTR_DIRECTORY) {
+          // Its a dir
+          memcpy(&(buffer[4]), de->deName, 8);    // name
+          buffer[12] = ' ';                       // space
+          memcpy(&(buffer[13]), de->deName+8, 3); // ext
+          buffer[16] = 0x22;                      // quote
+          memcpy_P(&(buffer[17]), pstr_dir, 6);   // line end
 
-					(send_line)(0, 23, buffer);
-				}
-				else {
-					// Its a file, calc file size in kB:
-					s = (de->deFileSize + (1 << 10) - 1) >> 10;
+          (send_line)(0, 23, buffer);
+        }
+        else {
+          // Its a file, calc file size in kB:
+          s = (de->deFileSize + (1 << 10) - 1) >> 10;
 
-					// Calc number of spaces required
-					if(s > 9999) {
-						s = 9999;
-						i = 0;
-					}
-					else if(s >= 1000)
-						i = 0;
-					else if(s >= 100)
-						i = 1;
-					else if(s >= 10)
-						i = 2;
-					else
-						i = 3;
+          // Calc number of spaces required
+          if(s > 9999) {
+            s = 9999;
+            i = 0;
+          }
+          else if(s >= 1000)
+            i = 0;
+          else if(s >= 100)
+            i = 1;
+          else if(s >= 10)
+            i = 2;
+          else
+            i = 3;
 
-					memcpy(&(buffer[4]), de->deName, 8);    // name
-					buffer[12] = '.';                       // dot
-					memcpy(&(buffer[13]), de->deName + 8, 3); // ext
-					buffer[16] = '"';                      // quote
+          memcpy(&(buffer[4]), de->deName, 8);    // name
+          buffer[12] = '.';                       // dot
+          memcpy(&(buffer[13]), de->deName + 8, 3); // ext
+          buffer[16] = '"';                      // quote
 
-					(send_line)(s, 14 + i, &(buffer[3 - i]));
-				}
-			}
-		}
+          (send_line)(s, 14 + i, &(buffer[3 - i]));
+        }
+      }
+    }
 
-		de = fatNextDirEntry(&di);
-	}
+    de = fatNextDirEntry(&di);
+  }
 
-	// Was this a natural ending??
-	if(sdCardOK == FALSE) {
-		// say  "ERROR: SD/MMC"
-		memcpy_P(buffer, strSDState1, 13);
-		(send_line)(0, 13, buffer);
-	}
+  // Was this a natural ending??
+  if(sdCardOK == FALSE) {
+    // say  "ERROR: SD/MMC"
+    memcpy_P(buffer, strSDState1, 13);
+    (send_line)(0, 13, buffer);
+  }
 }
 
 // Fat parsing command channel
@@ -243,61 +243,61 @@ void fat_send_listing(void (*send_line)(short line_no, unsigned char len, char *
 unsigned char fat_cmd(char *c)
 {
 
-	// Get command letter and argument
+  // Get command letter and argument
 
-	char cmd_letter;
-	char *arg, *p;
-	char ret = ERR_OK;
+  char cmd_letter;
+  char *arg, *p;
+  char ret = ERR_OK;
 
-	cmd_letter = cmd.str[0];
+  cmd_letter = cmd.str[0];
 
-	arg = strchr(cmd.str,':');
+  arg = strchr(cmd.str,':');
 
-	if(arg not_eq NULL) {
-		arg++;
+  if(arg not_eq NULL) {
+    arg++;
 
-		if(cmd_letter == 'S') {
-			// Scratch a file
-			if(!fatRemove(arg))
-				ret = ERR_FILE_NOT_FOUND;
-		}
-		else if(cmd_letter == 'R') {
-			// Rename, find =  and replace with 0 to get cstr
+    if(cmd_letter == 'S') {
+      // Scratch a file
+      if(!fatRemove(arg))
+        ret = ERR_FILE_NOT_FOUND;
+    }
+    else if(cmd_letter == 'R') {
+      // Rename, find =  and replace with 0 to get cstr
 
-			p = strchr(arg, '=');
+      p = strchr(arg, '=');
 
-			if(p not_eq NULL) {
-				*p = 0;
-				p++;
-				if(!fatRename(p, arg)) {
-					ret = ERR_FILE_NOT_FOUND;
-				}
-			}
-		}
-		else if(cmd_letter == 'N') {
-			// Format new disk creates an M2I file
-			ret = M2I_newdisk(arg);
+      if(p not_eq NULL) {
+        *p = 0;
+        p++;
+        if(!fatRename(p, arg)) {
+          ret = ERR_FILE_NOT_FOUND;
+        }
+      }
+    }
+    else if(cmd_letter == 'N') {
+      // Format new disk creates an M2I file
+      ret = M2I_newdisk(arg);
 
-			if(ret == ERR_OK) {
-				// It worked, go to M2I state
-				interface_state = I_M2I;
-			}
+      if(ret == ERR_OK) {
+        // It worked, go to M2I state
+        interface_state = I_M2I;
+      }
 
-		}
-		else {
-			ret = ErrSyntaxError;
-		}
-	}
+    }
+    else {
+      ret = ErrSyntaxError;
+    }
+  }
 
-	return ret;
+  return ret;
 }
 
 
 unsigned char fat_newfile(char *filename)
 {
-	// Remove and create file
-	fatRemove(filename);
-	return fatFcreate(filename);
+  // Remove and create file
+  fatRemove(filename);
+  return fatFcreate(filename);
 }
 
 
@@ -308,28 +308,28 @@ unsigned char fat_newfile(char *filename)
 
 unsigned char P00_reset(char *s)
 {
-	unsigned char i;
+  unsigned char i;
 
-	// Check filetype, and skip past 26 bytes
-	if((fatFgetc() == 'C') and (fatFgetc() == '6') and (fatFgetc() == '4')) {
+  // Check filetype, and skip past 26 bytes
+  if((fatFgetc() == 'C') and (fatFgetc() == '6') and (fatFgetc() == '4')) {
 
-		for(i = 0; i < 23; i++)
-			fatFgetc();
+    for(i = 0; i < 23; i++)
+      fatFgetc();
 
-		if(!fatFeof())
-			// All is ok
-			return TRUE;
-	}
+    if(!fatFeof())
+      // All is ok
+      return TRUE;
+  }
 
-	return FALSE;
+  return FALSE;
 }
 
 unsigned char close_to_fat(void)
 {
-	// Close and back to fat
-	m_interfaceState = IFat;
-	fatFclose();
-	return TRUE;
+  // Close and back to fat
+  m_interfaceState = IFat;
+  fatFclose();
+  return TRUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,22 +339,22 @@ unsigned char close_to_fat(void)
 
 byte dummy_1(char c)
 {
-	return true;
+  return true;
 }
 
 byte dummy_2(char *s)
 {
-	return true;
+  return true;
 }
 
 byte dummy_cmd(char *s)
 {
-	return ErrWriteProtectOn;
+  return ErrWriteProtectOn;
 }
 
 byte dummy_no_newfile(char *s)
 {
-	return false;
+  return false;
 }
 
 
@@ -375,30 +375,30 @@ typedef unsigned char(*PFUNC_UCHAR_CSTR)(char *s);
 #define FILE_FORMATS 5
 
 struct file_format_struct {
-	char extension[3];         // DOS extension of file format
-	PFUNC_UCHAR_CSTR   init;   // intitialize driver, cmd_str is parameter,
-	// must return true if OK
-	PFUNC_SEND_LISTING send_listing; // Send listing function.
-	PFUNC_UCHAR_CSTR   cmd;    // command channel command, must return ERR NUMBER!
-	PFUNC_UCHAR_CSTR   open;   // open file
-	PFUNC_UCHAR_CSTR   newfile;// create new empty file
-	PFUNC_CHAR_VOID    getc;   // get char from open file
-	PFUNC_UCHAR_VOID   eof;    // returns true if EOF
-	PFUNC_UCHAR_CHAR   putc;   // write char to open file, return false if failure
-	PFUNC_UCHAR_VOID   close;  // close file
+  char extension[3];         // DOS extension of file format
+  PFUNC_UCHAR_CSTR   init;   // intitialize driver, cmd_str is parameter,
+  // must return true if OK
+  PFUNC_SEND_LISTING send_listing; // Send listing function.
+  PFUNC_UCHAR_CSTR   cmd;    // command channel command, must return ERR NUMBER!
+  PFUNC_UCHAR_CSTR   open;   // open file
+  PFUNC_UCHAR_CSTR   newfile;// create new empty file
+  PFUNC_CHAR_VOID    getc;   // get char from open file
+  PFUNC_UCHAR_VOID   eof;    // returns true if EOF
+  PFUNC_UCHAR_CHAR   putc;   // write char to open file, return false if failure
+  PFUNC_UCHAR_VOID   close;  // close file
 };
 
 const struct file_format_struct file_format[FILE_FORMATS] = {
-	{{0,0,0}, &dummy_2, &fat_send_listing, &fat_cmd,
-	 &fatFopen, &fat_newfile, &fatFgetc, &fatFeof, &fatFputc, &fatFclose},
-	{{'D','6','4'}, &D64_reset, &D64_send_listing, &dummy_cmd,
-	 &D64_fopen, &dummy_no_newfile, &D64_fgetc, &D64_feof, &dummy_1, &D64_fclose},
-	{{'M','2','I'}, &M2I_init, &M2I_send_listing, &M2I_cmd,
-	 &M2I_open, &M2I_newfile, &M2I_getc, &M2I_eof, &M2I_putc, &M2I_close},
-	{{'T','6','4'}, &T64_reset, &T64_send_listing, &dummy_cmd,
-	 &T64_fopen, &dummy_no_newfile, &T64_fgetc, &T64_feof, &dummy_1, &T64_fclose},
-	{{'P','0','0'}, &P00_reset, NULL, &dummy_cmd,
-	 &dummy_2, &dummy_no_newfile, &fatFgetc, &fatFeof, &dummy_1, &close_to_fat}
+  {{0,0,0}, &dummy_2, &fat_send_listing, &fat_cmd,
+   &fatFopen, &fat_newfile, &fatFgetc, &fatFeof, &fatFputc, &fatFclose},
+  {{'D','6','4'}, &D64_reset, &D64_send_listing, &dummy_cmd,
+   &D64_fopen, &dummy_no_newfile, &D64_fgetc, &D64_feof, &dummy_1, &D64_fclose},
+  {{'M','2','I'}, &M2I_init, &M2I_send_listing, &M2I_cmd,
+   &M2I_open, &M2I_newfile, &M2I_getc, &M2I_eof, &M2I_putc, &M2I_close},
+  {{'T','6','4'}, &T64_reset, &T64_send_listing, &dummy_cmd,
+   &T64_fopen, &dummy_no_newfile, &T64_fgetc, &T64_feof, &dummy_1, &T64_fclose},
+  {{'P','0','0'}, &P00_reset, NULL, &dummy_cmd,
+   &dummy_2, &dummy_no_newfile, &fatFgetc, &fatFeof, &dummy_1, &close_to_fat}
 };
 
 
@@ -414,29 +414,29 @@ const struct file_format_struct file_format[FILE_FORMATS] = {
 // Returns true if @ was detected
 bool Interface::removeFilePrefix(void)
 {
-	byte offset, i;
-	bool ret = false;
-	char* p;
+  byte offset, i;
+  bool ret = false;
+  char* p;
 
-	offset = 0;
-	if(cmd.str[0] == '@') {
-		offset = 1;
-		ret = true;
-	}
+  offset = 0;
+  if(cmd.str[0] == '@') {
+    offset = 1;
+    ret = true;
+  }
 
-	p = strchr(cmd.str,':');
-	if(p not_eq NULL) {
-		offset = (p - cmd.str) + 1;
-	}
+  p = strchr(cmd.str,':');
+  if(p not_eq NULL) {
+    offset = (p - cmd.str) + 1;
+  }
 
-	if(offset > 0) {
-		for(i = offset; i <= cmd.strlen; i++)
-			cmd.str[i - offset] = cmd.str[i];
+  if(offset > 0) {
+    for(i = offset; i <= cmd.strlen; i++)
+      cmd.str[i - offset] = cmd.str[i];
 
-		cmd.strlen -= offset;
-	}
+    cmd.strlen -= offset;
+  }
 
-	return ret;
+  return ret;
 } // removeFilePrefix
 
 
@@ -444,351 +444,351 @@ bool Interface::removeFilePrefix(void)
 //
 void Interface::openFile(const struct file_format_struct *pff)
 {
-	byte i;
+  byte i;
 
-	// fall back result
-	m_openState = O_NOTHING;
+  // fall back result
+  m_openState = O_NOTHING;
 
-	// Check double back arrow first
-	if((cmd.str[0] == 95) and (cmd.str[1] == 95)) {
-		// reload sdcard and send info
-		m_interfaceState = I_FAIL;
-		m_openState = O_INFO;
-	}
-	else if(!sdCardOK or !(fatGetStatus() & FAT_STATUS_OK)) {
-		// User tries to open stuff and there is a problem. Status is fail
-		m_queuedError = ErrDriveNotReady;
-		m_interfaceState = IFail;
-	}
-	else if(cmd.str[0] == '$') {
-		// Send directory listing of current dir
-		m_openState = O_DIR;
-	}
-	else if(cmd.str[0] == 95) {    // back arrow sign on C64
-		// One back arrow, exit current file format or cd..
-		if(m_interfaceState == IFat) {
-			if(fatCddir(".."))
-				m_openState = O_DIR;
-		}
-		else if(m_interfaceState not_eq IFail) {
-			// We are in some other state, exit to FAT and show current dir
-			m_interfaceState = IFat;
-			m_openState = O_DIR;
-		}
-	}
-	else {
+  // Check double back arrow first
+  if((cmd.str[0] == 95) and (cmd.str[1] == 95)) {
+    // reload sdcard and send info
+    m_interfaceState = I_FAIL;
+    m_openState = O_INFO;
+  }
+  else if(!sdCardOK or !(fatGetStatus() & FAT_STATUS_OK)) {
+    // User tries to open stuff and there is a problem. Status is fail
+    m_queuedError = ErrDriveNotReady;
+    m_interfaceState = IFail;
+  }
+  else if(cmd.str[0] == '$') {
+    // Send directory listing of current dir
+    m_openState = O_DIR;
+  }
+  else if(cmd.str[0] == 95) {    // back arrow sign on C64
+    // One back arrow, exit current file format or cd..
+    if(m_interfaceState == IFat) {
+      if(fatCddir(".."))
+        m_openState = O_DIR;
+    }
+    else if(m_interfaceState not_eq IFail) {
+      // We are in some other state, exit to FAT and show current dir
+      m_interfaceState = IFat;
+      m_openState = O_DIR;
+    }
+  }
+  else {
 
-		// It was not a special command, remove eventual CBM dos prefix
+    // It was not a special command, remove eventual CBM dos prefix
 
-		if(removeFilePrefix()) {
-			// @ detected, save with replace:
-			m_openState = O_SAVE_REPLACE;
-		}
-		else {
-			// open file depending on interface state
+    if(removeFilePrefix()) {
+      // @ detected, save with replace:
+      m_openState = O_SAVE_REPLACE;
+    }
+    else {
+      // open file depending on interface state
 
-			if(m_interfaceState == IFat) {
-				// Exchange 0xFF with tilde to allow shortened long filenames
-				for(i = 0; i < cmd.strlen; i++) {
-					if(cmd.str[i] == 0xFF)
-						cmd.str[i] = '~';
-				}
+      if(m_interfaceState == IFat) {
+        // Exchange 0xFF with tilde to allow shortened long filenames
+        for(i = 0; i < cmd.strlen; i++) {
+          if(cmd.str[i] == 0xFF)
+            cmd.str[i] = '~';
+        }
 
-				// Try if cd works, then open file, then give up
-				if(fatCddir(cmd.str)) {
-					m_openState = O_DIR;
-				}
-				else if(fatFopen(cmd.str)) {
-					// File opened, investigate filetype
+        // Try if cd works, then open file, then give up
+        if(fatCddir(cmd.str)) {
+          m_openState = O_DIR;
+        }
+        else if(fatFopen(cmd.str)) {
+          // File opened, investigate filetype
 
-					for(i = 1; i < NumInterfaceStates; i++) {
-						pff = &(file_format[i]);
-						if(memcmp(&(cmd.str[cmd.strlen - 3]), pff->extension, 3) == 0)
-							break;
-					}
+          for(i = 1; i < NumInterfaceStates; i++) {
+            pff = &(file_format[i]);
+            if(memcmp(&(cmd.str[cmd.strlen - 3]), pff->extension, 3) == 0)
+              break;
+          }
 
-					if(i < NumInterfaceStates) {
-						// file extension matches, change interface state
-						// call new format's reset
-						if(((PFUNC_UCHAR_CSTR)(pff->init))(cmd.str)) {
-							m_interfaceState = i;
-							// see if this format supports listing
-							if(pff->send_listing == NULL)
-								m_openState = O_FILE;
-							else
-								m_openState = O_DIR;
-						}
-						else {
-							// Error initializing driver, back to fat
-							m_interfaceState = IFat;
-							m_openState = O_FILE_ERR;
-						}
-					}
-					else {
-						// No specific file format for this file, stay in FAT and send as .PRG
-						m_openState = O_FILE;
-					}
+          if(i < NumInterfaceStates) {
+            // file extension matches, change interface state
+            // call new format's reset
+            if(((PFUNC_UCHAR_CSTR)(pff->init))(cmd.str)) {
+              m_interfaceState = i;
+              // see if this format supports listing
+              if(pff->send_listing == NULL)
+                m_openState = O_FILE;
+              else
+                m_openState = O_DIR;
+            }
+            else {
+              // Error initializing driver, back to fat
+              m_interfaceState = IFat;
+              m_openState = O_FILE_ERR;
+            }
+          }
+          else {
+            // No specific file format for this file, stay in FAT and send as .PRG
+            m_openState = O_FILE;
+          }
 
-				}
-				else {
-					// File not found
-					m_queuedError = ErrFileNotFound;
-				}
-			}
-			else if(m_interfaceState not_eq IFail) {
+        }
+        else {
+          // File not found
+          m_queuedError = ErrFileNotFound;
+        }
+      }
+      else if(m_interfaceState not_eq IFail) {
 
-				// Call file format's open command
-				i = ((PFUNC_UCHAR_CSTR)(pff->open))(cmd.str);
+        // Call file format's open command
+        i = ((PFUNC_UCHAR_CSTR)(pff->open))(cmd.str);
 
-				if(i)
-					m_openState = O_FILE;
-				else // File not found
-					m_queuedError = ErrFileNotFound;
-			}
-		}
-	}
+        if(i)
+          m_openState = O_FILE;
+        else // File not found
+          m_queuedError = ErrFileNotFound;
+      }
+    }
+  }
 
-	// Backup cmd string
-	strcpy(oldCmdStr, cmd.str);
+  // Backup cmd string
+  strcpy(oldCmdStr, cmd.str);
 } // openFile
 
 
 // send basic line callback
 void Interface::sendLineCallback(short lineNo, byte len, char* text)
 {
-	byte i;
+  byte i;
 
-	// Increment next line pointer
-	m_basicPtr += len + 5;
+  // Increment next line pointer
+  m_basicPtr += len + 5;
 
-	// Send that pointer
-	m_iec.send(m_basicPtr bitand 0xFF);
-	m_iec.send(m_basicPtr >> 8);
+  // Send that pointer
+  m_iec.send(m_basicPtr bitand 0xFF);
+  m_iec.send(m_basicPtr >> 8);
 
-	// Send line number
-	m_iec.send(lineNo bitand 0xFF);
-	m_iec.send(lineNo >> 8);
+  // Send line number
+  m_iec.send(lineNo bitand 0xFF);
+  m_iec.send(lineNo >> 8);
 
-	// Send line contents
-	for(i = 0; i < len; i++)
-		m_iec.send(text[i]);
+  // Send line contents
+  for(i = 0; i < len; i++)
+    m_iec.send(text[i]);
 
-	// Finish line
-	m_iec.send(0);
+  // Finish line
+  m_iec.send(0);
 } // sendLineCallback
 
 
 void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 {
-	// Reset basic memory pointer:
-	m_basicPtr = C64_BASIC_START;
+  // Reset basic memory pointer:
+  m_basicPtr = C64_BASIC_START;
 
-	// Send load address
-	m_iec.send(C64_BASIC_START bitand 0xff);
-	m_iec.send((C64_BASIC_START >> 8) bitand 0xff);
+  // Send load address
+  m_iec.send(C64_BASIC_START bitand 0xff);
+  m_iec.send((C64_BASIC_START >> 8) bitand 0xff);
 
-	// This will be slightly tricker: Need to specify the line sending protocol between raspberry and Arduino.
-	// Call the listing function
-	//	(sender)(&send_line_callback);
+  // This will be slightly tricker: Need to specify the line sending protocol between raspberry and Arduino.
+  // Call the listing function
+  //	(sender)(&send_line_callback);
 
-	// End program
-	m_iec.send(0);
-	m_iec.sendEOI(0);
+  // End program
+  m_iec.send(0);
+  m_iec.sendEOI(0);
 } // sendListing
 
 
 void Interface::sendFile()
 {
-	// Send file bytes, such that the last is send with EOI:
-	Serial.write('R');
-	byte s = Serial.read();
-	byte c = Serial.read();
-	while('B' == s) {
-		if(!m_iec.send(c))
-			break;
-		Serial.write('R');
-		s = Serial.read();
-		c = Serial.read();
-	}
+  // Send file bytes, such that the last one is sent with EOI:
+  Serial.write('R');
+  byte s = Serial.read();
+  byte c = Serial.read();
+  while('B' == s) {
+    if(!m_iec.send(c))
+      break;
+    Serial.write('R');
+    s = Serial.read();
+    c = Serial.read();
+  }
 
-	// old code.
-	//	c = (getc)();
+  // old code.
+  //	c = (getc)();
 
-	//	while(!(eof)()) {
-	//		if(!m_iec.send(c))
-	//			break;
-	//		c = (getc)();
-	//	}
+  //	while(!(eof)()) {
+  //		if(!m_iec.send(c))
+  //			break;
+  //		c = (getc)();
+  //	}
 
-	m_iec.sendEOI(c);
+  m_iec.sendEOI(c);
 } // sendFile
 
 
 void Interface::saveFile()
 {
-	// Recieve bytes until a EOI is detected
-	do {
-		byte c = m_iec.receive();
-		Serial.write('W');
-		Serial.write(c);
-		//		(putc)(c);
-	} while(!(m_iec.state() bitand IEC::eoiFlag) and !(m_iec.state() bitand IEC::errorFlag));
+  // Recieve bytes until a EOI is detected
+  do {
+    byte c = m_iec.receive();
+    Serial.write('W');
+    Serial.write(c);
+    //		(putc)(c);
+  } while(!(m_iec.state() bitand IEC::eoiFlag) and !(m_iec.state() bitand IEC::errorFlag));
 } // saveFile
 
 
 void Interface::handler(void)
 {
-	const struct file_format_struct *pff;
+  const struct file_format_struct *pff;
 
-	//  m_iec.setDeviceNumber(8);
+  //  m_iec.setDeviceNumber(8);
 
-	// old code for resetting if something's gone bad with SD card detection etc.
-	//#ifdef SDCARD_DETECT
-	//	if(!SDCARD_DETECT) {
-	//		// No SD card, reset state
-	//		BUSY_LED_OFF();
-	//		DIRTY_LED_OFF();
-	//		interface_state = I_FAIL;
-	//		sdCardOK = FALSE;
-	//	}
-	//	else {
-	//		if(!sdCardOK) {
-	//			// Limit reset cycle
-	//			delay(50);
+  // old code for resetting if something's gone bad with SD card detection etc.
+  //#ifdef SDCARD_DETECT
+  //	if(!SDCARD_DETECT) {
+  //		// No SD card, reset state
+  //		BUSY_LED_OFF();
+  //		DIRTY_LED_OFF();
+  //		interface_state = I_FAIL;
+  //		sdCardOK = FALSE;
+  //	}
+  //	else {
+  //		if(!sdCardOK) {
+  //			// Limit reset cycle
+  //			delay(50);
 
-	//			// Try reseting SD card
-	//			BUSY_LED_ON();
-	//			Interface_reset();
-	//			BUSY_LED_OFF();
+  //			// Try reseting SD card
+  //			BUSY_LED_ON();
+  //			Interface_reset();
+  //			BUSY_LED_OFF();
 
-	//		}
-	//	}
-	//#endif
+  //		}
+  //	}
+  //#endif
 
-	IEC::ATNCheck ret = m_iec.checkATN(cmd);
+  IEC::ATNCheck ret = m_iec.checkATN(cmd);
 
-	if(ret == IEC::ATN_ERROR) {
+  if(ret == IEC::ATN_ERROR) {
 #ifdef CONSOLE_DEBUG
-		Log(Error, FAC_IFACE, "ATNCMD: IEC_ERROR!");
+    Log(Error, FAC_IFACE, "ATNCMD: IEC_ERROR!");
 #endif
-		return;
-	}
+    return;
+  }
 
-	if(ret not_eq IEC::ATN_IDLE) {
-		// A command is recieved
-		//BUSY_LED_ON();
+  if(ret not_eq IEC::ATN_IDLE) {
+    // A command is recieved
+    //BUSY_LED_ON();
 
 #ifdef CONSOLE_DEBUG
-		{
-			char buffer[60];
-			sprintf("ATNCMD: %c %s %c", cmd.Code, cmd.str, ret);
-			Log(Information, FAC_IFACE, buffer);
-		}
+    {
+      char buffer[60];
+      sprintf("ATNCMD: %c %s %c", cmd.Code, cmd.str, ret);
+      Log(Information, FAC_IFACE, buffer);
+    }
 #endif
 
-		if(IFail == m_interfaceState)
-			pff = NULL;
-		else
-			pff = &(file_format[interface_state]);
+    if(IFail == m_interfaceState)
+      pff = NULL;
+    else
+      pff = &(file_format[interface_state]);
 
-		// Make cmd string null terminated
-		cmd.str[cmd.strlen] = '\0';
+    // Make cmd string null terminated
+    cmd.str[cmd.strlen] = '\0';
 
-		byte chan = cmd.code bitand 0x0F;
+    byte chan = cmd.code bitand 0x0F;
 
-		switch(cmd.code bitand 0xF0) {
-			case IEC::ATN_CODE_OPEN:
-				if(0x0F == chan) {
-					// command channel command
-					if(NULL not_eq pff)
-						m_queuedError = ((PFUNC_UCHAR_CSTR)(pff->cmd))(cmd.str);
-					else
-						m_queuedError = ErrDriveNotReady;
-				}
-				else {
-					// load command
-					m_queuedError = ErrOK;
-					openFile(pff);
-				}
-				break;
+    switch(cmd.code bitand 0xF0) {
+    case IEC::ATN_CODE_OPEN:
+      if(0x0F == chan) {
+        // command channel command
+        if(NULL not_eq pff)
+          m_queuedError = ((PFUNC_UCHAR_CSTR)(pff->cmd))(cmd.str);
+        else
+          m_queuedError = ErrDriveNotReady;
+      }
+      else {
+        // load command
+        m_queuedError = ErrOK;
+        openFile(pff);
+      }
+      break;
 
-			case IEC::ATN_CODE_DATA:  // data channel opened
+    case IEC::ATN_CODE_DATA:  // data channel opened
 
-				if(ret == IEC::ATN_CMD_TALK) {
-					if(chan == 0x0F) {
-						// Send status message
-						send_status();
-						m_queuedError = ErrOK;
-					}
-					else if(m_openState == O_INFO) {
-						// Reset and send SD card info
-						reset();
-						sendListing(&send_sdinfo);
-					}
-					else if(m_openState == O_FILE_ERR) {
-						sendListing(&send_file_err);
-					}
-					else if((m_openState == O_NOTHING) or (pff == NULL)) {
-						// Say file not found
-						m_iec.sendFNF();
-					}
-					else if(m_openState == O_FILE) {
-						// Send program file
-						sendFile((PFUNC_CHAR_VOID)(pff->getc),
-										 (PFUNC_UCHAR_VOID)(pff->eof));
-					}
-					else if(m_openState == O_DIR) {
-						// Send listing
-						sendListing((PFUNC_SEND_LISTING)(pff->send_listing));
-					}
+      if(ret == IEC::ATN_CMD_TALK) {
+        if(chan == 0x0F) {
+          // Send status message
+          send_status();
+          m_queuedError = ErrOK;
+        }
+        else if(m_openState == O_INFO) {
+          // Reset and send SD card info
+          reset();
+          sendListing(&send_sdinfo);
+        }
+        else if(m_openState == O_FILE_ERR) {
+          sendListing(&send_file_err);
+        }
+        else if((m_openState == O_NOTHING) or (pff == NULL)) {
+          // Say file not found
+          m_iec.sendFNF();
+        }
+        else if(m_openState == O_FILE) {
+          // Send program file
+          sendFile((PFUNC_CHAR_VOID)(pff->getc),
+                   (PFUNC_UCHAR_VOID)(pff->eof));
+        }
+        else if(m_openState == O_DIR) {
+          // Send listing
+          sendListing((PFUNC_SEND_LISTING)(pff->send_listing));
+        }
 
-				}
-				else if(ret == IEC::ATN_CMD_LISTEN) {
-					// We are about to save stuff
-					if(pff == NULL) {
-						// file format functions unavailable, save dummy
-						saveFile(/*&dummy_1*/);
-						m_queuedError = ErrDriveNotReady;
-					}
-					else {
-						// Check conditions before saving
-						ret = true;
-						if(open_state not_eq O_SAVE_REPLACE) {
-							// Not a save with replace, if file exists its an error
-							if(queued_error not_eq ErrFileNotFound) {
-								m_queuedError = ErrFileExists;
-								ret = false;
-							}
-						}
+      }
+      else if(ret == IEC::ATN_CMD_LISTEN) {
+        // We are about to save stuff
+        if(pff == NULL) {
+          // file format functions unavailable, save dummy
+          saveFile(/*&dummy_1*/);
+          m_queuedError = ErrDriveNotReady;
+        }
+        else {
+          // Check conditions before saving
+          ret = true;
+          if(open_state not_eq O_SAVE_REPLACE) {
+            // Not a save with replace, if file exists its an error
+            if(queued_error not_eq ErrFileNotFound) {
+              m_queuedError = ErrFileExists;
+              ret = false;
+            }
+          }
 
-						if(ret) {
-							// No overwrite problem, try to create a file to save in:
-							ret = ((PFUNC_UCHAR_CSTR)(pff->newfile))(oldCmdStr);
-							if(!ret)
-								// unable to save, just say write protect
-								m_queuedError = ErrWriteProtectOn;
-							else
-								m_queuedError = ErrOK;
+          if(ret) {
+            // No overwrite problem, try to create a file to save in:
+            ret = ((PFUNC_UCHAR_CSTR)(pff->newfile))(oldCmdStr);
+            if(!ret)
+              // unable to save, just say write protect
+              m_queuedError = ErrWriteProtectOn;
+            else
+              m_queuedError = ErrOK;
 
-						}
+          }
 
-						if(ret)
-							saveFile(/*(PFUNC_UCHAR_CHAR)(pff->putc)*/);
-						else
-							saveFile(/*&dummy_1*/);
-					}
+          if(ret)
+            saveFile(/*(PFUNC_UCHAR_CHAR)(pff->putc)*/);
+          else
+            saveFile(/*&dummy_1*/);
+        }
 
-				}
+      }
 
-				break;
+      break;
 
-			case IEC::ATN_CODE_CLOSE:
-				if(pff not_eq NULL) {
-					((PFUNC_UCHAR_VOID)(pff->close))();
-				}
-				break;
-		}
+    case IEC::ATN_CODE_CLOSE:
+      if(pff not_eq NULL) {
+        ((PFUNC_UCHAR_VOID)(pff->close))();
+      }
+      break;
+    }
 
-		//BUSY_LED_OFF();
-	}
+    //BUSY_LED_OFF();
+  }
 } // handler
