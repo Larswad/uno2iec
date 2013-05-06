@@ -70,3 +70,6 @@ git clone https://code.google.com/p/qextserialport/
 
 // Write byte(s) to current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
 // 'W<byte..n>'
+
+// 'C'
+// Close file for current file system

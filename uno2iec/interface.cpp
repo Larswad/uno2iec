@@ -84,7 +84,7 @@ void Interface::reset(void)
   //	if((fatGetStatus() bitand FAT_STATUS_OK) and sdCardOK) {
   //		interface_state = I_FAT;
   //	}
-  m_interfaceState = IFat;
+	m_interfaceState = IS_NATIVE;
 } // reset
 
 
@@ -327,7 +327,7 @@ unsigned char P00_reset(char *s)
 unsigned char close_to_fat(void)
 {
   // Close and back to fat
-  m_interfaceState = IFat;
+	m_interfaceState = IS_NATIVE;
   fatFclose();
   return TRUE;
 }
@@ -452,13 +452,13 @@ void Interface::openFile(const struct file_format_struct *pff)
   // Check double back arrow first
   if((cmd.str[0] == 95) and (cmd.str[1] == 95)) {
     // reload sdcard and send info
-    m_interfaceState = I_FAIL;
+		m_interfaceState = IS_FAIL;
     m_openState = O_INFO;
   }
   else if(!sdCardOK or !(fatGetStatus() & FAT_STATUS_OK)) {
     // User tries to open stuff and there is a problem. Status is fail
     m_queuedError = ErrDriveNotReady;
-    m_interfaceState = IFail;
+		m_interfaceState = IS_FAIL;
   }
   else if(cmd.str[0] == '$') {
     // Send directory listing of current dir
@@ -466,13 +466,13 @@ void Interface::openFile(const struct file_format_struct *pff)
   }
   else if(cmd.str[0] == 95) {    // back arrow sign on C64
     // One back arrow, exit current file format or cd..
-    if(m_interfaceState == IFat) {
+		if(m_interfaceState == IS_NATIVE) {
       if(fatCddir(".."))
         m_openState = O_DIR;
     }
-    else if(m_interfaceState not_eq IFail) {
+		else if(m_interfaceState not_eq IS_FAIL) {
       // We are in some other state, exit to FAT and show current dir
-      m_interfaceState = IFat;
+			m_interfaceState = IS_NATIVE;
       m_openState = O_DIR;
     }
   }
@@ -487,7 +487,7 @@ void Interface::openFile(const struct file_format_struct *pff)
     else {
       // open file depending on interface state
 
-      if(m_interfaceState == IFat) {
+			if(m_interfaceState == IS_NATIVE) {
         // Exchange 0xFF with tilde to allow shortened long filenames
         for(i = 0; i < cmd.strlen; i++) {
           if(cmd.str[i] == 0xFF)
@@ -520,7 +520,7 @@ void Interface::openFile(const struct file_format_struct *pff)
             }
             else {
               // Error initializing driver, back to fat
-              m_interfaceState = IFat;
+							m_interfaceState = IS_NATIVE;
               m_openState = O_FILE_ERR;
             }
           }
@@ -535,7 +535,7 @@ void Interface::openFile(const struct file_format_struct *pff)
           m_queuedError = ErrFileNotFound;
         }
       }
-      else if(m_interfaceState not_eq IFail) {
+			else if(m_interfaceState not_eq IS_FAIL) {
 
         // Call file format's open command
         i = ((PFUNC_UCHAR_CSTR)(pff->open))(cmd.str);
@@ -648,7 +648,7 @@ void Interface::handler(void)
   //		// No SD card, reset state
   //		BUSY_LED_OFF();
   //		DIRTY_LED_OFF();
-  //		interface_state = I_FAIL;
+	//		interface_state = IFail;
   //		sdCardOK = FALSE;
   //	}
   //	else {
@@ -686,10 +686,10 @@ void Interface::handler(void)
     }
 #endif
 
-    if(IFail == m_interfaceState)
-      pff = NULL;
-    else
-      pff = &(file_format[interface_state]);
+//		if(IS_FAIL == m_interfaceState)
+//			pff = NULL;
+//		else
+//			pff = &(file_format[m_interfaceState]);
 
     // Make cmd string null terminated
     cmd.str[cmd.strlen] = '\0';
@@ -698,16 +698,20 @@ void Interface::handler(void)
 
     switch(cmd.code bitand 0xF0) {
     case IEC::ATN_CODE_OPEN:
-      if(0x0F == chan) {
+				if(CMD_CHANNEL == chan) {
         // command channel command
-        if(NULL not_eq pff)
+					if(NULL not_eq pff) {
+						// TODO: here send command, with string sequence. get return code from pi (m_queuedError).
           m_queuedError = ((PFUNC_UCHAR_CSTR)(pff->cmd))(cmd.str);
+					}
         else
           m_queuedError = ErrDriveNotReady;
       }
       else {
         // load command
         m_queuedError = ErrOK;
+					// TODO: here send load command for the current file system / or for change file system. Get status back from pi.
+					// Need back from rpi (note it is PI that holds the current 'pff': openstate, queuedError
         openFile(pff);
       }
       break;
@@ -715,9 +719,10 @@ void Interface::handler(void)
     case IEC::ATN_CODE_DATA:  // data channel opened
 
       if(ret == IEC::ATN_CMD_TALK) {
-        if(chan == 0x0F) {
+					if(CMD_CHANNEL == chan) {
           // Send status message
-          send_status();
+						sendStatus();
+						// go back to OK state, we have dispatched the error to IEC host now.
           m_queuedError = ErrOK;
         }
         else if(m_openState == O_INFO) {
@@ -753,9 +758,9 @@ void Interface::handler(void)
         else {
           // Check conditions before saving
           ret = true;
-          if(open_state not_eq O_SAVE_REPLACE) {
+						if(m_openState not_eq O_SAVE_REPLACE) {
             // Not a save with replace, if file exists its an error
-            if(queued_error not_eq ErrFileNotFound) {
+							if(m_queuedError not_eq ErrFileNotFound) {
               m_queuedError = ErrFileExists;
               ret = false;
             }

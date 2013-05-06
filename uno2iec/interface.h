@@ -17,13 +17,13 @@ typedef enum {
 
 
 enum  {
-	IFail = 0xFF, // IFail: SD card or fat not ok
-	IFat = 0,			// Regular file system file state
+	IS_FAIL = 0xFF, // IFail: SD card or fat not ok
+	IS_NATIVE = 0,			// Regular file system file state
 	// states 1 -> NumInterfaceStates are also valid, representing what's open
-	ID64 = 1,
-	IT64 = 2,
-	IM2I = 3,
-	IPRG = 4,
+	IS_D64 = 1,
+	IS_T64 = 2,
+	IS_M2I = 3,
+	IS_PRG = 4,
 	NumInterfaceStates
 };
 
@@ -37,6 +37,8 @@ enum OpenState {
 };
 
 const word C64_BASIC_START = 0x0801;
+
+#define CMD_CHANNEL 15
 
 class Interface
 {
