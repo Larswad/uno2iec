@@ -56,27 +56,101 @@ namespace {
 const QString strTapeEnd("TAPE END.");
 }
 
+
+T64::T64(const QString& fileName)
+	:  FileDriverBase(), m_hostFile(fileName), m_status(NOT_READY), m_dirEntries(0), m_dirEntry(0),
+		m_fileOffset(0), m_fileLength(0)
+{
+	if(!fileName.isEmpty())
+		openHostFile(fileName);
+} // dtor
+
+
+T64::~T64()
+{
+	closeHostFile();
+} // dtor
+
+
+bool T64::openHostFile(const QString& fileName)
+{
+	closeHostFile();
+	m_hostFile.setFileName(fileName);
+	// Analyse the file open in host file system and if it is a valid t64, set up
+	// variables
+	if(m_hostFile.open(QIODevice::ReadOnly)) {
+		// Before going on, check filesize. This also checks if a file IS open
+		if(hostSize() >= 64) {
+			// Verify first three bytes of file signature:
+			hostSeek(T64_SIGNATURE_OFFSET);
+
+			if((hostReadByte() == 'C') and (hostReadByte() == '6') and (hostReadByte() == '4')) {
+				// Read header, get dir information
+				hostSeek(T64_ENTRIES_LO_OFFSET);
+				m_dirEntries = (unsigned short)hostReadByte();
+				hostSeek(T64_ENTRIES_HI_OFFSET);
+				m_dirEntries or_eq (unsigned short)hostReadByte() << 8;
+
+				// We are happy
+				m_status = IMAGE_OK;
+				return true;
+			}
+		}
+	}
+	// yikes.
+	return false;
+}
+
+void T64::closeHostFile()
+{
+	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+		m_hostFile.close();
+	// Reset status
+	m_status = NOT_READY;
+} // closeHostFile
+
+
+uchar T64::hostReadByte(uint length)
+{
+	char theByte;
+	qint64 numRead(m_hostFile.read(&theByte, length));
+	if(numRead < length) // shouldn't happen?
+		m_status = FILE_EOF;
+
+	return theByte;
+} // hostReadByte
+
+
+bool T64::hostSeek(qint32 pos, bool relative)
+{
+	if(relative)
+		pos += m_hostFile.pos();
+
+	return m_hostFile.seek(pos);
+} // hostSeek
+
+
 void T64::seekToTapeName(void)
 {
-	if(m_status bitand TAPE_OK) {
+	if(m_status bitand IMAGE_OK) {
 		hostSeek(T64_TAPE_NAME_OFFSET);
 
 		// Now we have moved the file pointer, we are only tape_ok:
-		m_status = TAPE_OK;
+		m_status = IMAGE_OK;
 	}
 } // seekToTapeName
 
 
-bool T64::isEOF(void)
+bool T64::isEOF(void) const
 {
-	return !(m_status bitand TAPE_OK) or !(m_status bitand FILE_OPEN)
+	return !(m_status bitand IMAGE_OK) or !(m_status bitand FILE_OPEN)
 			or (m_status bitand FILE_EOF);
 } // isEOF
 
 
 // This function reads a character and updates file position to next
 //
-char T64::fgetc(void)
+char T64::getc(void)
 {
 	uchar ret = 0;
 
@@ -107,12 +181,12 @@ char T64::fgetc(void)
 
 bool T64::seekFirstDir(void)
 {
-	if(m_status bitand TAPE_OK) {
+	if(m_status bitand IMAGE_OK) {
 		// Seek first dir:
 		hostSeek(T64_FIRST_DIR_OFFSET);
 
 		// Set correct status
-		m_status = TAPE_OK bitor DIR_OPEN;
+		m_status = IMAGE_OK bitor DIR_OPEN;
 		m_dirEntry = 0;
 
 		if(m_dirEntry == m_dirEntries)
@@ -127,7 +201,7 @@ bool T64::seekFirstDir(void)
 bool T64::getDirEntry(DirEntry& dir)
 {
 	// Check if correct status
-	if((m_status bitand TAPE_OK) and (m_status bitand DIR_OPEN)
+	if((m_status bitand IMAGE_OK) and (m_status bitand DIR_OPEN)
 		 and !(m_status bitand DIR_EOF)) {
 
 		uchar* pEntry = reinterpret_cast<uchar*>(&dir);
@@ -146,9 +220,9 @@ bool T64::getDirEntry(DirEntry& dir)
 } // getDirEntry
 
 
-uchar T64::status(void)
+FileDriverBase::FSStatus T64::status(void) const
 {
-	return m_status;
+	return static_cast<FSStatus>(m_status);
 } // status
 
 
@@ -204,18 +278,18 @@ bool T64::fopen(char *filename)
 
 		hostSeek(dir.fileOffset);
 
-		m_status = TAPE_OK bitor FILE_OPEN;
+		m_status = IMAGE_OK bitor FILE_OPEN;
 	}
 
 	return found;
 } // fopen
 
 
-bool T64::fclose(void)
+bool T64::close(void)
 {
-	m_status and_eq TAPE_OK;  // Clear all flags except tape ok
+	m_status and_eq IMAGE_OK;  // Clear all flags except tape ok
 	return true;
-} // fclose
+} // close
 
 
 bool T64::sendListing(ISendLine& cb)
@@ -268,75 +342,3 @@ bool T64::sendListing(ISendLine& cb)
 
 	return true;
 } // sendListing
-
-
-T64::T64(const QString& fileName)
-	:  m_hostFile(fileName), m_status(NOT_READY), m_dirEntries(0), m_dirEntry(0),
-		m_fileOffset(0), m_fileLength(0)
-{
-	if(!fileName.isEmpty())
-		openHostFile(fileName);
-} // dtor
-
-
-T64::~T64()
-{
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
-		m_hostFile.close();
-} // dtor
-
-
-bool T64::openHostFile(const QString& fileName)
-{
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
-		m_hostFile.close();
-
-	m_hostFile.setFileName(fileName);
-	// Analyse the file open in host file system and if it is a valid t64, set up
-	// variables
-
-	// Reset status
-	m_status = NOT_READY;
-
-	if(m_hostFile.open(QIODevice::ReadOnly)) {
-		// Before going on, check filesize. This also checks if a file IS open
-		if(hostSize() >= 64) {
-			// Verify first three bytes of file signature:
-			hostSeek(T64_SIGNATURE_OFFSET);
-
-			if((hostReadByte() == 'C') and (hostReadByte() == '6') and (hostReadByte() == '4')) {
-				// Read header, get dir information
-				hostSeek(T64_ENTRIES_LO_OFFSET);
-				m_dirEntries = (unsigned short)hostReadByte();
-				hostSeek(T64_ENTRIES_HI_OFFSET);
-				m_dirEntries or_eq (unsigned short)hostReadByte() << 8;
-
-				// We are happy
-				m_status = TAPE_OK;
-				return true;
-			}
-		}
-	}
-	// yikes.
-	return false;
-} // openHostFile
-
-
-uchar T64::hostReadByte(uint length)
-{
-	char theByte;
-	qint64 numRead(m_hostFile.read(&theByte, length));
-	if(numRead < length) // shouldn't happen?
-		m_status = FILE_EOF;
-
-	return theByte;
-} // hostReadByte
-
-
-bool T64::hostSeek(qint32 pos, bool relative)
-{
-	if(relative)
-		pos += m_hostFile.pos();
-
-	return m_hostFile.seek(pos);
-} // hostSeek

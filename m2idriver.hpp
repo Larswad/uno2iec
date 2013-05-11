@@ -25,30 +25,26 @@
 class M2I : public FileDriverBase
 {
 public:
-	// command channel errors
-#define ERR_OK               0
-#define ERR_READ_ERROR       1
-#define ERR_WRITE_PROTECT_ON 2
-#define ERR_SYNTAX_ERROR     3
-#define ERR_FILE_NOT_FOUND   4
-#define ERR_FILE_EXISTS      5
-#define ERR_INTRO            6
-#define ERR_DRIVE_NOT_READY  7
+	const QString& extension() const
+	{
+		static const QString ext("M2I");
+		return ext;
+	} // extension
 
+	// method below performs init of the driver with the given ATN command string.
+	bool openHostFile(const QString& fileName);
+	void closeHostFile();
 
-
-	bool init(char* s);
-
-	void sendListing(ISendLine& cb);
+	bool sendListing(ISendLine& cb);
 
 	// command channel command
-	unsigned char  cmd(char *s);
+	uchar cmd(char *s);
 
-	uchar open(char *fileName);
+	bool fopen(const QString& fileName);
 
 	char getc(void);
 
-	bool isEOF(void);
+	bool isEOF(void) const;
 
 	// write char to open file, returns false if failure
 	bool putc(char c);
@@ -65,12 +61,16 @@ public:
 	bool rename(char *oldName, char *newName);
 
 private:
-	bool readFirstLine(char* dest);
-	uchar parseLine(char* dosName, char* cbmName);
+	bool readFirstLine(QString* dest = 0);
+	uchar parseLine(QString *dosName, QString *cbmName);
 	bool createFile(char *fileName);
 
-	bool seekFile(char *dosName, char *dirName, char *seekName,
-								char openClose);
+	bool seekFile(QString *dosName, QString &dirName, const QString &seekName,
+								bool doOpen);
+
+	// The real host file system D64 file:
+	QFile m_m2iHostFile;
+
 };
 
 #endif

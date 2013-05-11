@@ -47,35 +47,32 @@ public:
 		FILE_CLOSED = 0x80
 	};
 
-	enum D64Status
-	{
-		NOT_READY = 0,
-		DISK_OK   = 1,  // The open file in fat driver is accepted as a D64
-		FILE_OPEN = 2,  // A file is open right now
-		FILE_EOF  = 4,  // The open file is ended
-		DIR_OPEN  = 8,  // A directory entry is active
-		DIR_EOF   = 16  // Last directory entry has been retrieved
-	};
-
 	// Host file system D64-image can be opened from constructor, if specified.
 	D64(const QString& fileName = QString());
 	virtual ~D64();
 
+	const QString& extension() const
+	{
+		static const QString ext("D64");
+		return ext;
+	} // extension
+
 	// The host file system D64 image is opened or re-opened with the method below.
 	// If cannot be opened or not a D64 image, it returns false, true otherwise.
 	bool openHostFile(const QString& fileName);
+	void closeHostFile();
 
 	// Current status of operation.
-	D64Status status(void) const;
+	FSStatus status(void) const;
 
 	// Open a file in the image by filename: Returns true if successful
 	bool fopen(const QString& fileName);
 	// Get character from open file:
-	char fgetc(void);
+	char getc(void);
 	// Returns true if last character was retrieved:
 	bool isEOF(void) const;
 	// Close current file
-	bool fclose(void);
+	bool close(void);
 	// Blocks free information
 	ushort blocksFree(void);
 
@@ -114,14 +111,12 @@ private:
 	// The real host file system D64 file:
 	QFile m_hostFile;
 
-	// Status of the d64 driver:
-	uchar m_status;
-
 	// D64 driver state variables:
 	// The current d64 file position described as track/sector/offset
 	uchar m_currentTrack;
 	uchar m_currentSector;
 	uchar m_currentOffset;
+
 	// The current block's link to next block
 	uchar m_currentLinkTrack;
 	uchar m_currentLinkSector;

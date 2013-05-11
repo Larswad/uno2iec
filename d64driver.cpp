@@ -69,7 +69,7 @@ const QString strD64Error("ERROR: D64");
 
 
 D64::D64(const QString& fileName)
-	:  m_hostFile(fileName), m_status(NOT_READY), m_currentTrack(0), m_currentSector(0), m_currentOffset(0),
+	: FileDriverBase(), m_hostFile(fileName), m_currentTrack(0), m_currentSector(0), m_currentOffset(0),
 		m_currentLinkTrack(0), m_currentLinkSector(0)
 {
 	if(!fileName.isEmpty())
@@ -79,30 +79,34 @@ D64::D64(const QString& fileName)
 
 D64::~D64()
 {
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
-		m_hostFile.close();
+	closeHostFile();
 } // dtor
 
 
 bool D64::openHostFile(const QString& fileName)
 {
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
-		m_hostFile.close();
-
+	closeHostFile();
 	m_hostFile.setFileName(fileName);
 	if(m_hostFile.open(QIODevice::ReadOnly)) {
 		// Check if file is a valid disk image by the simple criteria that
 		// file size is at least 174.848
 		if(hostSize() >= D64_IMAGE_SIZE) {
-			m_status = DISK_OK;
+			m_status = IMAGE_OK;
 			return true;
 		}
 	}
 
 	// yikes.
-	m_status = NOT_READY;
 	return false;
 } // openHostFile
+
+
+void D64::closeHostFile()
+{
+	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+		m_hostFile.close();
+	m_status = NOT_READY;
+} // closeHostFile
 
 
 // This function sets the filepointer to third byte in a block.
@@ -167,14 +171,14 @@ void D64::seekBlock(uchar track, uchar sector)
 
 bool D64::isEOF(void) const
 {
-	return !(m_status bitand DISK_OK) or !(m_status bitand FILE_OPEN)
+	return !(m_status bitand IMAGE_OK) or !(m_status bitand FILE_OPEN)
 			or (m_status bitand FILE_EOF);
 } // isEOF
 
 
 // This function reads a character and updates file position to next
 //
-char D64::fgetc(void)
+char D64::getc(void)
 {
 	uchar ret = 0;
 
@@ -201,9 +205,9 @@ char D64::fgetc(void)
 
 
 
-bool D64::fclose(void)
+bool D64::close(void)
 {
-	m_status and_eq DISK_OK;  // Clear all flags except disk ok
+	m_status and_eq IMAGE_OK;  // Clear all flags except disk ok
 
 	return true;
 } // fclose
@@ -211,12 +215,12 @@ bool D64::fclose(void)
 
 bool D64::seekFirstDir(void)
 {
-	if(m_status bitand DISK_OK) {
+	if(m_status bitand IMAGE_OK) {
 		// Seek to first dir entry
 		seekBlock(D64_FIRSTDIR_TRACK, D64_FIRSTDIR_SECTOR);
 
 		// Set correct status
-		m_status = (D64Status)(DISK_OK bitor DIR_OPEN);
+		m_status = IMAGE_OK bitor DIR_OPEN;
 
 		return true;
 	}
@@ -230,7 +234,7 @@ bool D64::getDirEntry(DirEntry& dir)
 	uchar* pEntry = reinterpret_cast<uchar*>(&dir);
 
 	// Check if correct status
-	if((m_status bitand DISK_OK) and (m_status bitand DIR_OPEN)
+	if((m_status bitand IMAGE_OK) and (m_status bitand DIR_OPEN)
 		 and !(m_status bitand DIR_EOF)) {
 
 		// OK, copy current dir to target
@@ -288,9 +292,9 @@ bool D64::hostSeek(qint32 pos, bool relative)
 } // hostSeek
 
 
-D64::D64Status D64::status(void) const
+FileDriverBase::FSStatus D64::status(void) const
 {
-	return static_cast<D64Status>(m_status);
+	return static_cast<FSStatus>(m_status);
 }
 
 // At the position seeked comes:
@@ -301,7 +305,7 @@ D64::D64Status D64::status(void) const
 // Get these bytes directly from FAT by readHostByte();
 void D64::seekToDiskName(void)
 {
-	if(m_status bitand DISK_OK) {
+	if(m_status bitand IMAGE_OK) {
 		// Seek BAM block
 		seekBlock(D64_BAM_TRACK, D64_BAM_SECTOR);
 
@@ -309,7 +313,7 @@ void D64::seekToDiskName(void)
 		hostSeek(D64_BAM_DISKNAME_OFFSET - 2, true);
 
 		// Status now is no file open as such
-		m_status = DISK_OK;
+		m_status = IMAGE_OK;
 	}
 } // seekToDiskName
 
@@ -366,7 +370,7 @@ bool D64::fopen(const QString& fileName)
 	if(found) {
 		// File found. Jump to block and set correct state
 		seekBlock(dir.track, dir.sector);
-		m_status = (D64Status)(DISK_OK bitor FILE_OPEN);
+		m_status = (FSStatus)(IMAGE_OK bitor FILE_OPEN);
 	}
 
 	return found;
@@ -380,9 +384,9 @@ bool D64::sendListing(ISendLine& cb)
 	DirEntry dir;
 	char buffer[31];
 
-	if(!(m_status bitand DISK_OK)) {
+	if(!(m_status bitand IMAGE_OK)) {
 		// We are not happy with the d64 file
-		cb.send(0, strD64Error.length(), strD64Error.toLatin1().data());
+		cb.send(0, strD64Error);
 		return true;
 	}
 
@@ -466,6 +470,6 @@ bool D64::sendListing(ISendLine& cb)
 
 	// Send line with 0 blocks free
 	QString blkFree(QString(strBlocksFree) + QString(13, ' '));
-	cb.send(0, blkFree.length(), blkFree.toLatin1().data());
+	cb.send(0, blkFree);
 	return true;
 } // sendListing

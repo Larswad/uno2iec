@@ -12,8 +12,9 @@ typedef enum {
 	ErrFileExists,
 	ErrIntro,
 	ErrDriveNotReady,
+	ErrSerialComm,		// something went sideways with serial communication to the file server.
 	ErrCount
-} ErrorMessage;
+} IOErrorMessage;
 
 
 enum  {
@@ -54,7 +55,7 @@ private:
 	byte m_interfaceState; // see InterfaceState
 	// This var is set after an open command and determines what to send next
 	byte m_openState;			// see OpenState
-	ErrorMessage m_queuedError;
+	IOErrorMessage m_queuedError;
 
 	void reset(void);
 	void openFile(const struct file_format_struct *pff);

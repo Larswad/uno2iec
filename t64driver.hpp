@@ -26,45 +26,46 @@
 class T64 : public FileDriverBase
 {
 public:
-	enum T64Status : uchar
-	{
-		NOT_READY = 0,  // driver not ready (host file not read or accepted).
-		TAPE_OK   = (1 << 0),  // The open file in fat driver is accepted as a T64
-		FILE_OPEN = (1 << 1),  // A file is open right now
-		FILE_EOF  = (1 << 2),  // The open file is ended
-		DIR_OPEN  = (1 << 3),  // A directory entry is active
-		DIR_EOF   = (1 << 4)  // Last directory entry has been retrieved
-	};
-
 	// Host file system D64-image can be opened from constructor, if specified.
 	T64(const QString& fileName = QString());
 	virtual ~T64();
 
+	const QString& extension() const
+	{
+		static const QString ext("T64");
+		return ext;
+	} // extension
+
 	// The host file system T64 image is opened or re-opened with the method below.
 	// If cannot be opened or not a T64 image, it returns false, true otherwise.
 	bool openHostFile(const QString& fileName);
+	void closeHostFile();
 
 	// t64 driver api
 	//
 	// It can be checked if the disk image is considered OK:
-	uchar status(void);
+	FSStatus status(void) const;
 
 	bool sendListing(ISendLine& cb);
 
+	bool supportsListing() const
+	{
+		return true;
+	}
+
 	// Open a file by filename: Returns true if successfull
 	bool fopen(char* filename);
-
 	//
 	// Get character from open file:
-	char fgetc(void);
+	char getc(void);
 
 	//
 	// Returns true if last character was retrieved:
-	bool isEOF(void);
+	bool isEOF(void) const;
 
 	//
 	// Close current file
-	bool fclose(void);
+	bool close(void);
 
 private:
 

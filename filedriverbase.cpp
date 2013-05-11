@@ -2,7 +2,8 @@
 
 FileDriverBase::FileDriverBase()
 {
-}
+	m_status = NOT_READY;
+} // ctor
 
 
 FileDriverBase::~FileDriverBase()
@@ -16,8 +17,13 @@ bool FileDriverBase::sendListing(ISendLine& cb)
 	return false;
 } // sendListing
 
+bool FileDriverBase::supportsListing() const
+{
+	return false;
+}
 
-ErrorMessage FileDriverBase::cmdChannel(const QString& cmd)
+
+IOErrorMessage FileDriverBase::cmdChannel(const QString& cmd)
 {
 	Q_UNUSED(cmd);
 	return ErrWriteProtectOn;
@@ -45,3 +51,8 @@ virtual bool putc(uchar c)
 	return true;
 } // putc
 
+
+virtual bool setCurrentDirectory(const QString& dir)
+{
+	return false;
+}

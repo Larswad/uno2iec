@@ -131,29 +131,10 @@ int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 
-
-//  IEC iec;
-	D64 d64;
-	T64 t64;
-	M2I m2i;
-
-	// Initialization
-	//iec.init();
-	//Interface iface(iec);
-	//  iface.addFileDriver(d64);
-	//  iface.addFileDriver(t64);
-	//  iface.addFileDriver(m2i);
-
 #ifdef CONSOLE_DEBUG
 	// Say hi
 	qDebug() << endl << "Welcome." << endl;
 #endif
-
-
-	// Recieve and respond to commands
-//	forever {
-//		iface.handler();
-//	}
 
 	MainWindow w;
 	w.show();

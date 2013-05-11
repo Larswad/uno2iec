@@ -37,167 +37,82 @@
 
 // Local vars, driver state:
 
-char m2i_filename[13];
-
-unsigned char m2i_status;
-
-const char pstr_error1[] = "M2I FILE ERROR";
-
-const char pstr_prg[] = "PRG";
-const char pstr_del[] = "DEL";
-const char pstr_id[] = " M2I";
-
-const char pstr_dot_prg[] = ".PRG\0";
-const char pstr_dot_m2i[] = ".M2I\0";
-
-#define M2I_STATUS_FOPEN 1
-
-
-// Get first line of m2i file, writes 16 chars in dest
-// Returns FALSE if there is a problem in the file
-bool M2I::readFirstLine(char* dest)
-{
-	for(uchar i = 0; i < 16; ++i) {
-		uchar c = fatFgetc();
-		if(0 not_eq dest)
-			dest[i] = c;
-	}
-
-	return (fatFgetc() == 13 and fatFgetc() == 10);
-} // readFirstLine
-
-
-// Parses one line from the .m2i file.
-// File pos must be after reading the initial status char
-//
-// <file type char>:<dosname>:<cbmname><cr><lf>
-//
-// at dosname 12 chars is written, at cbmname 16 chars
-//
-uchar M2I::parseLine(char* dosName, char* cbmName)
-{
-	unsigned char ftype;
-	unsigned char c,i;
-
-	if(fatFeof())
-		return 0;  // no more records
-
-	// Get file type
-	ftype = fatFgetc();
-
-	// seperator
-	if(fatFgetc() not_eq ':')
-		return 0;
-
-	// Get dos filename
-	for(i = 0; i < 12; i++) {
-		c = fatFgetc();
-		if (0 not_eq dosName)
-			dosName[i] = c;
-	}
-
-	// seperator
-	if(fatFgetc() not_eq ':')
-		return 0;
-
-	// Get cbm filename
-	for(i = 0; i < 16; i++) {
-		c = fatFgetc();
-		if(0 not_eq cbmName)
-			cbmName[i] = c;
-	}
-
-	// Get line break
-	if((fatFgetc() == 13) and (fatFgetc() == 10))
-		return ftype; // everything OK
-
-	return 0;
+namespace {
+const QString strError1("M2I FILE ERROR");
+const QString strPRG("PRG");
+const QString strDEL("DEL");
+const QString strID(" M2I");
+const QString strDotPRG(".PRG\0");
+const QString strDotM2I(".M2I\0");
 }
 
 
-bool M2I::init(char* s)
+// method below performs init of the driver with the given ATN command string.
+bool M2I::openHostFile(const QString& fileName)
 {
-	bool ret;
-	// Interface has just opened the m2i file, save filename
-	if(strlen(s) > 12)
-		return false;
-	strcpy(m2i_filename, s);
+	closeHostFile();
 
-	m2i_status = 0;
+	// Interface has just opened the m2i file, save filename
+	m_m2iHostFile.setFileName(fileName);
+
+	if(!m_m2iHostFile.open(QIODevice::ReadOnly))
+		return false;
 
 	// We accept m2i file if first line is OK:
-	ret = readFirstLine(0);
-	fatFclose();
-
-	return ret;
-} // init
+	return readFirstLine();
+} // openHostFile
 
 
-void M2I::sendListing(ISendLine &cb)
+void M2I::closeHostFile()
 {
-	unsigned char c;
-	char buffer[27];
+	if(!m_m2iHostFile.fileName().isEmpty() and m_m2iHostFile.isOpen())
+		m_m2iHostFile.close();
+	m_status = NOT_READY;
+} // closeHostFile
 
-	m2i_status = 0;
 
-	// Open the .m2i file
-	if(!fatFopen(m2i_filename)) {
-		memcpy_P(buffer, pstr_error1, 14);
-		cb.send(0, 14, buffer);
-		return;
+bool M2I::sendListing(ISendLine &cb)
+{
+	m_status = NOT_READY;
+
+	 // disk title
+	QString parsed;
+	// Reseek from beginning of M2I.
+	if(!m_m2iHostFile.seek(0) or !readFirstLine(&parsed)) {
+		cb.send(0, strError1);
+		return false;
 	}
 
 	// First line is disk title
+	QString line = QString("\x12\x22%1\x22%2").arg(parsed, strID);
+	cb.send(0, line);
 
-	buffer[0] = 0x12;        // Invert face
-	buffer[1] = 0x22;        // start "
-	c = readFirstLine(buffer+2); // disk title
-	buffer[18] = 0x22;       // end "
-	memcpy_P(buffer+19, pstr_id, 4);
-
-	if(!c) {
-		memcpy_P(buffer, pstr_error1, 14);
-		cb.send(0, 14, buffer);
-		return;
-	}
-
-	cb.send(0, 23, buffer);
-
-	// Prepare buffer
-	buffer[0] = ' ';
-	buffer[1] = ' ';
-	buffer[2] = '"';
-	buffer[19] = '"';
-	buffer[20] = ' ';
-
-	while(!fatFeof()) {
+	while(!m_m2iHostFile.atEnd()) {
 		// Write lines
-		c = parseLine(NULL, buffer+3);
+		uchar ftype(parseLine(0, &parsed));
 
-		if((c == 'P') or (c == 'D')) {
-			// This is a valid line, add ending and send
-			memcpy(buffer+21, (c == 'P') ? pstr_prg : pstr_del, 3);
-			cb.send(0, 24, buffer);
+		if('P' == ftype or 'D' == ftype) {
+			line = QString("  \x22%1\x22 %2").arg(parsed, 'p' == ftype ? strDotPRG : strDEL);
+			cb.send(0, line);
 		}
 	}
-
-	fatFclose();
+	return true;
 } // sendListing
 
 
-// Seek through m2i index. dosname and dirname must be pointers to
+// Seek through M2I index. dosname and dirname must be pointers to
 // 12 and 16 byte buffers. Dosname can be NULL.
 //
-bool M2I::seekFile(char* dosName, char* dirName, char *seekName,
-									 char openClose)
+bool M2I::seekFile(QString* dosName, QString& dirName, const QString& seekName,
+									 bool doOpen)
 {
 	uchar i;
 	bool found = false;
 	uchar seeklen, dirlen;
 
-	if(open_close) {
+	if(doOpen) {
 		// Open the .m2i file
-		if (!fatFopen(m2i_filename))
+		if (!fatFopen(m_m2iHostFile))
 			return false;
 	}
 	else {
@@ -205,7 +120,7 @@ bool M2I::seekFile(char* dosName, char* dirName, char *seekName,
 		fatFseek(0, SEEK_SET);
 	}
 
-	if(!read_first_line(NULL))
+	if(!readFirstLine(0))
 		return false;
 
 	// Find length of seek name, disregard ending spaces
@@ -215,7 +130,7 @@ bool M2I::seekFile(char* dosName, char* dirName, char *seekName,
 	while(!found and !fatFeof()) {
 		i = parseLine(dosname, dirname);
 
-		if(i == 'P') {
+		if('P' == i) {
 			// determine length of dir filename
 			for(dirlen = 16; (dirlen > 0) and (dirname[dirlen - 1] == ' '); dirlen--);
 
@@ -240,8 +155,8 @@ bool M2I::seekFile(char* dosName, char* dirName, char *seekName,
 	}
 
 	// Close m2i file
-	if (open_close)
-		fatFclose();
+	if(doOpen)
+		closeHostFile();
 
 	return found;
 } // seekFile
@@ -251,13 +166,14 @@ bool M2I::remove(char* fileName)
 {
 	char dosname[12];
 	char dirname[16];
-	unsigned char found;
+	uchar found;
 	bool ret = false;
 
-	m2i_status and_eq compl M2I_STATUS_FOPEN;
+	m_status and_eq compl FILE_OPEN;
 
 	// Open m2i index
-	if (!fatFopen(m2i_filename)) return FALSE;
+	if(!fatFopen(m2i_filename))
+		return false;
 
 	do {
 		// Seek for filename
@@ -266,7 +182,7 @@ bool M2I::remove(char* fileName)
 		if (found) {
 			ret = true;
 			// File found, delete entry in m2i, seek back length of one entry
-			fatFseek((unsigned long)(-33), SEEK_CUR);
+			fatFseek((ulong)(-33), SEEK_CUR);
 			// write a -
 			fatFputc('-');
 			// Close m2i
@@ -276,8 +192,7 @@ bool M2I::remove(char* fileName)
 			// Open m2i again
 			fatFopen(m2i_filename);
 		}
-
-	} while (found);
+	} while(found);
 
 	// Finally, close m2i
 	fatFclose();
@@ -286,31 +201,31 @@ bool M2I::remove(char* fileName)
 } // remove
 
 
-bool M2I::rename(char *oldName, char *newName)
+bool M2I::rename(char* oldName, char* newName)
 {
-	char dirname[16];
-	bool ret = FALSE;
+	char dirName[16];
+	bool ret = false;
 	uchar j;
 
-	m2i_status and_eq compl M2I_STATUS_FOPEN;
+	m_status and_eq compl FILE_OPEN;
 
 	// Open m2i index
-	if (!fatFopen(m2i_filename))
+	if(!fatFopen(m2i_filename))
 		return false;
 
 	// Look for oldname
-	if(seekFile(NULL, dirname, oldname, false)) {
+	if(seekFile(NULL, dirName, oldName, false)) {
 
 		// File found, rename entry in m2i
 		// Seek back until name
 		fatFseek((ulong)(-33 + 15), SEEK_CUR);
 
 		// write new name, space padded
-		j = newname[0];
+		j = newName[0];
 		for(uchar i = 0; i < 16;i++) {
 			if (j) {
 				fatFputc(j);
-				j = newname[i + 1];
+				j = newName[i + 1];
 			}
 			else
 				fatFputc(' ');
@@ -330,7 +245,7 @@ uchar M2I::newDisk(char* diskName)
 	char dosName[13];
 	uchar i,j;
 
-	m2i_status and_eq compl M2I_STATUS_FOPEN;
+	m_status and_eq compl FILE_OPEN;
 
 	// Find new .m2i filename
 	// Take starting 8 chars padded with space ending with .m2i
@@ -343,12 +258,12 @@ uchar M2I::newDisk(char* diskName)
 	// Is this filename free
 	if(fatFopen(dosName)) {
 		fatFclose();
-		return ERR_FILE_EXISTS;
+		return ErrFileExists;
 	}
 
 	// It is free, create new file
 	if(!fatFcreate(dosName))
-		return ERR_WRITE_PROTECT_ON;
+		return ErrWriteProtectOn;
 
 	// Write m2i header with the diskname
 	j = diskName[0];
@@ -369,7 +284,7 @@ uchar M2I::newDisk(char* diskName)
 	// Now this is the open m2i
 	memcpy(m2i_filename, dosName, 13);
 
-	return ERR_OK;
+	return ErrOK;
 } // newDisk
 
 
@@ -416,27 +331,147 @@ uchar M2I::cmd(char* cmd)
 } // cmd
 
 
-uchar M2I::open(char* fileName)
+bool M2I::fopen(const QString& fileName)
 {
 	char dirname[16];
 	char dosname[12];
 
-	m2i_status = 0;
+	m_status = NOT_READY;
 
 	// Look for filename
 	if(seekFile(dosname, dirname, filename, true)) {
 		// Open the dos name corresponding!
 		if(fatFopen(dosname))
-			m2i_status or_eq M2I_STATUS_FOPEN;
+			m_status or_eq FILE_OPEN;
 
 	}
-	return (m2i_status bitand M2I_STATUS_FOPEN);
+	return(m_status bitand FILE_OPEN);
 } // open
+
+
+// The new function ensures filename exists and is empty.
+//
+uchar M2I::newFile(char* fileName)
+{
+	char dirName[16];
+	char dosName[12];
+
+	m2i_status = 0;
+
+	// Look for filename
+	if(seekFile(dosName, dirName, fileName, TRUE)) {
+		// File exists, delete it
+		fatRemove(dosName);
+		// And create empty
+		fatFcreate(dosName);
+		m_status or_eq FILE_OPEN;
+
+	}
+	else {
+		// File does not exist, create it
+		createFile(fileName);
+	}
+
+	return(m_status bitand FILE_OPEN);
+} // newFile
+
+
+char M2I::getc(void)
+{
+	if(m_status bitand FILE_OPEN)
+		return fatFgetc();
+
+	return 0;
+} // getc
+
+
+bool M2I::isEOF(void) const
+{
+	if(m2i_status bitand FILE_OPEN)
+		return fatFeof();
+
+	return true;
+} // isEOF
+
+
+// write char to open file, returns false if failure
+bool M2I::putc(char c)
+{
+	if(m_status bitand FILE_OPEN)
+		return fatFputc(c);
+	return false;
+} // putc
+
+
+// close file
+bool M2I::close(void)
+{
+	m_status and_eq compl FILE_OPEN;
+	closeHostFile();
+
+	return true;
+} // close
+
+
+// Get first line of m2i file, writes 16 chars in dest
+// Returns FALSE if there is a problem in the file
+bool M2I::readFirstLine(QString* dest)
+{
+	bool res = false;
+	char data[18];
+	if(sizeof(data) == m_hostFile.read(data, sizeof(data))) {
+		QByteArray qdata(data, sizeof(data));
+		if(0 not_eq dest)
+			*dest = qdata.left(sizeof(data) - 2);
+		res = qdata.endsWith("\r");
+	}
+
+	return res;
+} // readFirstLine
+
+
+// Parses one line from the .m2i file.
+// File pos must be after reading the initial status char
+//
+// <file type char>:<dosname>:<cbmname><cr><lf>
+//
+// at dosname 12 chars is written, at cbmname 16 chars
+//
+uchar M2I::parseLine(QString* dosName, QString* cbmName)
+{
+	if(m_m2iHostFile.atEnd())
+		return 0;  // no more records
+	// ftype + fsName + cbmName + separators + LF
+	QList<QByteArray> qData = m_m2iHostFile.read(1 + 256 + 16 + 3 + 1).split(':');
+	// must be three splits.
+	if(qData.count() < 3)
+		return 0;
+
+	// first one ONLY the fs type.
+	if(qData.at(0).count() not_eq 1)
+		return 0;
+	uchar fsType(qData.at(0).at(0));
+
+	if(qData.at(1).isEmpty())
+		return 0;
+	if(0 not_eq dosName)
+		*dosName = qData.at(1);
+
+	// must be ending with a CR, the cbm string must be 16 chars long.
+	if(!qData.at(2).endsWith("\r") or qData.at(2).length() not_eq 17)
+		return 0;
+	QString cbmStr(qData.at(2));
+	cbmStr.chop(1);
+	if(0 not_eq cbmName)
+		*cbmName = cbmStr;
+
+	return fsType;
+} // parseLine
 
 
 bool M2I::createFile(char* fileName)
 {
-	m2i_status = 0;
+	m_status = NOT_READY;
 
 	// Find dos filename
 	char dosName[13];
@@ -497,70 +532,8 @@ bool M2I::createFile(char* fileName)
 	// Finally, create the target file
 	fatFcreate(dosName);
 
-	m2i_status or_eq M2I_STATUS_FOPEN;
+	m_status or_eq FILE_OPEN;
 	return true;
 } // createFile
 
 
-// The new function ensures filename exists and is empty.
-//
-uchar M2I::newFile(char* fileName)
-{
-	char dirName[16];
-	char dosName[12];
-
-	m2i_status = 0;
-
-	// Look for filename
-	if (seekFile(dosName, dirName, fileName, TRUE)) {
-		// File exists, delete it
-		fatRemove(dosName);
-		// And create empty
-		fatFcreate(dosName);
-		m2i_status or_eq M2I_STATUS_FOPEN;
-
-	}
-	else {
-		// File does not exist, create it
-		createFile(fileName);
-	}
-
-	return (m2i_status bitand M2I_STATUS_FOPEN);
-} // newFile
-
-
-char M2I::getc(void)
-{
-	if (m2i_status bitand M2I_STATUS_FOPEN)
-		return fatFgetc();
-
-	return 0;
-} // getc
-
-
-bool M2I::isEOF(void)
-{
-	if(m2i_status bitand M2I_STATUS_FOPEN)
-		return fatFeof();
-
-	return true;
-} // isEOF
-
-
-// write char to open file, returns false if failure
-bool M2I::putc(char c)
-{
-	if(m2i_status bitand M2I_STATUS_FOPEN)
-		return fatFputc(c);
-	return false;
-} // putc
-
-
-// close file
-bool M2I::close(void)
-{
-	m2i_status and_eq compl M2I_STATUS_FOPEN;
-	fatFclose();
-
-	return true;
-} // close

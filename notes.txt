@@ -54,6 +54,7 @@ git clone https://code.google.com/p/qextserialport/
 // Tries continuously to connect to host with:
 // CONNECT
 // response should be: OK><date><time><CR>
+// Whereupon client could set the local time and data according to returned string.
 
 // Send debug string
 // D<severityId, facilityId, debug string><CR>
@@ -63,6 +64,11 @@ git clone https://code.google.com/p/qextserialport/
 
 // Init file from LOAD"",8 command.
 // 'I'
+
+// IEC open command, channel is 0-15, the command string is just like from the iec interface. Pipe separated, CR terminated.
+// The code return is according to the values of the IOErrorMessage enum.
+// Request: O<channel>|command string<CR>
+// Response: ><code><CR>
 
 // Read byte(s) from current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
 // The host returns 'B' followed by the byte(s) being read, or answers with 'E' if end of file has been reached.
