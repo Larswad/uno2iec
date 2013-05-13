@@ -296,29 +296,14 @@ bool T64::sendListing(ISendLine& cb)
 {
 	seekToTapeName();
 
-	char buffer[22];
-
-	buffer[0] = 0x12;
-	buffer[1] = '"';
-
-	for(uchar i = 2; i < 21; i++) {
+	QString name;
+	for(uchar i = 0; i < 19; ++i) {
 		uchar c = hostReadByte();
-
-		if(c == 0xA0) // Convert padding A0 to spaces
-			c = ' ';
-
-		buffer[i] = c;
+		name += 0xA0 == c ? ' ' : c; // Convert padding A0 to spaces
 	}
 
-	buffer[18] = '"'; // Ending "
-	cb.send(0, 22, buffer);
-
-
-	// Prepare buffer
-	buffer[0] = ' ';
-	buffer[1] = ' ';
-	buffer[2] = '"';
-	buffer[19] = '"';
+	name[16] = '\x22'; // Ending "
+	cb.send(0, QString("\x12\x22%s").arg(name));
 
 	// Now for the list entries
 	seekFirstDir();
@@ -327,18 +312,12 @@ bool T64::sendListing(ISendLine& cb)
 	while(getDirEntry(dir)) {
 		// Determine if dir entry is valid:
 		if(0 not_eq dir.c64sFileType and 0 not_eq dir.d64FileType) {
-			// Line number is just zero
-
-			// Send filename, which is padded with spaces
-			memcpy(&(buffer[3]), dir.fileName, 16);
-
-			cb.send(0, 20, buffer);
+			// Send filename, which is padded with spaces, line number is just zero.
+			cb.send(0, QString("  \x22%s\x22").arg(reinterpret_cast<char*>(dir.fileName)));
 		}
 	}
-
-	// Write line with pstr_tapeend
-	memcpy(buffer, strTapeEnd.toLatin1().data(), strTapeEnd.length());
-	cb.send(0, 9, buffer);
+	// Write line with TAPE_END
+	cb.send(0, strTapeEnd);
 
 	return true;
 } // sendListing

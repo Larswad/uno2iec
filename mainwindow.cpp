@@ -1,9 +1,9 @@
-// TODO: Easy: Prepare serial settings parameters on pi and make a new backup of raspbian image.
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
 // TODO: Finalize Native FS routines.
-// TODO: D64 and T64 needs to adapt to new signature of sendListing (sending only QString back instead of buffer and length specifier).
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
 // TODO: Parse date and time on connection at arduino side.
+// TODO: T64 / D64 formats should read out entire disk into memory for caching (network performance).
+// TODO: Check the port name to use on the PI in the port constructor / setPortName(QLatin1String("/dev/ttyS0"));
 
 #include "mainwindow.hpp"
 #include "ui_mainwindow.h"
@@ -24,21 +24,21 @@ QStringList LOG_LEVELS = (QStringList()
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
-	ui(new Ui::MainWindow), m_port(0), m_isConnected(false)
+	ui(new Ui::MainWindow), m_port("COM1"), m_isConnected(false), m_iface(m_port)
 {
 	ui->setupUi(this);
-	m_port = new QextSerialPort("COM1"); // make RPI serial port configurable and persistent from GUI.
-	connect(m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
+//	m_port = new QextSerialPort("COM1"); // make RPI serial port configurable and persistent from GUI.
+	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 } // MainWindow
 
 
 void MainWindow::onDataAvailable()
 {
 //	bool wasEmpty = m_pendingBuffer.isEmpty();
-	m_pendingBuffer.append(m_port->readAll());
+	m_pendingBuffer.append(m_port.readAll());
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
-			m_port->write((OkString + QDate::currentDate().toString("yyyy-MM-dd") +
+			m_port.write((OkString + QDate::currentDate().toString("yyyy-MM-dd") +
 										 QTime::currentTime().toString(" hh:mm:ss:zzz") + '\r').toLatin1().data());
 			m_isConnected = true;
 			// client is supposed to send it's facilities each start.
@@ -59,7 +59,7 @@ void MainWindow::onDataAvailable()
 			case 'S': // set read / write size in number of bytes.
 				break;
 
-			case 'W':
+			case 'W': // write single character to file in current file system mode.
 				break;
 
 			case '!': // register facility string.

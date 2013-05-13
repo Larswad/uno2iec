@@ -61,7 +61,7 @@ const uchar sectorsPerTrack[40] = {
 	17,17,17,17,17,17,17,17,17,17
 };
 
-const char pstr_filetypes[] = "DELSEQPRGUSRREL???";
+const QString strFileTypes[] = { "DEL", "SEQ", "PRG", "USR", "REL", "???" };
 const QString strBlocksFree("BLOCKS FREE.");
 const QString strD64Error("ERROR: D64");
 
@@ -379,11 +379,6 @@ bool D64::fopen(const QString& fileName)
 
 bool D64::sendListing(ISendLine& cb)
 {
-	ushort s;
-	uchar c,i;
-	DirEntry dir;
-	char buffer[31];
-
 	if(!(m_status bitand IMAGE_OK)) {
 		// We are not happy with the d64 file
 		cb.send(0, strD64Error);
@@ -393,83 +388,64 @@ bool D64::sendListing(ISendLine& cb)
 	// Send line with disc name and stuff, 25 chars
 	seekToDiskName();
 
-	buffer[0] = 0x12;   // Invert face
-	buffer[1] = 0x22;   // "
+	QString line("\x12\x22"); // Invert face, "
 
-	for(i = 2; i < 25; i++) {
-		c = hostReadByte();
+	for(uchar i = 2; i < 25; i++) {
+		uchar c = hostReadByte();
 
-		if(c == 0xA0) // Convert padding A0 to spaces
-			c = 0x20;
+		if(0xA0 == c) // Convert padding A0 to spaces
+			c = ' ';
 
-		if(i == 18)   // Ending "
-			c = 0x22;
+		if(18 == i)   // Ending "
+			c = '\x22';
 
-		buffer[i] = c;
+		line += c;
 	}
-
-	cb.send(0, 25, buffer);
-
-	// Prepare buffer
-	memset(buffer, ' ', 3);
-	buffer[3] = 0x22;   // quotes
+	cb.send(0, line);
 
 	// Now for the list entries
 	seekFirstDir();
 
+	DirEntry dir;
 	while(getDirEntry(dir)) {
 		// Determine if dir entry is valid:
 		if(dir.track not_eq 0) {
 			// A direntry always takes 32 bytes total = 27 chars
-			// initialize pos 4 -> 29 to spaces
-			memset(&(buffer[4]), ' ', 26);
-
 			// Send filename until A0 or 16 chars
-			for (i = 4; i < 20; i++) {
-				c = dir.name[i - 4];
-				if (c == 0xA0)
+			QString name(16, QChar(' '));
+			for(uchar i = 0; i < name.length(); ++i) {
+				uchar c = dir.name[i];
+				if(0xA0 == c) {
+					// Ending name with dbl quotes
+					name[i] = QChar('\x22');
 					break;  // Filename is no longer
+				}
 
-				buffer[i] = c;
+				name[i] = c;
 			}
 
-			// Ending dbl quotes
-			buffer[i] = 0x22;
-
 			// Write filetype
-			i = dir.type bitand TYPE_MASK;
+			uchar fileType = dir.type bitand TYPE_MASK;
+			if(fileType > 5)
+				fileType = 5;
 
-			if(i > 5) i = 5;
-
-			memcpy(&(buffer[22]), pstr_filetypes + 3 * i, 3);
-
-			// Perhaps write locked symbol
-			if(dir.type bitand FILE_LOCKED)
-				buffer[25] = '<';
-
-			// Perhaps write splat symbol
-			if(!(dir.type bitand FILE_CLOSED))
-				buffer[26] = '*';
+			// Prepare buffer
+			line = QString("  \x22%s %s%c%c").arg(name)
+					.arg(strFileTypes[fileType])
+					.arg((dir.type bitand FILE_LOCKED) ? '<' : ' ') // Perhaps write locked symbol
+					.arg(!(dir.type bitand FILE_CLOSED) ? '*' : ' ');	// Perhaps write splat symbol
 
 			// Line number is filesize in blocks:
-			s = dir.blocksLo + (dir.blocksHi << 8);
+			ushort fileSize = dir.blocksLo + (dir.blocksHi << 8);
 
-			// Send initial spaces according to file size
-			if(s >= 1000)
-				i = 3;
-			else if(s >= 100)
-				i = 2;
-			else if(s >= 10)
-				i = 1;
-			else
-				i = 0;
-
-			cb.send(s, 27, &(buffer[i]));
+			// Send initial spaces (offset) according to file size
+			cb.send(fileSize, line.mid((int)log10(fileSize)));
 		}
 	}
 
 	// Send line with 0 blocks free
 	QString blkFree(QString(strBlocksFree) + QString(13, ' '));
 	cb.send(0, blkFree);
+
 	return true;
 } // sendListing
