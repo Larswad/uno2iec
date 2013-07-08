@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>781</width>
+    <width>874</width>
     <height>725</height>
    </rect>
   </property>
@@ -321,7 +321,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>781</width>
+     <width>874</width>
      <height>19</height>
     </rect>
    </property>
@@ -338,5 +338,22 @@
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>quit</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>826</x>
+     <y>685</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>436</x>
+     <y>362</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

@@ -55,6 +55,7 @@ public:
 	virtual bool supportsListing() const;
 	// Command to the command channel. When not supported (overridden we just say write protect error).
 	virtual IOErrorMessage cmdChannel(const QString& cmd);
+
 	// Open a file in the image/file system by filename: Returns true if successful (false if not supported or error).
 	virtual bool fopen(const QString& fileName);
 	// Create a file in the image/file system by filename: Returns true if successful (false if not supported or error).
@@ -64,12 +65,13 @@ public:
 	// returns true if end of file reached. Should always be supported in order to make implementation make any sense.
 	virtual bool isEOF() const = 0;
 	// returns a character to the open file. If not overridden, returns always true. If implemented returns false on failure.
-	virtual bool putc();
+	// write char to open file, returns false if failure
+	virtual bool putc(char c);
 	// closes the open file. Should always be supported in order to make implementation make any sense.
 	virtual bool close() = 0;
 
 	// Current status of operation.
-	virtual FSStatus status() const = 0;
+	virtual FSStatus status() const;
 
 	// This method is not relevant for any c64 side file systems (unless future one support such).
 	// It sets the current directory on the native fs. Optionally implemented, base returns false.

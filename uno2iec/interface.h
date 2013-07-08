@@ -37,6 +37,7 @@ enum OpenState {
 	O_SAVE_REPLACE	// Save-with-replace is requested
 };
 
+// The base pointer of basic.
 const word C64_BASIC_START = 0x0801;
 
 #define CMD_CHANNEL 15
@@ -45,27 +46,31 @@ class Interface
 {
 public:
 	Interface(IEC& iec);
-	virtual ~Interface();
+	virtual ~Interface() {}
 
 	void handler(void);
 
 private:
+	void reset(void);
+	void saveFile();
+	void sendFile();
+	void sendListing(/*PFUNC_SEND_LISTING sender*/);
+	void sendStatus(void);
+	bool removeFilePrefix(void);
+	void sendLineCallback(short lineNo, byte len, char* text);
+
+	// handler helpers.
+	void handleATNCmdCodeOpen(IEC::ATNCmd &cmd);
+	void handleATNCmdCodeDataTalk(byte chan);
+	void handleATNCmdCodeDataListen();
+
+	// our iec low level driver:
 	IEC& m_iec;
 	// What operation state and media type we are dealing with
 	byte m_interfaceState; // see InterfaceState
 	// This var is set after an open command and determines what to send next
 	byte m_openState;			// see OpenState
-	IOErrorMessage m_queuedError;
-
-	void reset(void);
-	void openFile(const struct file_format_struct *pff);
-	void saveFile();
-	void sendFile();
-	void sendListing(PFUNC_SEND_LISTING sender);
-	void sendStatus(void);
-	bool removeFilePrefix(void);
-
-	void sendLineCallback(short lineNo, byte len, char* text);
+	byte m_queuedError;
 
 	// send listing pointer in basic memory:
 	volatile word m_basicPtr;

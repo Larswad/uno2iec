@@ -75,7 +75,7 @@ public:
 	} ATNCmd;
 
 	IEC(byte deviceNumber = DEFAULT_IEC_DEVICE);
-	virtual ~IEC()
+	~IEC()
 	{ }
 
 	// Initialise iec driver
@@ -102,7 +102,7 @@ public:
 
 	// Recieves a byte
 	//
-	unsigned char receive();
+	byte receive();
 
 	byte deviceNumber() const;
 	void setDeviceNumber(const byte deviceNumber);
@@ -169,5 +169,3 @@ private:
 };
 
 #endif
-
-

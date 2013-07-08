@@ -62,9 +62,6 @@ public:
 	bool openHostFile(const QString& fileName);
 	void closeHostFile();
 
-	// Current status of operation.
-	FSStatus status(void) const;
-
 	// Open a file in the image by filename: Returns true if successful
 	bool fopen(const QString& fileName);
 	// Get character from open file:
@@ -76,6 +73,10 @@ public:
 	// Blocks free information
 	ushort blocksFree(void);
 
+	bool supportsListing() const
+	{
+		return true;
+	}
 	// Send realistic $ file basic listing, line by line
 	bool sendListing(ISendLine& cb);
 

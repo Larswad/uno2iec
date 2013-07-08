@@ -28,11 +28,6 @@
 
 
 #include <string.h>
-/*
-#include "d64driver.hpp"
-#include "t64driver.hpp"
-#include "m2idriver.hpp"
-*/
 #include "interface.h"
 
 #ifdef CONSOLE_DEBUG
@@ -40,6 +35,7 @@
 #endif
 
 
+namespace {
 // atn command buffer struct
 IEC::ATNCmd cmd;
 
@@ -54,20 +50,20 @@ const char errorStr4[] = "62,FILE NOT FOUND";
 const char errorStr5[] = "63,FILE EXISTS";
 const char errorStr6[] = "73,MMC2IEC DOS V0.8";
 const char errorStr7[] = "74,DRIVE NOT READY";
-const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7};
+const char errorStr8[] = "75,RPI SERIAL ERR.";
+const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7, errorStr8 };
 
 const char errorEnding[] = ",00,00";
+} // unnamed namespace
+
 
 Interface::Interface(IEC& iec)
 	: m_iec(iec)
 {
 	reset();
 
-	// Say hello, flash busy led
-	//  BUSY_LED_ON();
-	//  BUSY_LED_SETDDR();
-	//  ms_spin(20);
-	//  BUSY_LED_OFF();
+	// TODO: Say initial startup hello here. Scroll on max7219 or something.
+	//
 } // ctor
 
 
@@ -76,10 +72,10 @@ void Interface::reset(void)
 	m_openState = O_NOTHING;
 	m_queuedError = ErrIntro;
 
-	////	if(sdReset()) {
-	////		fatReset();
-	////		fatInit();
-	////	}
+	//	if(sdReset()) {
+	//		fatReset();
+	//		fatInit();
+	//	}
 
 	//	if((fatGetStatus() bitand FAT_STATUS_OK) and sdCardOK) {
 	//		interface_state = I_FAT;
@@ -92,59 +88,21 @@ void Interface::sendStatus(void)
 {
 	byte i;
 	// Send error string
-	const char *str = (const char *)error_table[m_queuedError];
+	const char* str = (const char*)error_table[m_queuedError];
 
 	while((i = *(str++)))
 		m_iec.send(i);
 
 	// Send common ending string ,00,00
-	for(i = 0; i < 5; i++)
+	for(i = 0; i < sizeof(errorEnding) - 1; ++i)
 		m_iec.send(errorEnding[i]);
 
+	// ...and last byte in string as with EOI marker.
 	m_iec.sendEOI(errorEnding[i]);
 } // sendStatus
 
 
-////////////////////////////////////////////////////////////////////////////////
-//
-// Send SD info function
-
-const char strSDState1[] = "ERROR: SD/MMC";
-const char strSDState2[] = "ERROR: FILE SYSTEM";
-const char strSDState3[] = "FAT16 OK";
-const char strSDState4[] = "FAT32 OK";
-
 const char pstr_file_err[] = "ERROR: FILE FORMAT";
-
-void send_sdinfo(void (*send_line)(short line_no, unsigned char len, char *text))
-{
-	char buffer[19];
-	unsigned char c;
-
-	c = fatGetStatus();
-
-	if(!sdCardOK) {
-		// SD Card not ok
-		memcpy(buffer, strSDState1, 13);
-		c = 13;
-	}
-	else if(!(c & FAT_STATUS_OK)) {
-		// File system not ok
-		memcpy(buffer, strSDState2, 18);
-		c = 18;
-	}
-	else {
-		// Everything OK, print fat status
-		if(c & FAT_STATUS_FAT32)
-			memcpy(buffer, strSDState4, 8);
-		else
-			memcpy(buffer, strSDState3, 8);
-
-		c = 8;
-	}
-	(send_line)(0, c, buffer);
-} // send_sdinfo
-
 
 void send_file_err(void (*send_line)(word lineNo, byte len, char* text))
 {
@@ -157,158 +115,12 @@ void send_file_err(void (*send_line)(word lineNo, byte len, char* text))
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// FAT interfacing functions
-//
-const char pstr_dir[] = " <DIR>";
-
-void fat_send_listing(void (*send_line)(short line_no, unsigned char len, char *text))
-{
-	unsigned short s;
-	unsigned char i;
-	char buffer[24];
-
-	struct diriterator di;
-	struct direntry *de;
-
-	// Prepare buffer
-	memset(buffer, ' ', 3);
-	buffer[3] = '"';   // quotes
-
-	// Iterate through directory
-	de = fatFirstDirEntry(fatGetCurDirCluster(), &di);
-
-	while(de not_eq NULL) {
-		if(*de->deName == SLOT_EMPTY)
-			break; // there are no more direntries
-
-		if((*de->deName not_eq SLOT_DELETED) and
-			 (de->deAttributes not_eq ATTR_LONG_FILENAME)) {
-			if(de->deAttributes == ATTR_VOLUME) {
-				// Print volume label line. This will be 11 chars
-				(send_line)(0, 11, de->deName);
-			}
-			else {
-				// Regular file/directory
-				if(de->deAttributes & ATTR_DIRECTORY) {
-					// Its a dir
-					memcpy(&(buffer[4]), de->deName, 8);    // name
-					buffer[12] = ' ';                       // space
-					memcpy(&(buffer[13]), de->deName+8, 3); // ext
-					buffer[16] = 0x22;                      // quote
-					memcpy_P(&(buffer[17]), pstr_dir, 6);   // line end
-
-					(send_line)(0, 23, buffer);
-				}
-				else {
-					// Its a file, calc file size in kB:
-					s = (de->deFileSize + (1 << 10) - 1) >> 10;
-
-					// Calc number of spaces required
-					if(s > 9999) {
-						s = 9999;
-						i = 0;
-					}
-					else if(s >= 1000)
-						i = 0;
-					else if(s >= 100)
-						i = 1;
-					else if(s >= 10)
-						i = 2;
-					else
-						i = 3;
-
-					memcpy(&(buffer[4]), de->deName, 8);    // name
-					buffer[12] = '.';                       // dot
-					memcpy(&(buffer[13]), de->deName + 8, 3); // ext
-					buffer[16] = '"';                      // quote
-
-					(send_line)(s, 14 + i, &(buffer[3 - i]));
-				}
-			}
-		}
-
-		de = fatNextDirEntry(&di);
-	}
-
-	// Was this a natural ending??
-	if(sdCardOK == FALSE) {
-		// say  "ERROR: SD/MMC"
-		memcpy_P(buffer, strSDState1, 13);
-		(send_line)(0, 13, buffer);
-	}
-}
-
-// Fat parsing command channel
-//
-unsigned char fat_cmd(char *c)
-{
-
-	// Get command letter and argument
-
-	char cmd_letter;
-	char *arg, *p;
-	char ret = ERR_OK;
-
-	cmd_letter = cmd.str[0];
-
-	arg = strchr(cmd.str,':');
-
-	if(arg not_eq NULL) {
-		arg++;
-
-		if(cmd_letter == 'S') {
-			// Scratch a file
-			if(!fatRemove(arg))
-				ret = ERR_FILE_NOT_FOUND;
-		}
-		else if(cmd_letter == 'R') {
-			// Rename, find =  and replace with 0 to get cstr
-
-			p = strchr(arg, '=');
-
-			if(p not_eq NULL) {
-				*p = 0;
-				p++;
-				if(!fatRename(p, arg)) {
-					ret = ERR_FILE_NOT_FOUND;
-				}
-			}
-		}
-		else if(cmd_letter == 'N') {
-			// Format new disk creates an M2I file
-			ret = M2I_newdisk(arg);
-
-			if(ret == ERR_OK) {
-				// It worked, go to M2I state
-				interface_state = I_M2I;
-			}
-
-		}
-		else {
-			ret = ErrSyntaxError;
-		}
-	}
-
-	return ret;
-}
-
-
-unsigned char fat_newfile(char *filename)
-{
-	// Remove and create file
-	fatRemove(filename);
-	return fatFcreate(filename);
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
 // P00 file format implementation
 //
-
-unsigned char P00_reset(char *s)
+/* TODO: Move as P00 format to PI, recode.
+bool P00_reset(char *s)
 {
-	unsigned char i;
+	byte i;
 
 	// Check filetype, and skip past 26 bytes
 	if((fatFgetc() == 'C') and (fatFgetc() == '6') and (fatFgetc() == '4')) {
@@ -318,19 +130,22 @@ unsigned char P00_reset(char *s)
 
 		if(!fatFeof())
 			// All is ok
-			return TRUE;
+			return true;
 	}
 
-	return FALSE;
-}
+	return false;
+} // P00_reset
+*/
 
-unsigned char close_to_fat(void)
+/* TODO: Move as P00 format to PI, recode.
+bool close_to_fat(void)
 {
 	// Close and back to fat
 	m_interfaceState = IS_NATIVE;
 	fatFclose();
-	return TRUE;
-}
+	return true;
+} // close_to_fat
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -388,19 +203,24 @@ struct file_format_struct {
 	PFUNC_UCHAR_VOID   close;  // close file
 };
 
+/*
 const struct file_format_struct file_format[FILE_FORMATS] = {
 	{{0,0,0}, &dummy_2, &fat_send_listing, &fat_cmd,
 	 &fatFopen, &fat_newfile, &fatFgetc, &fatFeof, &fatFputc, &fatFclose},
+
 	{{'D','6','4'}, &D64_reset, &D64_send_listing, &dummy_cmd,
 	 &D64_fopen, &dummy_no_newfile, &D64_fgetc, &D64_feof, &dummy_1, &D64_fclose},
+
 	{{'M','2','I'}, &M2I_init, &M2I_send_listing, &M2I_cmd,
 	 &M2I_open, &M2I_newfile, &M2I_getc, &M2I_eof, &M2I_putc, &M2I_close},
+
 	{{'T','6','4'}, &T64_reset, &T64_send_listing, &dummy_cmd,
 	 &T64_fopen, &dummy_no_newfile, &T64_fgetc, &T64_feof, &dummy_1, &T64_fclose},
-	{{'P','0','0'}, &P00_reset, NULL, &dummy_cmd,
+
+	{{'P','0','0'}, &P00_reset, 0, &dummy_cmd,
 	 &dummy_2, &dummy_no_newfile, &fatFgetc, &fatFeof, &dummy_1, &close_to_fat}
 };
-
+*/
 
 
 
@@ -412,6 +232,7 @@ const struct file_format_struct file_format[FILE_FORMATS] = {
 
 // Parse LOAD command, open either file/directory/d64/t64
 //
+/*
 void Interface::openFile(const struct file_format_struct *pff)
 {
 	byte i;
@@ -521,7 +342,7 @@ void Interface::openFile(const struct file_format_struct *pff)
 	// Backup cmd string
 	strcpy(oldCmdStr, cmd.str);
 } // openFile
-
+*/
 
 // send basic line callback
 void Interface::sendLineCallback(short lineNo, byte len, char* text)
@@ -570,26 +391,19 @@ void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 void Interface::sendFile()
 {
 	// Send file bytes, such that the last one is sent with EOI:
-	Serial.write('R');
-	byte s = Serial.read();
-	byte c = Serial.read();
+	Serial.write('R'); // ask for a byte
+	byte s = Serial.read(); // read the ack type ('B' or 'E')
+	byte c = Serial.read(); // read the byte itself
 	while('B' == s) {
 		if(!m_iec.send(c))
-			break;
+			break; // end if sending to c64 fails.
+		// ask for another.
 		Serial.write('R');
 		s = Serial.read();
 		c = Serial.read();
 	}
 
-	// old code.
-	//	c = (getc)();
-
-	//	while(!(eof)()) {
-	//		if(!m_iec.send(c))
-	//			break;
-	//		c = (getc)();
-	//	}
-
+	// indicate end of file.
 	m_iec.sendEOI(c);
 } // sendFile
 
@@ -599,9 +413,10 @@ void Interface::saveFile()
 	// Recieve bytes until a EOI is detected
 	do {
 		byte c = m_iec.receive();
+		// indicate to PI host that we want to write a byte.
 		Serial.write('W');
+		// and then we send the byte itself.
 		Serial.write(c);
-		//		(putc)(c);
 	} while(!(m_iec.state() bitand IEC::eoiFlag) and !(m_iec.state() bitand IEC::errorFlag));
 } // saveFile
 
@@ -635,9 +450,9 @@ void Interface::handler(void)
 	//	}
 	//#endif
 
-	IEC::ATNCheck ret = m_iec.checkATN(cmd);
+	IEC::ATNCheck retATN = m_iec.checkATN(cmd);
 
-	if(ret == IEC::ATN_ERROR) {
+	if(retATN == IEC::ATN_ERROR) {
 #ifdef CONSOLE_DEBUG
 		Log(Error, FAC_IFACE, "ATNCMD: IEC_ERROR!");
 #endif
@@ -645,14 +460,14 @@ void Interface::handler(void)
 	}
 
 	// Did anything happen from the host side?
-	if(ret not_eq IEC::ATN_IDLE) {
+	if(retATN not_eq IEC::ATN_IDLE) {
 		// A command is recieved
 		//BUSY_LED_ON();
 
 #ifdef CONSOLE_DEBUG
 		{
 			char buffer[60];
-			sprintf("ATNCMD: %c %s %c", cmd.Code, cmd.str, ret);
+			sprintf("ATNCMD: %c %s %c", cmd.Code, cmd.str, retATN);
 			Log(Information, FAC_IFACE, buffer);
 		}
 #endif
@@ -664,103 +479,128 @@ void Interface::handler(void)
 
 		// Make cmd string null terminated
 		cmd.str[cmd.strlen] = '\0';
-
 		// lower nibble is the channel.
 		byte chan = cmd.code bitand 0x0F;
 
 		// check upper nibble, the command itself.
-		char serCmdBuf[40];
-		byte lenRead;
-
 		switch(cmd.code bitand 0xF0) {
 			case IEC::ATN_CODE_OPEN:
-				sprintf(strBuf, "O%u|%s\r", cmd.code bitand 0xF, serCmdBuf);
-				Serial.println(strBuf);
-				lenRead = Serial.readBytesUntil('\r', serCmdBuf, sizeof(serCmdBuf));
-				if(lenRead) {
-					// TODO: process rpi response into m_queuedError.
+				handleATNCmdCodeOpen(cmd);
+			break;
 
-				}
-				else // very specific error: The serial comm with the host failed.
-					m_queuedError = ErrSerialComm;
-				break;
 
 			case IEC::ATN_CODE_DATA:  // data channel opened
-
-				if(ret == IEC::ATN_CMD_TALK) {
-					if(CMD_CHANNEL == chan) {
-						// Send status message
-						sendStatus();
-						// go back to OK state, we have dispatched the error to IEC host now.
-						m_queuedError = ErrOK;
-					}
-					else if(m_openState == O_INFO) {
-						// Reset and send SD card info
-						reset();
-						sendListing(&send_sdinfo);
-					}
-					else if(m_openState == O_FILE_ERR) {
-						sendListing(&send_file_err);
-					}
-					else if((m_openState == O_NOTHING) or (pff == NULL)) {
-						// Say file not found
-						m_iec.sendFNF();
-					}
-					else if(m_openState == O_FILE) {
-						// Send program file
-						sendFile((PFUNC_CHAR_VOID)(pff->getc),
-										 (PFUNC_UCHAR_VOID)(pff->eof));
-					}
-					else if(m_openState == O_DIR) {
-						// Send listing
-						sendListing((PFUNC_SEND_LISTING)(pff->send_listing));
-					}
-
-				}
-				else if(ret == IEC::ATN_CMD_LISTEN) {
-					// We are about to save stuff
-					if(pff == NULL) {
-						// file format functions unavailable, save dummy
-						saveFile(/*&dummy_1*/);
-						m_queuedError = ErrDriveNotReady;
-					}
-					else {
-						// Check conditions before saving
-						ret = true;
-						if(m_openState not_eq O_SAVE_REPLACE) {
-							// Not a save with replace, if file exists its an error
-							if(m_queuedError not_eq ErrFileNotFound) {
-								m_queuedError = ErrFileExists;
-								ret = false;
-							}
-						}
-
-						if(ret) {
-							// No overwrite problem, try to create a file to save in:
-							ret = ((PFUNC_UCHAR_CSTR)(pff->newfile))(oldCmdStr);
-							if(!ret)
-								// unable to save, just say write protect
-								m_queuedError = ErrWriteProtectOn;
-							else
-								m_queuedError = ErrOK;
-
-						}
-
-						if(ret)
-							saveFile(/*(PFUNC_UCHAR_CHAR)(pff->putc)*/);
-						else
-							saveFile(/*&dummy_1*/);
-					}
-				}
+				if(retATN == IEC::ATN_CMD_TALK)
+					handleATNCmdCodeDataTalk(chan);
+				else if(retATN == IEC::ATN_CMD_LISTEN)
+					handleATNCmdCodeDataListen();
 				break;
 
 			case IEC::ATN_CODE_CLOSE:
-				if(pff not_eq NULL) {
-					((PFUNC_UCHAR_VOID)(pff->close))();
-				}
+				// TODO: handle close with PI.
+//				if(0 not_eq pff) {
+//					((PFUNC_UCHAR_VOID)(pff->close))();
+//				}
 				break;
 		}
 
 		//BUSY_LED_OFF();
 	}
 } // handler
+
+
+void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
+{
+	char serCmdIOBuf[50];
+	byte lenRead;
+
+	sprintf(serCmdIOBuf, "O%u|%s\r", cmd.code bitand 0xF, cmd.str);
+	// NOTE: PI side handles BOTH file open command AND the command channel command (from the cmd.code).
+	Serial.println(serCmdIOBuf);
+	// read the PI response until a carriage return.)
+	if(lenRead = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf))) {
+		// process response into m_queuedError.
+		// Response: ><code><CR>
+		if('>' == serCmdIOBuf[0])
+			m_queuedError = static_cast<byte>(atoi(&serCmdIOBuf[1]));
+		else // Unexpected response char from PI
+			m_queuedError = ErrSerialComm;
+	}
+	else // very specific error: The serial comm with the host failed.
+		m_queuedError = ErrSerialComm;
+} // handleATNCmdCodeOpen
+
+
+void Interface::handleATNCmdCodeDataTalk(byte chan)
+{
+	if(CMD_CHANNEL == chan) {
+		// Send status message
+		sendStatus();
+		// go back to OK state, we have dispatched the error to IEC host now.
+		m_queuedError = ErrOK;
+	}
+	else if(m_openState == O_INFO) {
+		// Reset and send SD card info
+		reset();
+		// TODO: interface with PI (NativeFS file system info).
+		sendListing(/*&send_sdinfo*/);
+	}
+	else if(m_openState == O_FILE_ERR) {
+		// TODO: interface with pi for error info.
+		sendListing(/*&send_file_err*/);
+	}
+	else if((m_openState == O_NOTHING) /*or (0 == pff)*/) {
+		// Say file not found
+		m_iec.sendFNF();
+	}
+	else if(m_openState == O_FILE) {
+		// Send program file
+		// TODO: interface with PI before file sending TO c64 takes place.
+		sendFile(/*(PFUNC_CHAR_VOID)(pff->getc),
+						 (PFUNC_UCHAR_VOID)(pff->eof)*/);
+	}
+	else if(m_openState == O_DIR) {
+		// Send listing
+		// TODO: interface with pi to get current file system listing.
+		sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
+	}
+} // handleATNCmdCodeDataTalk
+
+
+void Interface::handleATNCmdCodeDataListen()
+{
+	// We are about to save stuff
+	if(0 == 0 /*pff*/) {
+		// file format functions unavailable, save dummy
+		saveFile(/*&dummy_1*/);
+		m_queuedError = ErrDriveNotReady;
+	}
+	else {
+		// Check conditions before saving
+		boolean writeSuccess = true;
+		if(m_openState not_eq O_SAVE_REPLACE) {
+			// Not a save with replace, if file exists its an error
+			if(m_queuedError not_eq ErrFileNotFound) {
+				m_queuedError = ErrFileExists;
+				writeSuccess = false;
+			}
+		}
+
+		if(writeSuccess) {
+			// No overwrite problem, try to create a file to save in:
+			//writeSuccess = ((PFUNC_UCHAR_CSTR)(pff->newfile))(oldCmdStr);
+			if(!writeSuccess)
+				// unable to save, just say write protect
+				m_queuedError = ErrWriteProtectOn;
+			else
+				m_queuedError = ErrOK;
+
+		}
+
+		// TODO: saveFile to RP.
+		if(writeSuccess)
+			saveFile(/*(PFUNC_UCHAR_CHAR)(pff->putc)*/);
+		else
+			saveFile(/*&dummy_1*/);
+	}
+} // handleATNCmdCodeDataListen

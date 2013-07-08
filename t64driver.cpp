@@ -58,7 +58,7 @@ const QString strTapeEnd("TAPE END.");
 
 
 T64::T64(const QString& fileName)
-	:  FileDriverBase(), m_hostFile(fileName), m_status(NOT_READY), m_dirEntries(0), m_dirEntry(0),
+	:  FileDriverBase(), m_hostFile(fileName), m_dirEntries(0), m_dirEntry(0),
 		m_fileOffset(0), m_fileLength(0)
 {
 	if(!fileName.isEmpty())

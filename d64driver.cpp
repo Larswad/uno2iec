@@ -29,6 +29,7 @@
 #ifdef CONSOLE_DEBUG
 #include <QDebug>
 #endif
+#include <math.h>
 
 
 namespace {
@@ -291,11 +292,6 @@ bool D64::hostSeek(qint32 pos, bool relative)
 	return m_hostFile.seek(pos);
 } // hostSeek
 
-
-FileDriverBase::FSStatus D64::status(void) const
-{
-	return static_cast<FSStatus>(m_status);
-}
 
 // At the position seeked comes:
 //   16 chars of disk name (padded with A0)

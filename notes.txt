@@ -54,7 +54,7 @@ git clone https://code.google.com/p/qextserialport/
 // Tries continuously to connect to host with:
 // CONNECT
 // response should be: OK><date><time><CR>
-// Whereupon client could set the local time and data according to returned string.
+// Whereupon client could set the local time and data according to the returned string.
 
 // Send debug string
 // D<severityId, facilityId, debug string><CR>

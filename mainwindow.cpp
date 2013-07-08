@@ -3,7 +3,7 @@
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
 // TODO: Parse date and time on connection at arduino side.
 // TODO: T64 / D64 formats should read out entire disk into memory for caching (network performance).
-// TODO: Check the port name to use on the PI in the port constructor / setPortName(QLatin1String("/dev/ttyS0"));
+// DONE: Check the port name to use on the PI in the port constructor / setPortName(QLatin1String("/dev/ttyS0"));
 
 #include "mainwindow.hpp"
 #include "ui_mainwindow.h"
@@ -27,8 +27,14 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui(new Ui::MainWindow), m_port("COM1"), m_isConnected(false), m_iface(m_port)
 {
 	ui->setupUi(this);
-//	m_port = new QextSerialPort("COM1"); // make RPI serial port configurable and persistent from GUI.
+
+	// just for the PI.
+#ifdef __arm__
+	m_port.setPortName(QLatin1String("/dev/ttyS0"));
+#endif
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
+
+	Log("MAIN", "Application Started.", success);
 } // MainWindow
 
 
@@ -38,18 +44,22 @@ void MainWindow::onDataAvailable()
 	m_pendingBuffer.append(m_port.readAll());
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
+			// give the client current date and time in the response string.
 			m_port.write((OkString + QDate::currentDate().toString("yyyy-MM-dd") +
 										 QTime::currentTime().toString(" hh:mm:ss:zzz") + '\r').toLatin1().data());
 			m_isConnected = true;
 			// client is supposed to send it's facilities each start.
 			m_clientFacilities.clear();
 		}
+		else // not yet connected, and no connect string so don't accept anything else now.
+			return;
 	}
 	bool hasDataToProcess = true;
 	while(hasDataToProcess) {
 		QString cmdString(m_pendingBuffer);
 		int crIndex =	cmdString.indexOf('\r');
 
+		// Get the first waiting character, which should be the commend to perform.
 		switch(cmdString.at(0).toLatin1()) {
 			case 'R': // read single byte from current file system mode, note that this command needs no termination, it needs to be short.
 				m_pendingBuffer.remove(0, 1);
@@ -86,11 +96,15 @@ void MainWindow::onDataAvailable()
 			case 'O': // open command
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.
-				else
+				else {// Open was issued, string goes from 1 to CRpos - 1
 					m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
+					m_pendingBuffer.remove(0, crIndex + 1);
+				}
 				break;
-
 		}
+		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.
+		if(hasDataToProcess)
+			hasDataToProcess = !m_pendingBuffer.isEmpty();
 	} // while(hasDataToProcess);
 } // onDataAvailable
 

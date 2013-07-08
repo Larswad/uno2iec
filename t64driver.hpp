@@ -85,9 +85,6 @@ private:
 	// The real host file system D64 image file:
 	QFile m_hostFile;
 
-	// Status of the t64 driver:
-	uchar m_status;
-
 	// T64 driver state variables:
 
 	ushort m_dirEntries;

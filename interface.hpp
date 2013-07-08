@@ -5,6 +5,7 @@
 #include "d64driver.hpp"
 #include "t64driver.hpp"
 #include "m2idriver.hpp"
+#include "nativefs.hpp"
 #include <qextserialport.h>
 
 #define CMD_CHANNEL 15

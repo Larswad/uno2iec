@@ -128,6 +128,7 @@ byte IEC::timeoutWait(byte waitBit, boolean whileHigh)
 // Returns data recieved
 // Might set flags in iec_state
 //
+// TODO: m_iec might be better returning bool and returning read byte as reference in order to indicate any error.
 byte IEC::receiveByte(void)
 {
 	m_state = noFlags;
@@ -451,7 +452,7 @@ boolean IEC::init()
 	digitalWrite(m_dataPin, false);
 	digitalWrite(m_clockPin, false);
 
-	// initial pin modes in GPIO from wiringPi.
+	// initial pin modes in GPIO.
 	pinMode(m_atnPin, INPUT);
 	pinMode(m_dataPin, INPUT);
 	pinMode(m_clockPin, INPUT);

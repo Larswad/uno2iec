@@ -53,9 +53,9 @@ bool M2I::openHostFile(const QString& fileName)
 	closeHostFile();
 
 	// Interface has just opened the m2i file, save filename
-	m_m2iHostFile.setFileName(fileName);
+	m_hostFile.setFileName(fileName);
 
-	if(!m_m2iHostFile.open(QIODevice::ReadOnly))
+	if(!m_hostFile.open(QIODevice::ReadOnly))
 		return false;
 
 	// We accept m2i file if first line is OK:
@@ -65,8 +65,8 @@ bool M2I::openHostFile(const QString& fileName)
 
 void M2I::closeHostFile()
 {
-	if(!m_m2iHostFile.fileName().isEmpty() and m_m2iHostFile.isOpen())
-		m_m2iHostFile.close();
+	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+		m_hostFile.close();
 	m_status = NOT_READY;
 } // closeHostFile
 
@@ -74,11 +74,10 @@ void M2I::closeHostFile()
 bool M2I::sendListing(ISendLine &cb)
 {
 	m_status = NOT_READY;
-
 	 // disk title
 	QString parsed;
 	// Reseek from beginning of M2I.
-	if(!m_m2iHostFile.seek(0) or !readFirstLine(&parsed)) {
+	if(!m_hostFile.seek(0) or !readFirstLine(&parsed)) {
 		cb.send(0, strError1);
 		return false;
 	}
@@ -87,7 +86,7 @@ bool M2I::sendListing(ISendLine &cb)
 	QString line = QString("\x12\x22%1\x22%2").arg(parsed, strID);
 	cb.send(0, line);
 
-	while(!m_m2iHostFile.atEnd()) {
+	while(!m_hostFile.atEnd()) {
 		// Write lines
 		uchar ftype(parseLine(0, &parsed));
 
@@ -106,13 +105,18 @@ bool M2I::sendListing(ISendLine &cb)
 bool M2I::seekFile(QString* dosName, QString& dirName, const QString& seekName,
 									 bool doOpen)
 {
-	uchar i;
+	Q_UNUSED(dosName);
+	Q_UNUSED(dirName);
+	Q_UNUSED(seekName);
+	Q_UNUSED(doOpen);
 	bool found = false;
+/*
+	uchar i;
 	uchar seeklen, dirlen;
 
 	if(doOpen) {
 		// Open the .m2i file
-		if (!fatFopen(m_m2iHostFile))
+		if (!fatFopen(m_hostFile))
 			return false;
 	}
 	else {
@@ -157,17 +161,19 @@ bool M2I::seekFile(QString* dosName, QString& dirName, const QString& seekName,
 	// Close m2i file
 	if(doOpen)
 		closeHostFile();
-
+*/
 	return found;
 } // seekFile
 
 
 bool M2I::remove(char* fileName)
 {
+	Q_UNUSED(fileName);
+	bool ret = false;
+/*
 	char dosname[12];
 	char dirname[16];
 	uchar found;
-	bool ret = false;
 
 	m_status and_eq compl FILE_OPEN;
 
@@ -196,15 +202,18 @@ bool M2I::remove(char* fileName)
 
 	// Finally, close m2i
 	fatFclose();
-
+*/
 	return ret;
 } // remove
 
 
 bool M2I::rename(char* oldName, char* newName)
 {
-	char dirName[16];
+	Q_UNUSED(oldName);
+	Q_UNUSED(newName);
 	bool ret = false;
+	/*
+	char dirName[16];
 	uchar j;
 
 	m_status and_eq compl FILE_OPEN;
@@ -235,13 +244,15 @@ bool M2I::rename(char* oldName, char* newName)
 
 	// Close m2i
 	fatFclose();
-
+*/
 	return ret;
 } // rename
 
 
 uchar M2I::newDisk(char* diskName)
 {
+	Q_UNUSED(diskName);
+	/*
 	char dosName[13];
 	uchar i,j;
 
@@ -283,7 +294,7 @@ uchar M2I::newDisk(char* diskName)
 
 	// Now this is the open m2i
 	memcpy(m2i_filename, dosName, 13);
-
+*/
 	return ErrOK;
 } // newDisk
 
@@ -292,10 +303,12 @@ uchar M2I::newDisk(char* diskName)
 //
 uchar M2I::cmd(char* cmd)
 {
+	Q_UNUSED(cmd);
+	uchar ret = ErrOK;
+	/*
 	// Get command letter and argument
 	char cmdLetter;
 	char *arg, *p;
-	char ret = ERR_OK;
 
 	cmdLetter = cmd[0];
 
@@ -307,7 +320,7 @@ uchar M2I::cmd(char* cmd)
 		if(cmdLetter == 'S') {
 			// Scratch file(s)
 			if(!remove(arg))
-				ret = ERR_FILE_NOT_FOUND;
+				ret = ErrFileNotFound;
 		}
 		else if(cmdLetter == 'R') {
 			// Rename, find =  and replace with 0 to get cstr
@@ -317,22 +330,24 @@ uchar M2I::cmd(char* cmd)
 				*p = 0;
 				p++;
 				if(!rename(p, arg))
-					ret = ERR_FILE_NOT_FOUND;
+					ret = ErrFileNotFound;
 			}
 
 		}
 		else if(cmdLetter == 'N')
 			ret = newDisk(arg);
 		else
-			ret = ERR_SYNTAX_ERROR;
+			ret = ErrSyntaxError;
 	}
-
+*/
 	return ret;
 } // cmd
 
 
 bool M2I::fopen(const QString& fileName)
 {
+	Q_UNUSED(fileName);
+/*
 	char dirname[16];
 	char dosname[12];
 
@@ -345,6 +360,7 @@ bool M2I::fopen(const QString& fileName)
 			m_status or_eq FILE_OPEN;
 
 	}
+	*/
 	return(m_status bitand FILE_OPEN);
 } // open
 
@@ -353,13 +369,15 @@ bool M2I::fopen(const QString& fileName)
 //
 uchar M2I::newFile(char* fileName)
 {
+	Q_UNUSED(fileName);
+	/*
 	char dirName[16];
 	char dosName[12];
 
-	m2i_status = 0;
+	m_status = NOT_READY;
 
 	// Look for filename
-	if(seekFile(dosName, dirName, fileName, TRUE)) {
+	if(seekFile(dosName, dirName, fileName, true)) {
 		// File exists, delete it
 		fatRemove(dosName);
 		// And create empty
@@ -371,25 +389,27 @@ uchar M2I::newFile(char* fileName)
 		// File does not exist, create it
 		createFile(fileName);
 	}
-
+*/
 	return(m_status bitand FILE_OPEN);
 } // newFile
 
 
 char M2I::getc(void)
 {
+	/*
 	if(m_status bitand FILE_OPEN)
 		return fatFgetc();
-
+*/
 	return 0;
 } // getc
 
 
 bool M2I::isEOF(void) const
 {
+	/*
 	if(m2i_status bitand FILE_OPEN)
 		return fatFeof();
-
+*/
 	return true;
 } // isEOF
 
@@ -397,8 +417,11 @@ bool M2I::isEOF(void) const
 // write char to open file, returns false if failure
 bool M2I::putc(char c)
 {
+	Q_UNUSED(c);
+	/*
 	if(m_status bitand FILE_OPEN)
 		return fatFputc(c);
+		*/
 	return false;
 } // putc
 
@@ -439,10 +462,10 @@ bool M2I::readFirstLine(QString* dest)
 //
 uchar M2I::parseLine(QString* dosName, QString* cbmName)
 {
-	if(m_m2iHostFile.atEnd())
+	if(m_hostFile.atEnd())
 		return 0;  // no more records
 	// ftype + fsName + cbmName + separators + LF
-	QList<QByteArray> qData = m_m2iHostFile.read(1 + 256 + 16 + 3 + 1).split(':');
+	QList<QByteArray> qData = m_hostFile.read(1 + 256 + 16 + 3 + 1).split(':');
 	// must be three splits.
 	if(qData.count() < 3)
 		return 0;
@@ -471,8 +494,10 @@ uchar M2I::parseLine(QString* dosName, QString* cbmName)
 
 bool M2I::createFile(char* fileName)
 {
+	Q_UNUSED(fileName);
+	// TODO: Implement
 	m_status = NOT_READY;
-
+/*
 	// Find dos filename
 	char dosName[13];
 	uchar i,j;
@@ -533,6 +558,7 @@ bool M2I::createFile(char* fileName)
 	fatFcreate(dosName);
 
 	m_status or_eq FILE_OPEN;
+*/
 	return true;
 } // createFile
 

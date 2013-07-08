@@ -1,8 +1,8 @@
 #include "filedriverbase.hpp"
 
 FileDriverBase::FileDriverBase()
+	: m_status(NOT_READY)
 {
-	m_status = NOT_READY;
 } // ctor
 
 
@@ -11,9 +11,8 @@ FileDriverBase::~FileDriverBase()
 }
 
 
-bool FileDriverBase::sendListing(ISendLine& cb)
+bool FileDriverBase::sendListing(ISendLine& /*cb*/)
 {
-	Q_UNUSED(ISendLine);
 	return false;
 } // sendListing
 
@@ -45,14 +44,21 @@ bool FileDriverBase::newFile(const QString& fileName)
 
 
 // returns a character to the open file. If not overridden, returns always true. If implemented returns false on failure.
-virtual bool putc(uchar c)
+bool FileDriverBase::putc(char c)
 {
 	Q_UNUSED(c);
 	return true;
 } // putc
 
 
-virtual bool setCurrentDirectory(const QString& dir)
+FileDriverBase::FSStatus FileDriverBase::status(void) const
 {
+	return static_cast<FSStatus>(m_status);
+} // status
+
+
+bool FileDriverBase::setCurrentDirectory(const QString& dir)
+{
+	Q_UNUSED(dir);
 	return false;
 }

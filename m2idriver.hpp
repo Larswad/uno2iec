@@ -68,8 +68,8 @@ private:
 	bool seekFile(QString *dosName, QString &dirName, const QString &seekName,
 								bool doOpen);
 
-	// The real host file system D64 file:
-	QFile m_m2iHostFile;
+	// The real host file system M2I file:
+	QFile m_hostFile;
 
 };
 
