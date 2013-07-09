@@ -78,7 +78,7 @@
 
 IEC::IEC(byte deviceNumber) :
 	m_state(noFlags), m_deviceNumber(deviceNumber),
-	m_atnPin(13), m_dataPin(12), m_clockPin(11)
+	m_atnPin(10), m_dataPin(9), m_clockPin(8)
 {
 	// wiringPiPin 3 == BroadcomPin 22
 	// wiringPiPin 4 == BroadcomPin 23

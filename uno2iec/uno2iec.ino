@@ -28,25 +28,23 @@ void setup()
 	// Initialize serial and wait for port to open:
 	Serial.begin(DEFAULT_BAUD_RATE);
 
-	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
-	pMax->resetScrollText(myText);
-
-	// initialize the digital pin as an output.
-	pinMode(ledPort, OUTPUT);
+	// Now we're ready to wait for the PI to respond to our connection attempts.
+	// initial connection handling.
+	waitForPeer();
 
 	// set all digital pins in a defined state.
 	iec.init();
 
-	// Now we're ready to wait for the PI to respond to our connection attempts.
-	// initial connection handling.
-	waitForPeer();
 	lastMillis = millis();
+
+	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
+	pMax->resetScrollText(myText);
 } // setup
 
 
 void loop()
 {
-	iface.handler();
+	//iface.handler();
 
 	unsigned long now = millis();
 	if(now - lastMillis >= 50) {
@@ -58,6 +56,9 @@ void loop()
 
 void waitForPeer()
 {
+	// initialize the digital pin as an output.
+	pinMode(ledPort, OUTPUT);
+
 	boolean connected = false;
 	Serial.setTimeout(1000);
 	while(!connected) {
