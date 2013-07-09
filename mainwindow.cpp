@@ -58,6 +58,7 @@ void MainWindow::onDataAvailable()
 
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
+			m_pendingBuffer.clear();
 			Log("MAIN", "Now connected to Arduino.", success);
 			// give the client current date and time in the response string.
 			m_port.write((OkString + QDate::currentDate().toString("yyyy-MM-dd") +
@@ -116,6 +117,13 @@ void MainWindow::onDataAvailable()
 					m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
 					m_pendingBuffer.remove(0, crIndex + 1);
 				}
+				break;
+
+			default:
+				if(-1 == crIndex)
+					m_pendingBuffer.remove(0, crIndex + 1);
+				else
+					m_pendingBuffer.clear();
 				break;
 		}
 		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.

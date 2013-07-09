@@ -1,6 +1,7 @@
 #include "log.h"
 #include "iec_driver.h"
 #include "interface.h"
+#include <max7219.h>
 
 #define DEFAULT_BAUD_RATE 115200
 
@@ -10,16 +11,29 @@ const byte numBlinks = 4;
 const char connectionString[] = "CONNECT";
 const char okString[] = "OK";
 
+const byte INPIN = 11, LOADPIN = 13, CLOCKPIN = 12;
+
+#ifdef TEST_SCROLLING
+static byte myText[] = "   HEJSAN ALLA GLADA BARNEN, DETTA E LARS MED SIN NYA MAX7219 SCROLL...    ";
+#endif
+
 void waitForPeer();
 
 // The global IEC handling singleton:
 IEC iec(8);
 Interface iface(iec);
+Max7219* pMax;
+unsigned long lastMillis = 0;
 
 void setup()
 {
 	// Initialize serial and wait for port to open:
 	Serial.begin(DEFAULT_BAUD_RATE);
+
+	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
+	#ifdef TEST_SCROLLING
+	pMax->resetScrollText(myText);
+	#endif
 
 	// initialize the digital pin as an output.
 	pinMode(ledPort, OUTPUT);
@@ -30,13 +44,19 @@ void setup()
 	// Now we're ready to wait for the PI to respond to our connection attempts.
 	// initial connection handling.
 	waitForPeer();
+	lastMillis = millis();
 } // setup
 
 
 void loop()
 {
-	// put your main code here, to run repeatedly:
-	iface.handler();
+//	iface.handler();
+
+	unsigned long now = millis();
+	if(now - lastMillis >= 50) {
+		pMax->doScrollLeft();
+		lastMillis = now;
+	}
 } // loop
 
 
