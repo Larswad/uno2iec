@@ -54,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	system("/usr/local/bin/gpio export 23 out");
 	if(-1 == wiringPiSetupSys())
 		Log("MAIN", "Failed initializing WiringPi. Continuing anyway...", error);
+	else
+		on_resetArduino_clicked();
 #endif
 	Log("MAIN", "Application Initialized.", success);
 } // MainWindow

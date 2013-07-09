@@ -25,16 +25,10 @@ QMAKE_CXXFLAGS += -std=gnu++0x
 !win32 {
 # So wiringPi include files can be found during compile
 INCLUDEPATH += /usr/local/include
-
 # To link the wiringPi library when making the executable
 LIBS += -L/usr/local/lib -lwiringPi
-
+# To conditionally compile wiringPi so that it still builds on other platforms.
 DEFINES += "HAS_WIRINGPI="
-
-#INCLUDES += <path to wiring pi>
-#LIBS += -lwiringPi
-#alternative:
-#TARGETDEPS += libwiringpi.a
 } #!win32
 
 
