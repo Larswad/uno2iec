@@ -35,12 +35,10 @@ public slots:
 
 private slots:
 		void on_clearLog_clicked();
-
 		void on_pauseLog_toggled(bool checked);
-
 		void on_saveLog_clicked();
-
 		void on_saveHtml_clicked();
+		void on_resetArduino_clicked();
 
 private:
 	void processDebug(const QString &str);

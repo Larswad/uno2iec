@@ -11,8 +11,8 @@ void registerFacilities(void)
 {
 	char strBuf[25];
 	for(byte i = 0; i < sizeof(facilities) / sizeof(facilities[0]); ++i) {
-		sprintf(strBuf, "!%c%s", facilities[i].abbreviated, facilities[i].string);
-		Serial.println(strBuf);
+		sprintf(strBuf, "!%c%s\r", facilities[i].abbreviated, facilities[i].string);
+		Serial.print(strBuf);
 	}
 } // registerFacilities
 
@@ -22,6 +22,6 @@ void Log(byte severity , char facility, char* msg)
 	char strBuf[80];
 	sprintf(strBuf, "D%c%c%s\r", siwe[severity], facility, msg);
 	// TODO: Queueing possible, polling of queue could be handled (called) from 'loop()'.
-	Serial.println(strBuf);
+	Serial.print(strBuf);
 } // Log
 

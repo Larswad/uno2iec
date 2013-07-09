@@ -135,7 +135,7 @@ void MainWindow::onDataAvailable()
 
 void MainWindow::processAddNewFacility(const QString& str)
 {
-	Log("MAIN", QString("Got facility: %1").arg(str.mid(2)), success);
+//	Log("MAIN", QString("Got facility: %1").arg(str.mid(2)), success);
 	m_clientFacilities[str.at(1)] = str.mid(2);
 } // processAddNewFacility
 
@@ -158,7 +158,7 @@ void MainWindow::processDebug(const QString& str)
 			break;
 	}
 
-	Log(m_clientFacilities.value(str[2], "GENERAL"), str.right(3), level);
+	Log(QString("R:") + m_clientFacilities.value(str[2], "GENERAL"), str.mid(2), level);
 } // processDebug
 
 
@@ -244,3 +244,10 @@ void MainWindow::on_pauseLog_toggled(bool checked)
 {
 	ui->pauseLog->setText(checked ? tr("Resume") : tr("Pause"));
 } // on_m_pauseLog_toggled
+
+
+void MainWindow::on_resetArduino_clicked()
+{
+	Log("MAIN", "Reset of Arduino. Moving to disconnected state.", warning);
+	// TODO: pull pin 23 to reset arduino.
+}

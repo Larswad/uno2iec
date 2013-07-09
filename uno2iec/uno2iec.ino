@@ -8,7 +8,7 @@
 // Pin 13 has a LED connected on most Arduino boards.
 const byte ledPort = 13;
 const byte numBlinks = 4;
-const char connectionString[] = "CONNECT";
+const char connectionString[] = "CONNECT\r";
 const char okString[] = "OK";
 
 const byte INPIN = 11, LOADPIN = 13, CLOCKPIN = 12;
@@ -65,7 +65,7 @@ void waitForPeer()
 		// empty all avail. in buffer.
 		while(Serial.available())
 			Serial.read();
-		Serial.println(connectionString);
+		Serial.print(connectionString);
 		Serial.flush();
 		for(int i = 0; i < numBlinks; ++i) {
 			digitalWrite(ledPort, HIGH);   // turn the LED on (HIGH is the voltage level)
