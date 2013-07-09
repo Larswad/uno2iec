@@ -50,10 +50,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 #ifdef HAS_WIRINGPI
-	if(!wiringPiSetupSys())
+	if(-1 == wiringPiSetupSys())
 		Log("MAIN", "Failed initializing WiringPi. Continuing anyway...", error);
-	else
-		system("/usr/local/bin/gpio export 23 out");
+	system("/usr/local/bin/gpio export 23 out");
 #endif
 	Log("MAIN", "Application Initialized.", success);
 } // MainWindow
