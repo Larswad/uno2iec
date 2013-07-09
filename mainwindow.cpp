@@ -28,13 +28,15 @@ MainWindow::MainWindow(QWidget *parent) :
 {
 	ui->setupUi(this);
 
+	Log("MAIN", "Application Started.", success);
 	// just for the PI.
 #ifdef __arm__
 	m_port.setPortName(QLatin1String("/dev/ttyS0"));
+	Log("MAIN", "Application Started, using /dev/ttyS0", success);
 #endif
+	m_port.setBaudRate(BAUD115200);
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 
-	Log("MAIN", "Application Started.", success);
 } // MainWindow
 
 
