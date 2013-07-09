@@ -13,9 +13,7 @@ const char okString[] = "OK";
 
 const byte INPIN = 11, LOADPIN = 13, CLOCKPIN = 12;
 
-#ifdef TEST_SCROLLING
 static byte myText[] = "   HEJSAN ALLA GLADA BARNEN, DETTA E LARS MED SIN NYA MAX7219 SCROLL...    ";
-#endif
 
 void waitForPeer();
 
@@ -31,9 +29,7 @@ void setup()
 	Serial.begin(DEFAULT_BAUD_RATE);
 
 	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
-	#ifdef TEST_SCROLLING
 	pMax->resetScrollText(myText);
-	#endif
 
 	// initialize the digital pin as an output.
 	pinMode(ledPort, OUTPUT);
@@ -50,7 +46,7 @@ void setup()
 
 void loop()
 {
-//	iface.handler();
+	iface.handler();
 
 	unsigned long now = millis();
 	if(now - lastMillis >= 50) {

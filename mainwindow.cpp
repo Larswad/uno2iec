@@ -54,7 +54,6 @@ void MainWindow::onDataAvailable()
 {
 //	bool wasEmpty = m_pendingBuffer.isEmpty();
 	m_pendingBuffer.append(m_port.readAll());
-	Log("MAIN", QString("Got string: %1").arg(QString(m_pendingBuffer)), info);
 
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
@@ -120,10 +119,11 @@ void MainWindow::onDataAvailable()
 				break;
 
 			default:
-				if(-1 == crIndex)
+				// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
+				if(-1 not_eq crIndex)
 					m_pendingBuffer.remove(0, crIndex + 1);
-				else
-					m_pendingBuffer.clear();
+				else // got something, might be in middle of something and with no CR, just get out.
+					hasDataToProcess = false;
 				break;
 		}
 		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.
