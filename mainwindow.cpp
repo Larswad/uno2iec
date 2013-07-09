@@ -24,7 +24,7 @@ QStringList LOG_LEVELS = (QStringList()
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
-	ui(new Ui::MainWindow), m_port("COM1", QextSerialPort::EventDriven, this)
+	ui(new Ui::MainWindow), m_port(QextSerialPort::EventDriven, this)
 	, m_isConnected(false), m_iface(m_port)
 {
 	ui->setupUi(this);
@@ -33,9 +33,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
 #ifdef __arm__
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
-	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(115200)), success);
-#endif
+	m_port.setBaudRate(BAUD1152000);
+#else
+	m_port.setPortName(QLatin1String("COM1"));
 	m_port.setBaudRate(BAUD115200);
+#endif
+	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(115200)), success);
 	m_port.setDataBits(DATA_8);
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
@@ -66,7 +69,8 @@ void MainWindow::onDataAvailable()
 		else // not yet connected, and no connect string so don't accept anything else now.
 			return;
 	}
-	bool hasDataToProcess = true;
+
+	bool hasDataToProcess = !m_pendingBuffer.isEmpty();
 	while(hasDataToProcess) {
 		QString cmdString(m_pendingBuffer);
 		int crIndex =	cmdString.indexOf('\r');
