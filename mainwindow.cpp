@@ -28,20 +28,19 @@ MainWindow::MainWindow(QWidget *parent) :
 {
 	ui->setupUi(this);
 
-	Log("MAIN", "Application Started.", success);
 	// just for the PI.
-	m_port.setBaudRate(BAUD115200);
-	m_port.setDataBits(DATA_8);
-	m_port.setParity(PAR_NONE);
-	m_port.setFlowControl(FLOW_OFF);
 
 #ifdef __arm__
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
 	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(115200)), success);
 #endif
+	m_port.setBaudRate(BAUD115200);
+	m_port.setDataBits(DATA_8);
+	m_port.setParity(PAR_NONE);
+	m_port.setFlowControl(FLOW_OFF);
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
-
+	Log("MAIN", "Application Initialized.", success);
 } // MainWindow
 
 
@@ -49,7 +48,7 @@ void MainWindow::onDataAvailable()
 {
 //	bool wasEmpty = m_pendingBuffer.isEmpty();
 	m_pendingBuffer.append(m_port.readAll());
-	//Log("MAIN", QString("Got string: %1").arg(QString(m_pendingBuffer)), info);
+	Log("MAIN", QString("Got string: %1").arg(QString(m_pendingBuffer)), info);
 
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
