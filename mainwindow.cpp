@@ -135,8 +135,8 @@ void MainWindow::onDataAvailable()
 
 void MainWindow::processAddNewFacility(const QString& str)
 {
-	Log("MAIN", QString("Got facility: %1").arg(str.right(2)), success);
-	m_clientFacilities[str.at(1)] = str.right(2);
+	Log("MAIN", QString("Got facility: %1").arg(str.mid(2)), success);
+	m_clientFacilities[str.at(1)] = str.mid(2);
 } // processAddNewFacility
 
 
