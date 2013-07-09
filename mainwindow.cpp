@@ -35,6 +35,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	Log("MAIN", "Application Started, using /dev/ttyS0", success);
 #endif
 	m_port.setBaudRate(BAUD115200);
+	m_port.setDataBits(DATA_8);
+	m_port.setParity(PAR_NONE);
+	m_port.setFlowControl(FLOW_OFF);
+
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 
 } // MainWindow
@@ -44,8 +48,11 @@ void MainWindow::onDataAvailable()
 {
 //	bool wasEmpty = m_pendingBuffer.isEmpty();
 	m_pendingBuffer.append(m_port.readAll());
+	Log("MAIN", QString("Got string: %1").arg(QString(m_pendingBuffer)), info);
+
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
+			Log("MAIN", "Now connected to Arduino.", success);
 			// give the client current date and time in the response string.
 			m_port.write((OkString + QDate::currentDate().toString("yyyy-MM-dd") +
 										 QTime::currentTime().toString(" hh:mm:ss:zzz") + '\r').toLatin1().data());
@@ -113,6 +120,7 @@ void MainWindow::onDataAvailable()
 
 void MainWindow::processAddNewFacility(const QString& str)
 {
+	Log("MAIN", QString("Got facility: ").arg(str.right(2)), success);
 	m_clientFacilities[str.at(1)] = str.right(2);
 } // processAddNewFacility
 
