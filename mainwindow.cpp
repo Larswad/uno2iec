@@ -50,9 +50,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 #ifdef HAS_WIRINGPI
+	system("/usr/local/bin/gpio -g mode 23 out”);
+	system("/usr/local/bin/gpio export 23 out");
 	if(-1 == wiringPiSetupSys())
 		Log("MAIN", "Failed initializing WiringPi. Continuing anyway...", error);
-	system("/usr/local/bin/gpio export 23 out");
 #endif
 	Log("MAIN", "Application Initialized.", success);
 } // MainWindow
@@ -257,12 +258,13 @@ void MainWindow::on_pauseLog_toggled(bool checked)
 void MainWindow::on_resetArduino_clicked()
 {
 #ifdef HAS_WIRINGPI
-	Log("MAIN", "Reset of Arduino. Moving to disconnected state.", warning);
+	Log("MAIN", "Moving to disconnected state and resetting arduino...", warning);
 	m_isConnected = false;
 	// pull pin 23 to reset arduino.
 	pinMode(23, OUTPUT);
 	digitalWrite(23, 0);
-	delay(2000);
+	delay(3000);
+	Log("MAIN", "Releasing reset state...", info);
 	// set it high again to release reset state.
 	digitalWrite(23, 1);
 #endif
