@@ -22,11 +22,21 @@ include(../qextserialport/src/qextserialport.pri)
 
 QMAKE_CXXFLAGS += -std=gnu++0x
 
-#INCLUDES += <path to wiring pi>
+!win32 {
+# So wiringPi include files can be found during compile
+INCLUDEPATH += /usr/local/include
 
+# To link the wiringPi library when making the executable
+LIBS += -L/usr/local/lib -lwiringPi
+
+DEFINES += "HAS_WIRINGPI="
+
+#INCLUDES += <path to wiring pi>
 #LIBS += -lwiringPi
 #alternative:
 #TARGETDEPS += libwiringpi.a
+} #!win32
+
 
 # QMAKE_CXXFLAGS +=-std=c++0x
 

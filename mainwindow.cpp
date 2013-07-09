@@ -11,6 +11,9 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QDate>
+#ifdef HAS_WIRINGPI
+#include <wiringPi.h>
+#endif
 
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
@@ -46,6 +49,12 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.open(QIODevice::ReadWrite);
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
+#ifdef HAS_WIRINGPI
+	if(!wiringPiSetupSys())
+		Log("MAIN", "Failed initializing WiringPi. Continuing anyway...", error);
+	else
+		system("/usr/local/bin/gpio export 23 out");
+#endif
 	Log("MAIN", "Application Initialized.", success);
 } // MainWindow
 
@@ -158,7 +167,7 @@ void MainWindow::processDebug(const QString& str)
 			break;
 	}
 
-	Log(QString("R:") + m_clientFacilities.value(str[2], "GENERAL"), str.mid(2), level);
+	Log(QString("R:") + m_clientFacilities.value(str[2], "GENERAL"), str.mid(3), level);
 } // processDebug
 
 
@@ -248,6 +257,14 @@ void MainWindow::on_pauseLog_toggled(bool checked)
 
 void MainWindow::on_resetArduino_clicked()
 {
+#ifdef HAS_WIRINGPI
 	Log("MAIN", "Reset of Arduino. Moving to disconnected state.", warning);
-	// TODO: pull pin 23 to reset arduino.
-}
+	m_isConnected = false;
+	// pull pin 23 to reset arduino.
+	pinMode(23, OUTPUT);
+	digitalWrite(23, 0);
+	delay(2000);
+	// set it high again to release reset state.
+	digitalWrite(23, 1);
+#endif
+} // on_resetArduino_clicked

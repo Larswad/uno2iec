@@ -44,7 +44,7 @@ void setup()
 
 void loop()
 {
-	//iface.handler();
+	iface.handler();
 
 	unsigned long now = millis();
 	if(now - lastMillis >= 50) {
