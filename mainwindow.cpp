@@ -24,7 +24,8 @@ QStringList LOG_LEVELS = (QStringList()
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
-	ui(new Ui::MainWindow), m_port("COM1"), m_isConnected(false), m_iface(m_port)
+	ui(new Ui::MainWindow), m_port("COM1", QextSerialPort::EventDriven, this)
+	, m_isConnected(false), m_iface(m_port)
 {
 	ui->setupUi(this);
 
@@ -33,13 +34,13 @@ MainWindow::MainWindow(QWidget *parent) :
 #ifdef __arm__
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
 	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(115200)), success);
-	m_port.setBaudRate(BAUD1152000);
-#else
-	m_port.setBaudRate(BAUD115200);
 #endif
+	m_port.setBaudRate(BAUD115200);
 	m_port.setDataBits(DATA_8);
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
+
+	m_port.open(QIODevice::ReadWrite);
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 	Log("MAIN", "Application Initialized.", success);
@@ -151,6 +152,8 @@ void MainWindow::processDebug(const QString& str)
 
 MainWindow::~MainWindow()
 {
+	if(m_port.isOpen())
+		m_port.close();
 	delete ui;
 } // dtor
 
