@@ -124,6 +124,7 @@ void MainWindow::onDataAvailable()
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.
 				else {// Open was issued, string goes from 1 to CRpos - 1
+					Log("OPEN", QString("CMD: \"%1\"").arg(cmdString.mid(1, crIndex - 1)), info);
 					m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
 					m_pendingBuffer.remove(0, crIndex + 1);
 				}
