@@ -1,5 +1,7 @@
 #include "nativefs.hpp"
+#include "logger.hpp"
 
+using namespace Logging;
 
 NativeFS::NativeFS()
 {
@@ -20,6 +22,7 @@ void NativeFS::closeHostFile()
 bool NativeFS::fopen(const QString& fileName)
 {
 	Q_UNUSED(fileName);
+	Log("NATIVEFS", "fopen: NOT YET IMPLEMENTED", warning);
 	// TODO: Implement.
 	return false;
 } // fopen

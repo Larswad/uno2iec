@@ -3,6 +3,9 @@
 #include "t64driver.hpp"
 #include "m2idriver.hpp"
 #include <QStringList>
+#include <logger.hpp>
+
+using namespace Logging;
 
 #define C64_BACK_ARROW 95
 
@@ -103,6 +106,7 @@ void Interface::openFile(const QString& cmdString)
 
 					if(i not_eq m_fsList.end()) {
 						m_native.closeHostFile();
+						Log("IFACE", QString("Trying driver: %1").arg(m_currFileDriver->extension()), info);
 						// file extension matches, change interface state
 						// call new format's reset
 						if(m_currFileDriver->openHostFile(cmd)) {
@@ -126,6 +130,7 @@ void Interface::openFile(const QString& cmdString)
 			}
 			else if(0 not_eq m_currFileDriver) {
 				// Call file format's own open command
+				Log("IFACE", QString("Trying open FS file: %1 on FS: %2").arg(cmd).arg(m_currFileDriver->extension()), info);
 				if(m_currFileDriver->fopen(cmd))
 					m_openState = O_FILE;
 				else // File not found
@@ -142,12 +147,12 @@ void Interface::openFile(const QString& cmdString)
 void Interface::processOpenCommand(const QString& cmd)
 {
 	// Request: <channel>|<command string>
+	Log("IFACE", cmd, info);
 	QStringList params(cmd.split('|'));
 	if(params.count() < 2) // enough params?
 		m_queuedError = ErrSerialComm;
 	else {
 		uchar chan = params.at(0).toInt();
-
 		// Are we addressing the command channel?
 		if(CMD_CHANNEL == chan) {
 			// command channel command
@@ -166,8 +171,10 @@ void Interface::processOpenCommand(const QString& cmd)
 			openFile(params.at(1));
 		}
 	}
+
 	// send back m_queuedError to uno.
 	// Response: ><code><CR>
 	// The code return is according to the values of the IOErrorMessage enum.
 	m_port.write(QString(">%1\r").arg(m_queuedError).toLatin1());
+	Log("IFACE", QString("Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 } // processOpenCommand

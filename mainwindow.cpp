@@ -15,6 +15,8 @@
 #include <wiringPi.h>
 #endif
 
+using namespace Logging;
+
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
 
@@ -33,6 +35,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->setupUi(this);
 
 	// just for the PI.
+
+	getLoggerInstance().AddTransport(this);
 
 #ifdef __arm__
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
@@ -59,6 +63,14 @@ MainWindow::MainWindow(QWidget *parent) :
 #endif
 	Log("MAIN", "Application Initialized.", success);
 } // MainWindow
+
+
+MainWindow::~MainWindow()
+{
+	if(m_port.isOpen())
+		m_port.close();
+	delete ui;
+} // dtor
 
 
 void MainWindow::onDataAvailable()
@@ -124,7 +136,6 @@ void MainWindow::onDataAvailable()
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.
 				else {// Open was issued, string goes from 1 to CRpos - 1
-					Log("OPEN", QString("CMD: \"%1\"").arg(cmdString.mid(1, crIndex - 1)), info);
 					m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
 					m_pendingBuffer.remove(0, crIndex + 1);
 				}
@@ -174,12 +185,20 @@ void MainWindow::processDebug(const QString& str)
 } // processDebug
 
 
-MainWindow::~MainWindow()
+void MainWindow::on_resetArduino_clicked()
 {
-	if(m_port.isOpen())
-		m_port.close();
-	delete ui;
-} // dtor
+#ifdef HAS_WIRINGPI
+	Log("MAIN", "Moving to disconnected state and resetting arduino...", warning);
+	m_isConnected = false;
+	// pull pin 23 to reset arduino.
+	pinMode(23, OUTPUT);
+	digitalWrite(23, 0);
+	delay(3000);
+	Log("MAIN", "Releasing reset state...", info);
+	// set it high again to release reset state.
+	digitalWrite(23, 1);
+#endif
+} // on_resetArduino_clicked
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,6 +214,9 @@ void MainWindow::on_clearLog_clicked()
 } // on_m_clearLog_clicked
 
 
+////
+/// \brief MainWindow::on_saveLog_clicked
+///
 void MainWindow::on_saveLog_clicked()
 {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Log"), QString(), tr("Text Files (*.log *.txt)"));
@@ -209,6 +231,9 @@ void MainWindow::on_saveLog_clicked()
 } // on_saveLog_clicked
 
 
+///
+/// \brief MainWindow::on_saveHtml_clicked
+///
 void MainWindow::on_saveHtml_clicked()
 {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Log as HTML"), QString(), tr("Html Files (*.html *.htm)"));
@@ -223,52 +248,53 @@ void MainWindow::on_saveHtml_clicked()
 } // on_saveHtml_clicked
 
 
-void MainWindow::Log(const QString& facility, const QString& message, LogLevelE level)
-{
-	if(!ui->pauseLog->isChecked()) {
-		QTextCursor cursor = ui->log->textCursor();
-		cursor.movePosition(QTextCursor::End);
-		ui->log->setTextCursor(cursor);
-
-		ui->log->setTextColor(Qt::darkGray);
-
-		ui->log->insertPlainText(QDate::currentDate().toString("yyyy-MM-dd") +
-											QTime::currentTime().toString(" hh:mm:ss:zzz"));
-		ui->log->setFontWeight(QFont::Bold);
-		ui->log->setTextColor(logLevelColors[level]);
-		// The logging levels are: [E]RROR [W]ARNING [I]NFORMATION [S]UCCESS.
-		ui->log->insertPlainText(" " + QString("EWIS")[level] + " " + facility + " ");
-		ui->log->setFontWeight(QFont::Normal);
-		ui->log->setTextColor(Qt::darkBlue);
-		ui->log->insertPlainText(message + "\n");
-
-		if(ui->log->toPlainText().length() and !ui->saveHtml->isEnabled()) {
-			ui->saveHtml->setEnabled(true);
-			ui->saveLog->setEnabled(true);
-			ui->clearLog->setEnabled(true);
-			ui->pauseLog->setEnabled(true);
-		}
-	}
-} // Log
-
-
+///
+/// \brief MainWindow::on_pauseLog_toggled
+/// \param checked
+///
 void MainWindow::on_pauseLog_toggled(bool checked)
 {
 	ui->pauseLog->setText(checked ? tr("Resume") : tr("Pause"));
 } // on_m_pauseLog_toggled
 
 
-void MainWindow::on_resetArduino_clicked()
+// ILogTransport implementation.
+void MainWindow::appendTime(const QString& dateTime)
 {
-#ifdef HAS_WIRINGPI
-	Log("MAIN", "Moving to disconnected state and resetting arduino...", warning);
-	m_isConnected = false;
-	// pull pin 23 to reset arduino.
-	pinMode(23, OUTPUT);
-	digitalWrite(23, 0);
-	delay(3000);
-	Log("MAIN", "Releasing reset state...", info);
-	// set it high again to release reset state.
-	digitalWrite(23, 1);
-#endif
-} // on_resetArduino_clicked
+	if(ui->pauseLog->isChecked())
+		return;
+	QTextCursor cursor = ui->log->textCursor();
+	cursor.movePosition(QTextCursor::End);
+	ui->log->setTextCursor(cursor);
+	ui->log->setTextColor(Qt::darkGray);
+	ui->log->insertPlainText(dateTime);
+} // appendTime
+
+
+void MainWindow::appendLevelAndFacility(LogLevelE level, const QString& levelFacility)
+{
+	if(ui->pauseLog->isChecked())
+		return;
+	ui->log->setFontWeight(QFont::Bold);
+	ui->log->setTextColor(logLevelColors[level]);
+	ui->log->insertPlainText(" " + levelFacility + " ");
+} // appendLevelAndFacility
+
+
+void MainWindow::appendMessage(const QString& msg)
+{
+	if(ui->pauseLog->isChecked())
+		return;
+	ui->log->setFontWeight(QFont::Normal);
+	ui->log->setTextColor(Qt::darkBlue);
+	ui->log->insertPlainText(msg + "\n");
+
+	if(ui->log->toPlainText().length() and !ui->saveHtml->isEnabled()) {
+		ui->saveHtml->setEnabled(true);
+		ui->saveLog->setEnabled(true);
+		ui->clearLog->setEnabled(true);
+		ui->pauseLog->setEnabled(true);
+	}
+} // appendMessage
+
+

@@ -5,6 +5,7 @@
 #include <qextserialport.h>
 #include <QMap>
 #include "interface.hpp"
+#include "logger.hpp"
 
 namespace Ui {
 class MainWindow;
@@ -12,26 +13,23 @@ class MainWindow;
 
 typedef QMap<QChar, QString> FacilityMap;
 
-class MainWindow : public QMainWindow
+class MainWindow : public QMainWindow, public Logging::ILogTransport
 {
 	Q_OBJECT
-
-	typedef enum {
-		error,
-		warning,
-		info,
-		success
-	} LogLevelE;
 
 public:
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
-	void Log(const QString &facility, const QString &message, LogLevelE level);
 	void processAddNewFacility(const QString &str);
 
 public slots:
 		void onDataAvailable();
+
+		// ILogTransport implementation.
+		void appendTime(const QString& dateTime);
+		void appendLevelAndFacility(Logging::LogLevelE level, const QString& levelFacility);
+		void appendMessage(const QString& msg);
 
 private slots:
 		void on_clearLog_clicked();
