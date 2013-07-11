@@ -41,7 +41,8 @@ SOURCES += main.cpp\
 		d64driver.cpp \
 		filedriverbase.cpp \
 		interface.cpp \
-		nativefs.cpp
+		nativefs.cpp \
+    logger.cpp
 
 HEADERS  += mainwindow.hpp \
 		t64driver.hpp \
@@ -49,7 +50,8 @@ HEADERS  += mainwindow.hpp \
 		d64driver.hpp \
 		filedriverbase.hpp \
 		interface.hpp \
-		nativefs.hpp
+		nativefs.hpp \
+    logger.hpp
 
 FORMS    += mainwindow.ui
 
