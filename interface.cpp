@@ -126,7 +126,7 @@ void Interface::openFile(const QString& cmdString)
 						m_openState = O_FILE;
 				}
 				else // File not found, giveup.
-					m_queuedError = ErrFileNotFound;
+					m_openState = O_NOTHING;
 			}
 			else if(0 not_eq m_currFileDriver) {
 				// Call file format's own open command
@@ -134,7 +134,7 @@ void Interface::openFile(const QString& cmdString)
 				if(m_currFileDriver->fopen(cmd))
 					m_openState = O_FILE;
 				else // File not found
-					m_queuedError = ErrFileNotFound;
+					m_openState = O_NOTHING;
 			}
 		}
 	}
@@ -164,17 +164,21 @@ void Interface::processOpenCommand(const QString& cmd)
 			}
 			else
 				m_queuedError = ErrDriveNotReady;
+			// Response: ><code><CR>
+			// The code return is according to the values of the IOErrorMessage enum.
+			// send back m_queuedError to uno.
+			m_port.write(QString(">%1\r").arg(m_queuedError).toLatin1());
+			Log("IFACE", QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 		}
 		else {
 			// ...otherwise it was a open file command, be optimistic
-			m_queuedError = ErrOK;
+			m_openState = O_NOTHING;
 			openFile(params.at(1));
+			// Response: ><code><CR>
+			// The code return is according to the values of the IOErrorMessage enum.
+			m_port.write(QString(">%1\r").arg(m_openState).toLatin1());
+			bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
+			Log("IFACE", QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
 		}
 	}
-
-	// send back m_queuedError to uno.
-	// Response: ><code><CR>
-	// The code return is according to the values of the IOErrorMessage enum.
-	m_port.write(QString(">%1\r").arg(m_queuedError).toLatin1());
-	Log("IFACE", QString("Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 } // processOpenCommand

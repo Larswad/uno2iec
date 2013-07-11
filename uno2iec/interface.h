@@ -63,6 +63,7 @@ private:
 	void handleATNCmdCodeOpen(IEC::ATNCmd &cmd);
 	void handleATNCmdCodeDataTalk(byte chan);
 	void handleATNCmdCodeDataListen();
+	byte readPiResponse();
 
 	// our iec low level driver:
 	IEC& m_iec;

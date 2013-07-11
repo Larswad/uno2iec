@@ -49,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.setDataBits(DATA_8);
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
+	m_port.setStopBits(STOP_1);
 
 	m_port.open(QIODevice::ReadWrite);
 

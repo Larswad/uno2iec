@@ -2,6 +2,7 @@
 #include "iec_driver.h"
 #include "interface.h"
 #include <max7219.h>
+#include "global_defines.h"
 
 #define DEFAULT_BAUD_RATE 115200
 
@@ -21,7 +22,7 @@ void waitForPeer();
 IEC iec(8);
 Interface iface(iec);
 Max7219* pMax;
-unsigned long lastMillis = 0;
+static unsigned long lastMillis = 0;
 
 void setup()
 {
@@ -44,7 +45,12 @@ void setup()
 
 void loop()
 {
+#ifdef DEBUGLINES
+	iec.testOUTPUTS();
+	//iec.testINPUTS();
+#else
 	iface.handler();
+#endif
 
 	unsigned long now = millis();
 	if(now - lastMillis >= 50) {

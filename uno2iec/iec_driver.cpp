@@ -24,6 +24,7 @@
 
 
 #include "iec_driver.h"
+#include "log.h"
 
 /******************************************************************************
  *                                                                             *
@@ -78,7 +79,10 @@
 
 IEC::IEC(byte deviceNumber) :
 	m_state(noFlags), m_deviceNumber(deviceNumber),
-	m_atnPin(10), m_dataPin(9), m_clockPin(8)
+	m_atnPin(5), m_dataPin(3), m_clockPin(4)
+#ifdef DEBUGLINES
+	,m_lastMillis(0)
+#endif
 {
 	// wiringPiPin 3 == BroadcomPin 22
 	// wiringPiPin 4 == BroadcomPin 23
@@ -134,8 +138,12 @@ byte IEC::receiveByte(void)
 	m_state = noFlags;
 
 	// Wait for talker ready
-	if(timeoutWait(m_clockPin, false))
+	if(timeoutWait(m_clockPin, false)) {
+#ifdef CONSOLE_DEBUG
+//		Log(Information, FAC_IEC, "T1");
+#endif
 		return 0;
+	}
 
 	// Say we're ready
 	writeDATA(false);
@@ -157,8 +165,12 @@ byte IEC::receiveByte(void)
 		writeDATA(false);
 
 		// but still wait for clk
-		if(timeoutWait(m_clockPin, true))
+		if(timeoutWait(m_clockPin, true)) {
+#ifdef CONSOLE_DEBUG
+//			Log(Information, FAC_IEC, "T2");
+#endif
 			return 0;
+		}
 	}
 
 	// Sample ATN
@@ -169,11 +181,19 @@ byte IEC::receiveByte(void)
 	// Get the bits, sampling on clock rising edge:
 	for(n = 0; n < 8; n++) {
 		data >>= 1;
-		if(timeoutWait(m_clockPin, false))
+		if(timeoutWait(m_clockPin, false)) {
+#ifdef CONSOLE_DEBUG
+//			Log(Information, FAC_IEC, "T3");
+#endif
 			return 0;
+		}
 		data or_eq (readDATA() ? (1 << 7) : 0);
-		if(timeoutWait(m_clockPin, true))
+		if(timeoutWait(m_clockPin, true)) {
+#ifdef CONSOLE_DEBUG
+//			Log(Information, FAC_IEC, "T4");
+#endif
 			return 0;
+		}
 	}
 
 	// Signal we accepted data:
@@ -296,9 +316,11 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 	if(not readATN()) {
 		// Attention line is active, go to listener mode and get message
-
 		writeDATA(true);
 		writeCLOCK(false);
+#ifdef CONSOLE_DEBUG
+		//Log(Information, FAC_IEC, "ATT.ACTIVE");
+#endif
 
 		delayMicroseconds(TIMING_ATN_PREDELAY);
 
@@ -309,19 +331,27 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 		if(c == (ATN_CODE_LISTEN bitor m_deviceNumber)) {
 			// Okay, we will listen.
+#ifdef CONSOLE_DEBUG
+			//Log(Information, FAC_IEC, "LISTEN");
+#endif
 
 			// Get the first cmd byte, the cmd code
 			c = (ATNCommand)receiveByte();
 			if (m_state bitand errorFlag)
 				return ATN_ERROR;
 
+			//Log(Information, FAC_IEC, "CODE");
 			cmd.code = c;
 
 			if((c bitand 0xF0) == ATN_CODE_DATA) {
 				// A heapload of data might come now, client handles this
+				//Log(Information, FAC_IEC, "LDATA");
 				ret = ATN_CMD_LISTEN;
 			}
 			else if(c not_eq ATN_CODE_UNLISTEN) {
+#ifdef CONSOLE_DEBUG
+				//Log(Information, FAC_IEC, "CMD");
+#endif
 				// Some other command. Record the cmd string until UNLISTEN is send
 				for(;;) {
 					c = (ATNCommand)receiveByte();
@@ -342,7 +372,9 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 		}
 		else if (c == (ATN_CODE_TALK bitor m_deviceNumber)) {
 			// Okay, we will talk soon, record cmd string while ATN is active
-
+#ifdef CONSOLE_DEBUG
+			//Log(Information, FAC_IEC, "TALK");
+#endif
 			// First byte is cmd code
 			c = (ATNCommand)receiveByte();
 			if(m_state bitand errorFlag)
@@ -376,9 +408,15 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 			delayMicroseconds(TIMING_ATN_DELAY);
 			writeDATA(false);
 			writeCLOCK(false);
+			{
+				//char buffer[20];
+				//sprintf(buffer, "NOTUS: %u", c);
+				//Log(Information, FAC_IEC, buffer);
+			}
 
 			// Wait for ATN to release and quit
 			while(not readATN());
+			//Log(Information, FAC_IEC, "ATNREL");
 		}
 	}
 	else {
@@ -457,6 +495,10 @@ boolean IEC::init()
 	pinMode(m_dataPin, INPUT);
 	pinMode(m_clockPin, INPUT);
 
+#ifdef DEBUGLINES
+	m_lastMillis = millis();
+#endif
+
 	// Set port low, we don't need internal pullup
 	// and DDR input such that we release all signals
 	//  IEC_PORT and_eq compl(IEC_BIT_ATN bitor IEC_BIT_CLOCK bitor IEC_BIT_DATA);
@@ -465,6 +507,39 @@ boolean IEC::init()
 	m_state = noFlags;
 	return true;
 } // init
+
+#ifdef DEBUGLINES
+void IEC::testINPUTS()
+{
+	unsigned long now = millis();
+	// show states every second.
+	if(now - m_lastMillis >= 1000) {
+		m_lastMillis = now;
+		char buffer[80];
+		sprintf(buffer, "Lines, ATN: %s CLOCK: %s DATA: %s",
+						(readATN() ? "HIGH" : "LOW"), (readCLOCK() ? "HIGH" : "LOW"), (readDATA() ? "HIGH" : "LOW"));
+		Log(Information, FAC_IEC, buffer);
+	}
+} // testINPUTS
+
+
+void IEC::testOUTPUTS()
+{
+	static bool lowOrHigh = false;
+	unsigned long now = millis();
+	// switch states every second.
+	if(now - m_lastMillis >= 1000) {
+		m_lastMillis = now;
+		char buffer[80];
+		sprintf(buffer, "Lines: CLOCK: %s DATA: %s", (lowOrHigh ? "HIGH" : "LOW"), (lowOrHigh ? "HIGH" : "LOW"));
+		Log(Information, FAC_IEC, buffer);
+		writeCLOCK(lowOrHigh);
+		writeDATA(lowOrHigh);
+		lowOrHigh ^= true;
+	}
+} // testOUTPUTS
+
+#endif
 
 
 byte IEC::deviceNumber() const

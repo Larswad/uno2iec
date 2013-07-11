@@ -2,6 +2,7 @@
 #define IEC_DRIVER_H
 
 #include <arduino.h>
+#include "global_defines.h"
 
 //
 // Title        : MMC2IEC - IEC_driver module
@@ -108,6 +109,12 @@ public:
 	void setDeviceNumber(const byte deviceNumber);
 	IECState state() const;
 
+#ifdef DEBUGLINES
+	unsigned long m_lastMillis;
+	void testINPUTS();
+	void testOUTPUTS();
+#endif
+
 private:
 	byte timeoutWait(byte waitBit, boolean whileHigh);
 	byte receiveByte(void);
@@ -118,6 +125,7 @@ private:
 	// false = LOW, true == HIGH
 	inline boolean readPIN(byte pinNumber)
 	{
+		// To be able to read line we must be set to input, not driving.
 		pinMode(pinNumber, INPUT);
 		return digitalRead(pinNumber) ? true : false;
 	}
@@ -140,8 +148,9 @@ private:
 	// true == PULL == HIGH, false == RELEASE == LOW
 	inline void writePIN(byte pinNumber, boolean state)
 	{
-		pinMode(pinNumber, OUTPUT);
-		digitalWrite(pinNumber, state ? HIGH : LOW);
+		pinMode(pinNumber, state ? OUTPUT : INPUT);
+		// Don't set the pin itself to HIGH, DDR drives the line from host.
+//		digitalWrite(pinNumber, state ? HIGH : LOW);
 	}
 
 	inline void writeATN(boolean state)

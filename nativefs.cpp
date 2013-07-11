@@ -264,7 +264,8 @@ FileDriverBase::FSStatus NativeFS::status() const
 bool NativeFS::setCurrentDirectory(const QString& dir)
 {
 	Q_UNUSED(dir);
+	Log("NATIVEFS", "setCurrentDirectory: NOT YET IMPLEMENTED", warning);
 	// TODO: Implement actual setting of current directory.
-	return true;
+	return false;
 } // setCurrentDirectory
 

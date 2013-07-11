@@ -28,6 +28,7 @@
 
 
 #include <string.h>
+#include "global_defines.h"
 #include "interface.h"
 
 #ifdef CONSOLE_DEBUG
@@ -450,7 +451,9 @@ void Interface::handler(void)
 	//	}
 	//#endif
 
+	noInterrupts();
 	IEC::ATNCheck retATN = m_iec.checkATN(cmd);
+	interrupts();
 
 	if(retATN == IEC::ATN_ERROR) {
 #ifdef CONSOLE_DEBUG
@@ -464,14 +467,6 @@ void Interface::handler(void)
 		// A command is recieved
 		//BUSY_LED_ON();
 
-#ifdef CONSOLE_DEBUG
-		{
-			char buffer[60];
-			sprintf("ATNCMD: %c %s %c", cmd.Code, cmd.str, retATN);
-			Log(Information, FAC_IFACE, buffer);
-		}
-#endif
-
 		//		if(IS_FAIL == m_interfaceState)
 		//			pff = NULL;
 		//		else
@@ -479,6 +474,14 @@ void Interface::handler(void)
 
 		// Make cmd string null terminated
 		cmd.str[cmd.strlen] = '\0';
+#ifdef CONSOLE_DEBUG
+		{
+			char buffer[60];
+			sprintf(buffer, "ATNCMD code:%d cmd: %s (len: %d) retATN: %d", cmd.code, cmd.str, cmd.strlen, retATN);
+			Log(Information, FAC_IFACE, buffer);
+		}
+#endif
+
 		// lower nibble is the channel.
 		byte chan = cmd.code bitand 0x0F;
 
@@ -512,57 +515,72 @@ void Interface::handler(void)
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
 {
 	char serCmdIOBuf[50];
-	byte lenRead;
 
 	sprintf(serCmdIOBuf, "O%u|%s\r", cmd.code bitand 0xF, cmd.str);
 	// NOTE: PI side handles BOTH file open command AND the command channel command (from the cmd.code).
 	Serial.println(serCmdIOBuf);
-	// read the PI response until a carriage return.)
-	if(lenRead = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf))) {
-		// process response into m_queuedError.
-		// Response: ><code><CR>
-		if('>' == serCmdIOBuf[0])
-			m_queuedError = static_cast<byte>(atoi(&serCmdIOBuf[1]));
-		else // Unexpected response char from PI
-			m_queuedError = ErrSerialComm;
-	}
-	else // very specific error: The serial comm with the host failed.
-		m_queuedError = ErrSerialComm;
+	// Note: the pi response handling can be done LATER! We're in business with the c64 here!
 } // handleATNCmdCodeOpen
 
 
 void Interface::handleATNCmdCodeDataTalk(byte chan)
 {
+	char serCmdIOBuf[20];
+	byte lengthOrResult;
+	boolean wasSuccess = false;
+	if(lengthOrResult = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf))) {
+		// process response into m_queuedError.
+		// Response: ><code><CR>
+		if('>' == serCmdIOBuf[0]) {
+			lengthOrResult = static_cast<byte>(atoi(&serCmdIOBuf[1]));
+			wasSuccess = true;
+		}
+	}
 	if(CMD_CHANNEL == chan) {
+		m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
+		sprintf(serCmdIOBuf, "CMD Chan queudErr: %d", lengthOrResult);
+		Log(Information, FAC_IFACE, buf);
 		// Send status message
 		sendStatus();
 		// go back to OK state, we have dispatched the error to IEC host now.
 		m_queuedError = ErrOK;
 	}
-	else if(m_openState == O_INFO) {
-		// Reset and send SD card info
-		reset();
-		// TODO: interface with PI (NativeFS file system info).
-		sendListing(/*&send_sdinfo*/);
-	}
-	else if(m_openState == O_FILE_ERR) {
-		// TODO: interface with pi for error info.
-		sendListing(/*&send_file_err*/);
-	}
-	else if((m_openState == O_NOTHING) /*or (0 == pff)*/) {
-		// Say file not found
-		m_iec.sendFNF();
-	}
-	else if(m_openState == O_FILE) {
-		// Send program file
-		// TODO: interface with PI before file sending TO c64 takes place.
-		sendFile(/*(PFUNC_CHAR_VOID)(pff->getc),
-						 (PFUNC_UCHAR_VOID)(pff->eof)*/);
-	}
-	else if(m_openState == O_DIR) {
-		// Send listing
-		// TODO: interface with pi to get current file system listing.
-		sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
+	else {
+		m_openState = success ? lengthOrResult : O_NOTHING;
+		sprintf(serCmdIOBuf, "CMD Chan openState: %d", lengthOrResult);
+		Log(Information, FAC_IFACE, buf);
+
+		switch(m_openState) {
+		case O_INFO:
+			// Reset and send SD card info
+			reset();
+			// TODO: interface with PI (NativeFS file system info).
+			sendListing(/*&send_sdinfo*/);
+			break;
+
+		case O_FILE_ERR:
+			// TODO: interface with pi for error info.
+			sendListing(/*&send_file_err*/);
+			break;
+
+		case O_NOTHING: /*or (0 == pff)*/
+			// Say file not found
+			m_iec.sendFNF();
+			break;
+
+		case O_FILE:
+			// Send program file
+			// TODO: interface with PI before file sending TO c64 takes place.
+			sendFile(/*(PFUNC_CHAR_VOID)(pff->getc),
+							 (PFUNC_UCHAR_VOID)(pff->eof)*/);
+			break;
+
+		case O_DIR:
+			// Send listing
+			// TODO: interface with pi to get current file system listing.
+			sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
+			break;
+		}
 	}
 } // handleATNCmdCodeDataTalk
 

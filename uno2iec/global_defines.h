@@ -2,5 +2,6 @@
 #define GLOBAL_DEFINES_HPP
 
 #define CONSOLE_DEBUG
+//#define DEBUGLINES
 
 #endif // GLOBAL_DEFINES_HPP
