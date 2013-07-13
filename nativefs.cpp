@@ -1,11 +1,16 @@
 #include "nativefs.hpp"
 #include "logger.hpp"
+#include <QDir>
 
 using namespace Logging;
 
+namespace {
+const QString strDir(" <DIR>");
+}
+
 NativeFS::NativeFS()
 {
-}
+} // ctor
 
 bool NativeFS::openHostFile(const QString& fileName)
 {
@@ -39,6 +44,14 @@ bool NativeFS::newFile(const QString& fileName)
 	// TODO: Implement.
 	return false;
 } // newFile
+/* TODO: Move this to PI NativeFS and recode, create new file.
+byte fat_newfile(char *filename)
+{
+	// Remove and create file
+	fatRemove(filename);
+	return fatFcreate(filename);
+} // fat_newfile
+*/
 
 
 char NativeFS::getc()
@@ -80,8 +93,8 @@ bool NativeFS::putc(char c)
 
 bool NativeFS::close()
 {
-	// TODO: Implement.
-	return false;
+	closeHostFile();
+	return true;
 } // close
 
 
@@ -90,28 +103,11 @@ bool NativeFS::sendListing(ISendLine& cb)
 	Log("NATIVEFS", "sendListing: NOT YET IMPLEMENTED", warning);
 	cb.send(0, "LISTING NOT YET IMPLEMENTED.");
 	Q_UNUSED(cb);
+	QDir dir(".");
+
 	return true;
 } // sendListing
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Send SD info function
-
-bool NativeFS::sendMediaInfo(ISendLine &cb)
-{
-	Log("NATIVEFS", "sendMediaInfo.", info);
-	cb.send(0, QString("SD CARD NATIVE FS -> EXT4."));
-	cb.send(1, "HELLO FROM PI");
-	cb.send(2, "HELLO FROM ARDUINO UNO.");
-	return true;
-} // sendMediaInfo
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// FAT interfacing functions
-//
 /* TODO: Move this to PI, Native file system listing.
-const char pstr_dir[] = " <DIR>";
 void fat_send_listing(void (*send_line)(short line_no, unsigned char len, char *text))
 {
 	unsigned short s;
@@ -190,6 +186,46 @@ void fat_send_listing(void (*send_line)(short line_no, unsigned char len, char *
 }
 */
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Send SD info function
+
+bool NativeFS::sendMediaInfo(ISendLine &cb)
+{
+	// TODO: Improve this with information about the file system type AND, usage and free data.
+	Log("NATIVEFS", "sendMediaInfo.", info);
+	cb.send(0, QString("SD CARD NATIVE FS -> EXT4."));
+	cb.send(1, QString("Current Dir: %1").arg(QDir::currentPath()));
+	cb.send(2, "HELLO FROM PI!");
+	cb.send(3, "HELLO FROM ARDUINO UNO!");
+
+	return true;
+} // sendMediaInfo
+
+
+FileDriverBase::FSStatus NativeFS::status() const
+{
+	return FileDriverBase::status();
+} // status
+
+
+bool NativeFS::setCurrentDirectory(const QString& dir)
+{
+	bool wasSuccess = QDir::setCurrent(dir);
+	if(wasSuccess)
+		Log("NATIVEFS", QString("Changing current directory to: %1").arg(QDir::currentPath()), success);
+	else
+		Log("NATIVEFS", QString("Failed changing current directory to: %1").arg(dir), error);
+	return wasSuccess;
+} // setCurrentDirectory
+
+
+// Command to the command channel.
+IOErrorMessage NativeFS::cmdChannel(const QString& cmd)
+{
+	Q_UNUSED(cmd);
+	return ErrDriveNotReady;
+} // cmdChannel
 // Fat parsing command channel
 //
 /* TODO: Move this to PI, Native file system command.
@@ -245,27 +281,3 @@ unsigned char fat_cmd(char *c)
 	return ret;
 }
 */
-
-/* TODO: Move this to PI NativeFS and recode, create new file.
-byte fat_newfile(char *filename)
-{
-	// Remove and create file
-	fatRemove(filename);
-	return fatFcreate(filename);
-} // fat_newfile
-*/
-
-FileDriverBase::FSStatus NativeFS::status() const
-{
-	// TODO: Implement or skip to base?
-	return NOT_READY;
-}
-
-bool NativeFS::setCurrentDirectory(const QString& dir)
-{
-	Q_UNUSED(dir);
-	Log("NATIVEFS", "setCurrentDirectory: NOT YET IMPLEMENTED", warning);
-	// TODO: Implement actual setting of current directory.
-	return false;
-} // setCurrentDirectory
-

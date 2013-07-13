@@ -1,11 +1,13 @@
 //
-// Title        : MMC2IEC - interface implementation
-// Author       : Lars Pontoppidan
-// Version      : 0.7
-// Target MCU   : AtMega32(L) at 8 MHz
+// Title        : RPI2UNO2IEC - interface implementation, arduino side.
+// Author       : Lars Wadefalk
+// Version      : 0.1
+// Target MCU   : Arduino Uno AtMega328(H, 5V) at 16 MHz, 2KB SRAM, 32KB flash, 1KB EEPROM.
 //
 // CREDITS:
 // --------
+// The RPI2UNO2IEC application is inspired by Lars Pontoppidan's MMC2IEC project.
+// It has been ported to C++.
 // The MMC2IEC application is inspired from Jan Derogee's 1541-III project for
 // PIC: http://jderogee.tripod.com/
 // This code is a complete reimplementation though, which includes some new
@@ -15,7 +17,7 @@
 // The interface connects all the loose ends in MMC2IEC.
 //
 // Commands from the IEC communication are interpreted, and the appropriate data
-// from either FAT, a D64 or T64 image is send back.
+// from either Native, a D64 or T64 image is sent back.
 //
 // DISCLAIMER:
 // The author is in no way responsible for any problems or damage caused by
@@ -25,7 +27,6 @@
 // This code is distributed under the GNU Public License
 // which can be found at http://www.gnu.org/licenses/gpl.txt
 //
-
 
 #include <string.h>
 #include "global_defines.h"
@@ -41,22 +42,6 @@ namespace {
 IEC::ATNCmd cmd;
 char serCmdIOBuf[80];
 byte scrollBuffer[30];
-
-// The previous cmd is copied to this string:
-char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
-
-const char errorStr0[] = "00,OK";
-const char errorStr1[] = "21,READ ERROR";
-const char errorStr2[] = "26,WRITE PROTECT ON";
-const char errorStr3[] = "33,SYNTAX ERROR";
-const char errorStr4[] = "62,FILE NOT FOUND";
-const char errorStr5[] = "63,FILE EXISTS";
-const char errorStr6[] = "73,MMC2IEC DOS V0.8";
-const char errorStr7[] = "74,DRIVE NOT READY";
-const char errorStr8[] = "75,RPI SERIAL ERR.";
-const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7, errorStr8 };
-
-const char errorEnding[] = ",00,00";
 } // unnamed namespace
 
 
@@ -64,9 +49,6 @@ Interface::Interface(IEC& iec)
 	: m_iec(iec), m_pDisplay(0)
 {
 	reset();
-
-	// TODO: Say initial startup hello here. Scroll on max7219 or something.
-	//
 } // ctor
 
 
@@ -74,15 +56,6 @@ void Interface::reset(void)
 {
 	m_openState = O_NOTHING;
 	m_queuedError = ErrIntro;
-
-	//	if(sdReset()) {
-	//		fatReset();
-	//		fatInit();
-	//	}
-
-	//	if((fatGetStatus() bitand FAT_STATUS_OK) and sdCardOK) {
-	//		interface_state = I_FAT;
-	//	}
 	m_interfaceState = IS_NATIVE;
 } // reset
 
@@ -104,248 +77,6 @@ void Interface::sendStatus(void)
 	m_iec.sendEOI(errorEnding[i]);
 } // sendStatus
 
-
-const char pstr_file_err[] = "ERROR: FILE FORMAT";
-
-void send_file_err(void (*send_line)(word lineNo, byte len, char* text))
-{
-	char buffer[19];
-
-	memcpy(buffer, pstr_file_err, 18);
-	(send_line)(0, 18, buffer);
-} // send_file_err
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// P00 file format implementation
-//
-/* TODO: Move as P00 format to PI, recode.
-bool P00_reset(char *s)
-{
-	byte i;
-
-	// Check filetype, and skip past 26 bytes
-	if((fatFgetc() == 'C') and (fatFgetc() == '6') and (fatFgetc() == '4')) {
-
-		for(i = 0; i < 23; i++)
-			fatFgetc();
-
-		if(!fatFeof())
-			// All is ok
-			return true;
-	}
-
-	return false;
-} // P00_reset
-*/
-
-/* TODO: Move as P00 format to PI, recode.
-bool close_to_fat(void)
-{
-	// Close and back to fat
-	m_interfaceState = IS_NATIVE;
-	fatFclose();
-	return true;
-} // close_to_fat
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Dummy functions for unused function pointers
-//
-
-byte dummy_1(char c)
-{
-	return true;
-}
-
-byte dummy_2(char *s)
-{
-	return true;
-}
-
-byte dummy_cmd(char *s)
-{
-	return ErrWriteProtectOn;
-}
-
-byte dummy_no_newfile(char *s)
-{
-	return false;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// File formats definition
-//
-
-typedef  void(*PFUNC_SEND_LINE)(short line_no, unsigned char len, char *text);
-typedef          void(*PFUNC_SEND_LISTING)(PFUNC_SEND_LINE send_line);
-typedef          void(*PFUNC_VOID_VOID)(void);
-typedef unsigned char(*PFUNC_UCHAR_VOID)(void);
-typedef          char(*PFUNC_CHAR_VOID)(void);
-typedef unsigned char(*PFUNC_UCHAR_CHAR)(char);
-typedef          void(*PFUNC_VOID_CSTR)(char *s);
-typedef unsigned char(*PFUNC_UCHAR_CSTR)(char *s);
-
-#define FILE_FORMATS 5
-
-struct file_format_struct {
-	char extension[3];         // DOS extension of file format
-	PFUNC_UCHAR_CSTR   init;   // intitialize driver, cmd_str is parameter,
-	// must return true if OK
-	PFUNC_SEND_LISTING send_listing; // Send listing function.
-	PFUNC_UCHAR_CSTR   cmd;    // command channel command, must return ERR NUMBER!
-	PFUNC_UCHAR_CSTR   open;   // open file
-	PFUNC_UCHAR_CSTR   newfile;// create new empty file
-	PFUNC_CHAR_VOID    getc;   // get char from open file
-	PFUNC_UCHAR_VOID   eof;    // returns true if EOF
-	PFUNC_UCHAR_CHAR   putc;   // write char to open file, return false if failure
-	PFUNC_UCHAR_VOID   close;  // close file
-};
-
-/*
-const struct file_format_struct file_format[FILE_FORMATS] = {
-	{{0,0,0}, &dummy_2, &fat_send_listing, &fat_cmd,
-	 &fatFopen, &fat_newfile, &fatFgetc, &fatFeof, &fatFputc, &fatFclose},
-
-	{{'D','6','4'}, &D64_reset, &D64_send_listing, &dummy_cmd,
-	 &D64_fopen, &dummy_no_newfile, &D64_fgetc, &D64_feof, &dummy_1, &D64_fclose},
-
-	{{'M','2','I'}, &M2I_init, &M2I_send_listing, &M2I_cmd,
-	 &M2I_open, &M2I_newfile, &M2I_getc, &M2I_eof, &M2I_putc, &M2I_close},
-
-	{{'T','6','4'}, &T64_reset, &T64_send_listing, &dummy_cmd,
-	 &T64_fopen, &dummy_no_newfile, &T64_fgetc, &T64_feof, &dummy_1, &T64_fclose},
-
-	{{'P','0','0'}, &P00_reset, 0, &dummy_cmd,
-	 &dummy_2, &dummy_no_newfile, &fatFgetc, &fatFeof, &dummy_1, &close_to_fat}
-};
-*/
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Interface implementation
-//
-
-
-// Parse LOAD command, open either file/directory/d64/t64
-//
-/*
-void Interface::openFile(const struct file_format_struct *pff)
-{
-	byte i;
-
-	// fall back result
-	m_openState = O_NOTHING;
-
-	// Check double back arrow first
-	if((cmd.str[0] == 95) and (cmd.str[1] == 95)) {
-		// reload sdcard and send info
-		m_interfaceState = IS_FAIL;
-		m_openState = O_INFO;
-	}
-	else if(!sdCardOK or !(fatGetStatus() & FAT_STATUS_OK)) {
-		// User tries to open stuff and there is a problem. Status is fail
-		m_queuedError = ErrDriveNotReady;
-		m_interfaceState = IS_FAIL;
-	}
-	else if(cmd.str[0] == '$') {
-		// Send directory listing of current dir
-		m_openState = O_DIR;
-	}
-	else if(cmd.str[0] == 95) {    // back arrow sign on CBM
-		// One back arrow, exit current file format or cd..
-		if(m_interfaceState == IS_NATIVE) {
-			if(fatCddir(".."))
-				m_openState = O_DIR;
-		}
-		else if(m_interfaceState not_eq IS_FAIL) {
-			// We are in some other state, exit to FAT and show current dir
-			m_interfaceState = IS_NATIVE;
-			m_openState = O_DIR;
-		}
-	}
-	else {
-
-		// It was not a special command, remove eventual CBM dos prefix
-
-		if(removeFilePrefix()) {
-			// @ detected, save with replace:
-			m_openState = O_SAVE_REPLACE;
-		}
-		else {
-			// open file depending on interface state
-
-			if(m_interfaceState == IS_NATIVE) {
-				// Exchange 0xFF with tilde to allow shortened long filenames
-				for(i = 0; i < cmd.strlen; i++) {
-					if(cmd.str[i] == 0xFF)
-						cmd.str[i] = '~';
-				}
-
-				// Try if cd works, then open file, then give up
-				if(fatCddir(cmd.str)) {
-					m_openState = O_DIR;
-				}
-				else if(fatFopen(cmd.str)) {
-					// File opened, investigate filetype
-
-					for(i = 1; i < NumInterfaceStates; i++) {
-						pff = &(file_format[i]);
-						if(memcmp(&(cmd.str[cmd.strlen - 3]), pff->extension, 3) == 0)
-							break;
-					}
-
-					if(i < NumInterfaceStates) {
-						// file extension matches, change interface state
-						// call new format's reset
-						if(((PFUNC_UCHAR_CSTR)(pff->init))(cmd.str)) {
-							m_interfaceState = i;
-							// see if this format supports listing
-							if(pff->send_listing == NULL)
-								m_openState = O_FILE;
-							else
-								m_openState = O_DIR;
-						}
-						else {
-							// Error initializing driver, back to fat
-							m_interfaceState = IS_NATIVE;
-							m_openState = O_FILE_ERR;
-						}
-					}
-					else {
-						// No specific file format for this file, stay in FAT and send as .PRG
-						m_openState = O_FILE;
-					}
-
-				}
-				else {
-					// File not found
-					m_queuedError = ErrFileNotFound;
-				}
-			}
-			else if(m_interfaceState not_eq IS_FAIL) {
-
-				// Call file format's open command
-				i = ((PFUNC_UCHAR_CSTR)(pff->open))(cmd.str);
-
-				if(i)
-					m_openState = O_FILE;
-				else // File not found
-					m_queuedError = ErrFileNotFound;
-			}
-		}
-	}
-
-	// Backup cmd string
-	strcpy(oldCmdStr, cmd.str);
-} // openFile
-*/
 
 // send basic line callback
 void Interface::sendLineCallback(byte len, char* text)
@@ -415,20 +146,6 @@ void Interface::sendListing()
 			}
 		}
 	} while('L' == resp); // keep looping for more lines as long as we got an 'L' indicating we haven't reached end.
-
-	// So here the idea:
-	// 1. Ask pi for line, "L"
-	// 2. For first call, pi will fetch all the lines from current disk system (with callback interfaces) and then
-	// collect them in a StringList.
-	// Then it will send the first line in the QStringList as "L<byte_with_length><bytes>, and remove it from top of stringlist.
-	// 3. We will keep asking for next line, if no more lines coming from Pi, then it will answer with little
-	// l instead, and no subsequent bytes (sender)(&send_line_callback);
-
-// experiment: Does it work?
-//	noInterrupts();
-//	sendLineCallback(10, 11, "PRINT \"HEJ\"");
-//	sendLineCallback(20, 7, "GOTO 10");
-//	interrupts();
 
 	// End program
 	noInterrupts();
@@ -503,32 +220,7 @@ void Interface::saveFile()
 
 void Interface::handler(void)
 {
-//	const struct file_format_struct *pff;
-
 	//  m_iec.setDeviceNumber(8);
-
-	// old code for resetting if something's gone bad with SD card detection etc.
-	//#ifdef SDCARD_DETECT
-	//	if(!SDCARD_DETECT) {
-	//		// No SD card, reset state
-	//		BUSY_LED_OFF();
-	//		DIRTY_LED_OFF();
-	//		interface_state = IFail;
-	//		sdCardOK = FALSE;
-	//	}
-	//	else {
-	//		if(!sdCardOK) {
-	//			// Limit reset cycle
-	//			delay(50);
-
-	//			// Try reseting SD card
-	//			BUSY_LED_ON();
-	//			Interface_reset();
-	//			BUSY_LED_OFF();
-
-	//		}
-	//	}
-	//#endif
 
 	IEC::ATNCheck retATN = IEC::ATN_IDLE;
 	if(m_iec.checkRESET()) {
@@ -550,15 +242,7 @@ void Interface::handler(void)
 
 	// Did anything happen from the host side?
 	if(retATN not_eq IEC::ATN_IDLE) {
-		// A command is recieved
-		//BUSY_LED_ON();
-
-		//		if(IS_FAIL == m_interfaceState)
-		//			pff = NULL;
-		//		else
-		//			pff = &(file_format[m_interfaceState]);
-
-		// Make cmd string null terminated
+		// A command is recieved, make cmd string null terminated
 		cmd.str[cmd.strlen] = '\0';
 #ifdef CONSOLE_DEBUG
 //		{

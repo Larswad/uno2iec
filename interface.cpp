@@ -232,7 +232,7 @@ void Interface::processCloseCommand()
 	data.append('N').append((char)name.length()).append(name);
 	m_port.write(data);
 	m_port.flush();
-	Log(FAC_IFACE, QString("Returning file name: %1").arg(name), info);
+	Log(FAC_IFACE, QString("Returning last opened file name: %1").arg(name), info);
 } // processCloseCommand
 
 
@@ -255,10 +255,9 @@ void Interface::processLineRequest()
 			// last line was produced. Send back the ending char.
 			m_port.write("l");
 			m_port.flush();
-			Log(FAC_IFACE, "Last line written to arduino.", success);
+			Log(FAC_IFACE, "Last directory line written to arduino.", success);
 		}
 		else {
-			Log(FAC_IFACE, QString("Writing line to arduino len: %1, data: %2").arg(m_dirListing.first().length()).arg(m_dirListing.first().data()), info);
 			m_port.write(m_dirListing.first().data(), m_dirListing.first().size());
 			m_port.flush();
 			m_dirListing.removeFirst();
@@ -316,3 +315,148 @@ void Interface::buildDirectoryOrMediaList()
 			Log(FAC_IFACE, QString("Media info listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
 	}
 } // buildDirectoryOrMediaList
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// File formats definition
+//
+/*
+typedef  void(*PFUNC_SEND_LINE)(short line_no, unsigned char len, char *text);
+typedef          void(*PFUNC_SEND_LISTING)(PFUNC_SEND_LINE send_line);
+typedef          void(*PFUNC_VOID_VOID)(void);
+typedef unsigned char(*PFUNC_UCHAR_VOID)(void);
+typedef          char(*PFUNC_CHAR_VOID)(void);
+typedef unsigned char(*PFUNC_UCHAR_CHAR)(char);
+typedef          void(*PFUNC_VOID_CSTR)(char *s);
+typedef unsigned char(*PFUNC_UCHAR_CSTR)(char *s);
+
+#define FILE_FORMATS 5
+
+struct file_format_struct {
+	char extension[3];         // DOS extension of file format
+	PFUNC_UCHAR_CSTR   init;   // intitialize driver, cmd_str is parameter,
+	// must return true if OK
+	PFUNC_SEND_LISTING send_listing; // Send listing function.
+	PFUNC_UCHAR_CSTR   cmd;    // command channel command, must return ERR NUMBER!
+	PFUNC_UCHAR_CSTR   open;   // open file
+	PFUNC_UCHAR_CSTR   newfile;// create new empty file
+	PFUNC_CHAR_VOID    getc;   // get char from open file
+	PFUNC_UCHAR_VOID   eof;    // returns true if EOF
+	PFUNC_UCHAR_CHAR   putc;   // write char to open file, return false if failure
+	PFUNC_UCHAR_VOID   close;  // close file
+};
+*/
+
+/*
+const struct file_format_struct file_format[FILE_FORMATS] = {
+	{{0,0,0}, &dummy_2, &fat_send_listing, &fat_cmd,
+	 &fatFopen, &fat_newfile, &fatFgetc, &fatFeof, &fatFputc, &fatFclose},
+
+	{{'D','6','4'}, &D64_reset, &D64_send_listing, &dummy_cmd,
+	 &D64_fopen, &dummy_no_newfile, &D64_fgetc, &D64_feof, &dummy_1, &D64_fclose},
+
+	{{'M','2','I'}, &M2I_init, &M2I_send_listing, &M2I_cmd,
+	 &M2I_open, &M2I_newfile, &M2I_getc, &M2I_eof, &M2I_putc, &M2I_close},
+
+	{{'T','6','4'}, &T64_reset, &T64_send_listing, &dummy_cmd,
+	 &T64_fopen, &dummy_no_newfile, &T64_fgetc, &T64_feof, &dummy_1, &T64_fclose},
+
+	{{'P','0','0'}, &P00_reset, 0, &dummy_cmd,
+	 &dummy_2, &dummy_no_newfile, &fatFgetc, &fatFeof, &dummy_1, &close_to_fat}
+};
+*/
+
+/*
+const char pstr_file_err[] = "ERROR: FILE FORMAT";
+
+void send_file_err(void (*send_line)(word lineNo, byte len, char* text))
+{
+	char buffer[19];
+
+	memcpy(buffer, pstr_file_err, 18);
+	(send_line)(0, 18, buffer);
+} // send_file_err
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// P00 file format implementation
+//
+/* TODO: Move as P00 format to PI, recode.
+bool P00_reset(char *s)
+{
+	byte i;
+
+	// Check filetype, and skip past 26 bytes
+	if((fatFgetc() == 'C') and (fatFgetc() == '6') and (fatFgetc() == '4')) {
+
+		for(i = 0; i < 23; i++)
+			fatFgetc();
+
+		if(!fatFeof())
+			// All is ok
+			return true;
+	}
+
+	return false;
+} // P00_reset
+*/
+
+/* TODO: Move as P00 format to PI, recode.
+bool close_to_fat(void)
+{
+	// Close and back to fat
+	m_interfaceState = IS_NATIVE;
+	fatFclose();
+	return true;
+} // close_to_fat
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Dummy functions for unused function pointers
+//
+
+/*
+byte dummy_1(char c)
+{
+	return true;
+}
+
+byte dummy_2(char *s)
+{
+	return true;
+}
+
+byte dummy_cmd(char *s)
+{
+	return ErrWriteProtectOn;
+}
+
+byte dummy_no_newfile(char *s)
+{
+	return false;
+}
+*/
+
+/*
+// The previous cmd is copied to this string:
+char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
+
+const char errorStr0[] = "00,OK";
+const char errorStr1[] = "21,READ ERROR";
+const char errorStr2[] = "26,WRITE PROTECT ON";
+const char errorStr3[] = "33,SYNTAX ERROR";
+const char errorStr4[] = "62,FILE NOT FOUND";
+const char errorStr5[] = "63,FILE EXISTS";
+const char errorStr6[] = "73,MMC2IEC DOS V0.8";
+const char errorStr7[] = "74,DRIVE NOT READY";
+const char errorStr8[] = "75,RPI SERIAL ERR.";
+const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7, errorStr8 };
+
+const char errorEnding[] = ",00,00";
+*/

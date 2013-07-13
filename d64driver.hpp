@@ -83,6 +83,13 @@ public:
 	}
 	// Send realistic $ file basic listing, line by line
 	bool sendListing(ISendLine& cb);
+	// Whether this file system supports media info or not (true == supports it).
+	bool supportsMediaInfo() const
+	{
+		return true;
+	}
+	// Send information about file system (whether it is OK, sizes etc.).
+	bool sendMediaInfo(ISendLine &cb);
 
 	class __attribute__((packed)) DirEntry
 	{

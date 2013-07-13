@@ -52,6 +52,12 @@ public:
 	{
 		return true;
 	}
+	// Whether this file system supports media info or not (true == supports it).
+	bool supportsMediaInfo() const
+	{
+		return true;
+	}
+	bool sendMediaInfo(ISendLine &cb);
 
 	// Open a file by filename: Returns true if successfull
 	bool fopen(const QString &fileName);
@@ -71,7 +77,8 @@ public:
 
 private:
 
-	typedef struct {
+	typedef struct __attribute__((packed))
+	{
 		uchar c64sFileType;
 		uchar d64FileType;
 		uchar startAddressLo;
@@ -83,6 +90,19 @@ private:
 		uchar unused2[4];
 		uchar fileName[16];
 	} DirEntry; // 32 bytes
+
+
+	typedef struct __attribute__((packed))
+	{
+		uchar signature[32];
+		ushort versionNo;
+		uchar maxEntriesLo;
+		uchar maxEntriesHi;
+		uchar usedEntriesLo;
+		uchar usedEntriesHi;
+		uchar reserved[2];
+		uchar tapeName[24];
+	} Header; // 32 bytes
 
 	// The real host file system D64 image file:
 	QFile m_hostFile;

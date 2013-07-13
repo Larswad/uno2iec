@@ -43,6 +43,8 @@ public:
 	bool isEOF() const;
 	bool putc(char c);
 	bool close();
+	// Command to the command channel.
+	IOErrorMessage cmdChannel(const QString& cmd);
 
 	FSStatus status() const;
 	bool setCurrentDirectory(const QString& dir);
