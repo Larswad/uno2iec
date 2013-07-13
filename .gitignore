@@ -12,4 +12,5 @@ object_script.*
 release/
 debug/
 Makefile*
+*pro.user*
 
