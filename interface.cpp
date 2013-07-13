@@ -20,9 +20,22 @@ Interface::Interface(QextSerialPort& port)
 	m_fsList.append(&m_d64);
 	m_fsList.append(&m_t64);
 //	m_fsList.append(&m_m2i);
-
 	m_currFileDriver = &m_native;
-}
+
+} // ctor
+
+
+void Interface::reset()
+{
+	m_currFileDriver = &m_native;
+	m_queuedError	= ErrOK;
+	m_openState = O_NOTHING;
+	m_dirListing.empty();
+	m_lastCmdString.clear();
+	foreach(FileDriverBase* fs, m_fsList)
+		fs->closeHostFile(); // TODO: Better with a reset or init method on all file systems.
+} // reset
+
 
 // This function crops cmd string of initial @ or until :
 // Returns true if @ was detected

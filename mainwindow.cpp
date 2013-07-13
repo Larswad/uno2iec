@@ -197,6 +197,7 @@ void MainWindow::on_resetArduino_clicked()
 #ifdef HAS_WIRINGPI
 	Log("MAIN", "Moving to disconnected state and resetting arduino...", warning);
 	m_isConnected = false;
+	m_iface.reset();
 	// pull pin 23 to reset arduino.
 	pinMode(23, OUTPUT);
 	digitalWrite(23, 0);
