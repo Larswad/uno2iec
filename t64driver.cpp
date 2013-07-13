@@ -202,7 +202,7 @@ bool T64::getDirEntry(DirEntry& dir)
 {
 	// Check if correct status
 	if((m_status bitand IMAGE_OK) and (m_status bitand DIR_OPEN)
-		 and !(m_status bitand DIR_EOF)) {
+		 and not(m_status bitand DIR_EOF)) {
 
 		uchar* pEntry = reinterpret_cast<uchar*>(&dir);
 		// OK, copy current dir to target
@@ -228,16 +228,16 @@ FileDriverBase::FSStatus T64::status(void) const
 
 // Opens a file. Filename * will open first file with PRG status
 //
-bool T64::fopen(char *filename)
+bool T64::fopen(const QString& fileName)
 {
 	DirEntry dir;
 	bool found = false;
 	uchar len;
 
-	len = strlen(filename);
+	len = fileName.length();
 
-	if(len > 16)
-		len = 16;
+	if(fileName.length() > (int)sizeof(dir.fileName))
+		len = sizeof(dir.fileName);
 
 	seekFirstDir();
 
@@ -248,24 +248,23 @@ bool T64::fopen(char *filename)
 			found = true;
 			uchar i;
 			for(i = 0; i < len and found; i++) {
-				if('?' == filename[i])
+				if('?' == fileName.at(i))
 					; // This character is ignored
-				else if('*' == filename[i]) // No need to check more chars
+				else if('*' == fileName.at(i)) // No need to check more chars
 					break;
 				else
-					found = filename[i] == dir.fileName[i];
+					found = fileName.at(i) == dir.fileName[i];
 			}
 
 			// If searched to end of filename, dir.file_name must end here also
 			if(found and i == len)
-				if(len < 16)
+				if(len < sizeof(dir.fileName))
 					found = ' ' == dir.fileName[i];
 		}
 	}
 
 	if(found) {
 		// File found. Set state vars and jump to file
-
 		m_fileStartAddress[0] = dir.startAddressLo;
 		m_fileStartAddress[1] = dir.startAddressHi;
 
@@ -278,7 +277,7 @@ bool T64::fopen(char *filename)
 
 		hostSeek(dir.fileOffset);
 
-		m_lastOpenedFileName = filename;
+		m_lastOpenedFileName = fileName;
 		m_status = IMAGE_OK bitor FILE_OPEN;
 	}
 

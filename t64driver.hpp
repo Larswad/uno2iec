@@ -54,7 +54,7 @@ public:
 	}
 
 	// Open a file by filename: Returns true if successfull
-	bool fopen(char* filename);
+	bool fopen(const QString &fileName);
 	QString openedFileName() const;
 	ushort openedFileSize() const;
 	//
