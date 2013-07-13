@@ -252,12 +252,11 @@ void Interface::processLineRequest()
 void Interface::processReadFileRequest(void)
 {
 	QByteArray data;
-	if(m_currFileDriver->isEOF())
-		data.append("E\0", 2);
-	else {
-		data.append("B1");
-		data.append(m_currFileDriver->getc());
-	}
+	char theByte = m_currFileDriver->getc();
+	data.append(m_currFileDriver->isEOF() ? 'E' : 'B');
+	data.append(1);
+	data.append(theByte);
+
 	m_port.write(data.data(), data.size());
 } // processReadFileRequest
 

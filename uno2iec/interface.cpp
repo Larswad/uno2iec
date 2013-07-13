@@ -448,7 +448,7 @@ void Interface::sendFile()
 			break;
 		resp = serCmdIOBuf[0];
 		len = serCmdIOBuf[1];
-		if('B' == len) {
+		if('B' == resp or 'E' == resp) {
 			byte actual = Serial.readBytes(serCmdIOBuf, len);
 			if(actual not_eq len) {
 				Log(Error, FAC_IFACE, "Less than expected bytes, stopping.");
@@ -458,7 +458,10 @@ void Interface::sendFile()
 			// so we get some bytes, send them to CBM.
 			for(byte i = 0; success and i < len; ++i) { // End if sending to CBM fails.
 				noInterrupts();
-				success = m_iec.send(c);
+				if(resp == 'E' and i == len - 1)
+					success = m_iec.sendEOI(serCmdIOBuf[i]); // indicate end of file.
+				else
+					success = m_iec.send(serCmdIOBuf[i]);
 				interrupts();
 			}
 		}
@@ -466,10 +469,6 @@ void Interface::sendFile()
 			Log(Error, FAC_IFACE, "Got unexpected command response char.");
 	} while(resp == 'B'); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
 
-	// indicate end of file.
-	noInterrupts();
-	m_iec.sendEOI(c);
-	interrupts();
 } // sendFile
 
 
