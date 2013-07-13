@@ -185,7 +185,7 @@ void Interface::processOpenCommand(const QString& cmd)
 			// The code return is according to the values of the IOErrorMessage enum.
 			// send back m_queuedError to uno.
 			QByteArray data;
-			data.append('>');
+			data.append('X');
 			data.append((char)m_queuedError);
 			data.append('\r');
 			m_port.write(data);
@@ -199,7 +199,7 @@ void Interface::processOpenCommand(const QString& cmd)
 			// Response: ><code><CR>
 			// The code return is according to the values of the IOErrorMessage enum.
 			QByteArray data;
-			data.append('>');
+			data.append('X');
 			data.append((char)m_openState);
 			data.append('\r');
 			m_port.write(data);
