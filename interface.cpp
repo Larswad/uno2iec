@@ -235,7 +235,7 @@ void Interface::processLineRequest()
 		}
 		else {
 			Log(FAC_IFACE, QString("Writing line to arduino len: %1, data: %2").arg(m_dirListing.first().length()).arg(m_dirListing.first().data()), info);
-			m_port.write(m_dirListing.first().data());
+			m_port.write(m_dirListing.first().data(), m_dirListing.first().size());
 			m_port.flush();
 			m_dirListing.removeFirst();
 		}
