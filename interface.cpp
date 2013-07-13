@@ -234,7 +234,7 @@ void Interface::processLineRequest()
 			Log(FAC_IFACE, "Last line written to arduino.", success);
 		}
 		else {
-			m_port.write(reinterpret_cast<char*>(m_dirListing.first().data()));
+			m_port.write(m_dirListing.first().data());
 			m_port.flush();
 			m_dirListing.removeFirst();
 			Log(FAC_IFACE, "Writing line to arduino", info);
