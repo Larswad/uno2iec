@@ -109,7 +109,7 @@ void Interface::openFile(const QString& cmdString)
 					QList<FileDriverBase*>::iterator i;
 					for(i = m_fsList.begin(); i < m_fsList.end(); ++i) {
 						// if extension matches last three characters in any file system, then we set that filesystem into use.
-						if(cmd.endsWith((*i)->extension())) {
+						if(!(*i)->extension().isEmpty() and cmd.endsWith((*i)->extension())) {
 							m_currFileDriver = *i;
 							break;
 						}
@@ -205,7 +205,7 @@ void Interface::processLineRequest()
 {
 	if(O_INFO == m_openState or O_DIR == m_openState) {
 		// TODO: implement.
-		if(m_dirListing.empty()) {
+		if(m_dirListing.isEmpty()) {
 			// last line was produced. Send back the ending char.
 			m_port.write("l");
 		}
