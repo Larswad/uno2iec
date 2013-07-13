@@ -326,7 +326,7 @@ bool T64::sendListing(ISendLine& cb)
 		// Determine if dir entry is valid:
 		if(0 not_eq dir.c64sFileType and 0 not_eq dir.d64FileType) {
 			// Send filename, which is padded with spaces, line number is just zero.
-			cb.send(0, QString("  \x22%1\x22").arg(reinterpret_cast<char*>(dir.fileName)));
+			cb.send(0, QString("  \"%1\"").arg(QString::fromLocal8Bit(reinterpret_cast<char*>(dir.fileName), sizeof(dir.fileName))));
 		}
 	}
 	// Write line with TAPE_END
