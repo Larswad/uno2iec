@@ -315,8 +315,8 @@ bool T64::sendListing(ISendLine& cb)
 		name += 0xA0 == c ? ' ' : c; // Convert padding A0 to spaces
 	}
 
-	name[16] = '\x22'; // Ending "
-	cb.send(0, QString("\x12\x22%s").arg(name));
+	name[16] = '"'; // Ending quote
+	cb.send(0, QString("\x12\"%1").arg(name));
 
 	// Now for the list entries
 	seekFirstDir();
@@ -326,7 +326,7 @@ bool T64::sendListing(ISendLine& cb)
 		// Determine if dir entry is valid:
 		if(0 not_eq dir.c64sFileType and 0 not_eq dir.d64FileType) {
 			// Send filename, which is padded with spaces, line number is just zero.
-			cb.send(0, QString("  \x22%s\x22").arg(reinterpret_cast<char*>(dir.fileName)));
+			cb.send(0, QString("  \x22%1\x22").arg(reinterpret_cast<char*>(dir.fileName)));
 		}
 	}
 	// Write line with TAPE_END

@@ -718,7 +718,7 @@ void Interface::handleATNCmdClose()
 		byte actual = Serial.readBytes(serCmdIOBuf, len);
 		if(len == actual) {
 			serCmdIOBuf[len] = '\0';
-			strcpy((char*)scrollBuffer, "LOADED: ");
+			strcpy((char*)scrollBuffer, "   LOADED: ");
 			strcat((char*)scrollBuffer, serCmdIOBuf);
 			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);
