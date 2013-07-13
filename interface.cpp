@@ -204,14 +204,15 @@ void Interface::processOpenCommand(const QString& cmd)
 void Interface::processLineRequest()
 {
 	if(O_INFO == m_openState or O_DIR == m_openState) {
-		// TODO: implement.
 		if(m_dirListing.isEmpty()) {
 			// last line was produced. Send back the ending char.
 			m_port.write("l");
+			Log(FAC_IFACE, "Last line written to arduino.", success);
 		}
 		else {
 			m_port.write(reinterpret_cast<char*>(m_dirListing.first().data()));
 			m_dirListing.removeFirst();
+			Log(FAC_IFACE, "Writing line to arduino", info);
 		}
 	}
 	else {
@@ -244,7 +245,7 @@ void Interface::buildDirectoryOrMediaList()
 	if(!m_currFileDriver->sendListing(*this))
 		Log(FAC_IFACE, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
 	else
-		Log(FAC_IFACE, QString("Directory listing ok. Ready waiting for line requests from arduino."), success);
+		Log(FAC_IFACE, QString("Directory listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
 	}
 	else if(O_INFO == m_openState) {
 		// TODO: implement.
