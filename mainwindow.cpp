@@ -118,7 +118,7 @@ void MainWindow::onDataAvailable()
 				m_iface.processLineRequest();
 				break;
 
-			case 'B':
+			case 'R':
 				m_iface.processReadFileRequest();
 				break;
 

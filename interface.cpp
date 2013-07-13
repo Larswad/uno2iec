@@ -287,7 +287,10 @@ void Interface::buildDirectoryOrMediaList()
 		Log(FAC_IFACE, QString("Directory listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
 	}
 	else if(O_INFO == m_openState) {
-		// TODO: implement.
+		Log(FAC_IFACE, QString("Producing media info for FS: \"%1\"...").arg(m_currFileDriver->extension()), warning);
+		if(!m_currFileDriver->sendMediaInfo(*this))
+			Log(FAC_IFACE, QString("Media info listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
+		else
+			Log(FAC_IFACE, QString("Media info listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
 	}
-
 } // buildDirectoryOrMediaList

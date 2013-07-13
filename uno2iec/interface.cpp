@@ -444,8 +444,10 @@ void Interface::sendFile()
 	do {
 		Serial.write('R'); // ask for a byte
 		byte len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
-		if(2 not_eq len)
+		if(2 not_eq len) {
+			Log(Error, FAC_IFACE, "Less than expected 2 bytes, stopping.");
 			break;
+		}
 		resp = serCmdIOBuf[0];
 		len = serCmdIOBuf[1];
 		if('B' == resp or 'E' == resp) {
@@ -634,13 +636,11 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 		case O_FILE:
 			// Send program file
-			// TODO: interface with PI before file sending TO CBM takes place.
 			sendFile();
 			break;
 
 		case O_DIR:
 			// Send listing
-			// TODO: interface with pi to get current file system listing.
 			sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
 			break;
 		}
