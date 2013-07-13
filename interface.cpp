@@ -107,12 +107,12 @@ void Interface::openFile(const QString& cmdString)
 				else if(m_native.openHostFile(cmd)) {
 					// File opened, investigate filetype
 					QList<FileDriverBase*>::iterator i;
-					Log("IFACE", QString("Searching for driver: %1 %2").arg(cmd.right(3)).arg(cmd), info);
 					for(i = m_fsList.begin(); i < m_fsList.end(); ++i) {
 						// if extension matches last three characters in any file system, then we set that filesystem into use.
-						if((*i)->extension() == cmd.right(3))
+						if(cmd.endsWith((*i)->extension())) {
 							m_currFileDriver = *i;
 							break;
+						}
 					}
 
 					if(i not_eq m_fsList.end()) {
