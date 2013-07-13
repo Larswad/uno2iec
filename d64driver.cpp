@@ -122,7 +122,7 @@ void D64::seekBlock(uchar track, uchar sector)
 	uchar i;
 
 #ifdef CONSOLE_DEBUG
-	qDebug() << "seekblock: " << track << " " << sector << " ";
+	//qDebug() << "seekblock: " << track << " " << sector << " ";
 #endif
 
 	// Change 1 based track notion to 0 based
@@ -149,7 +149,7 @@ void D64::seekBlock(uchar track, uchar sector)
 	absOffset = absSector * 256;
 
 #ifdef CONSOLE_DEBUG
-	qDebug() << absOffset << endl;
+	//qDebug() << absOffset << endl;
 #endif
 
 	// Seek to that position if possible

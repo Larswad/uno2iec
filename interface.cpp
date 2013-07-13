@@ -217,6 +217,7 @@ void Interface::processLineRequest()
 	}
 	else {
 		// TODO: This is a strange error state. return something to CBM.
+		Log(FAC_IFACE, "Strange state.", error);
 	}
 
 } // processOpenCommand
