@@ -431,8 +431,9 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 boolean IEC::checkRESET()
 {
-	// hmmm. Is this all todo?
-	return readRESET();
+	return false;
+//	// hmmm. Is this all todo?
+//	return readRESET();
 } // checkATN
 
 

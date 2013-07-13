@@ -9,102 +9,90 @@ NativeFS::NativeFS()
 
 bool NativeFS::openHostFile(const QString& fileName)
 {
-	Q_UNUSED(fileName);
-	// TODO: open file here.
-	return true;
-}
+	return fopen(fileName);
+} // openHostFile
+
 
 void NativeFS::closeHostFile()
 {
-}
+	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+		m_hostFile.close();
+	m_status = NOT_READY;
+} // closeHostFile
 
 
 bool NativeFS::fopen(const QString& fileName)
 {
-	Q_UNUSED(fileName);
+	closeHostFile();
+	m_hostFile.setFileName(fileName);
 	Log("NATIVEFS", "fopen: NOT YET IMPLEMENTED", warning);
-	// TODO: Implement.
-	return false;
+	bool isOpen = m_hostFile.open(QIODevice::ReadOnly);
+	m_status = isOpen ? FILE_OPEN : NOT_READY;
+
+	return isOpen;
 } // fopen
+
 
 bool NativeFS::newFile(const QString& fileName)
 {
 	Q_UNUSED(fileName);
 	// TODO: Implement.
 	return false;
-}
+} // newFile
+
 
 char NativeFS::getc()
 {
-	// TODO: Implement.
-	return 0;
-}
+	char theByte;
+	qint64 numRead(m_hostFile.read(&theByte, 1));
+	if(numRead < 1) // shouldn't happen?
+		m_status = FILE_EOF;
+
+	return theByte;
+} // getc
+
 
 bool NativeFS::isEOF() const
 {
-	// TODO: Implement.
-	return false;
-}
+	return m_hostFile.atEnd();
+} // isEOF
 
-bool NativeFS::putc()
+
+bool NativeFS::putc(char c)
 {
+	qint64 written = m_hostFile.write(&c, 1);
 	// TODO: Implement.
-	return false;
-}
+	return 1 == written;
+} // putc
+
 
 bool NativeFS::close()
 {
 	// TODO: Implement.
 	return false;
-}
+} // close
+
 
 bool NativeFS::sendListing(ISendLine& cb)
 {
+	Log("NATIVEFS", "sendListing: NOT YET IMPLEMENTED", warning);
+	cb.send(0, "LISTING NOT YET IMPLEMENTED.");
 	Q_UNUSED(cb);
 	return true;
-}
+} // sendListing
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Send SD info function
 
-const char strSDState1[] = "ERROR: SD/MMC";
-const char strSDState2[] = "ERROR: FILE SYSTEM";
-const char strSDState3[] = "FAT16 OK";
-const char strSDState4[] = "FAT32 OK";
-
-/*
- * TODO: Move this to PI, recode.
-void send_sdinfo(void (*send_line)(short line_no, unsigned char len, char *text))
+bool NativeFS::sendMediaInfo(ISendLine &cb)
 {
-	char buffer[19];
-	unsigned char c;
-
-	c = fatGetStatus();
-
-	if(!sdCardOK) {
-		// SD Card not ok
-		memcpy(buffer, strSDState1, 13);
-		c = 13;
-	}
-	else if(!(c & FAT_STATUS_OK)) {
-		// File system not ok
-		memcpy(buffer, strSDState2, 18);
-		c = 18;
-	}
-	else {
-		// Everything OK, print fat status
-		if(c & FAT_STATUS_FAT32)
-			memcpy(buffer, strSDState4, 8);
-		else
-			memcpy(buffer, strSDState3, 8);
-
-		c = 8;
-	}
-	(send_line)(0, c, buffer);
-} // send_sdinfo
-*/
-
+	Log("NATIVEFS", "sendMediaInfo.", info);
+	cb.send(0, QString("SD CARD NATIVE FS -> EXT4."));
+	cb.send(1, "HELLO FROM PI");
+	cb.send(2, "HELLO FROM ARDUINO UNO.");
+	return true;
+} // sendMediaInfo
 
 ////////////////////////////////////////////////////////////////////////////////
 //

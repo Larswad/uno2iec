@@ -29,7 +29,7 @@ bool FileDriverBase::supportsMediaInfo() const
 } // supportsMediaInfo
 
 
-bool FileDriverBase::sendMediaInfo() const
+bool FileDriverBase::sendMediaInfo(ISendLine& /*cb*/)
 {
 	return false;
 } // sendMediaInfo

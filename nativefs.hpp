@@ -33,15 +33,20 @@ public:
 		return true;
 	}
 
+	bool sendMediaInfo(ISendLine& cb);
+
 	bool newFile(const QString& fileName);
 	bool fopen(const QString& fileName);
 	char getc();
 	bool isEOF() const;
-	bool putc();
+	bool putc(char c);
 	bool close();
 
 	FSStatus status() const;
 	bool setCurrentDirectory(const QString& dir);
+private:
+	// File to open, either as for checking its existance before trying another FS, or for reading .PRG native files.
+	QFile m_hostFile;
 
 };
 

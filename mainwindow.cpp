@@ -118,6 +118,10 @@ void MainWindow::onDataAvailable()
 				m_iface.processLineRequest();
 				break;
 
+			case 'B':
+				m_iface.processReadFileRequest();
+				break;
+
 			case '!': // register facility string.
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.

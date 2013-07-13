@@ -37,6 +37,7 @@ class Interface : public ISendLine
 public:
 	Interface(QextSerialPort& port);
 	void processOpenCommand(const QString &cmd);
+	void processReadFileRequest();
 	void reset();
 
 	// State specific: CBM requests a single directory line from us.

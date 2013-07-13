@@ -29,7 +29,7 @@ void setup()
 {
 	// Initialize serial and wait for port to open:
 	Serial.begin(DEFAULT_BAUD_RATE);
-
+	Serial.setTimeout(2000);
 	// Now we're ready to wait for the PI to respond to our connection attempts.
 	// initial connection handling.
 	waitForPeer();
@@ -83,6 +83,10 @@ void waitForPeer()
 		connected = Serial.find((char*)okString);
 	}
 
+	char dateTime[30];
+	if(Serial.readBytesUntil('\r', dateTime, sizeof(dateTime))) {
+		// TODO: parse date time and set clock.
+	}
 	registerFacilities();
 	Log(Success, 'M', "CONNECTED TO PEER.");
 	Log(Information, 'M', "READY FOR IEC COMMUNICATION.");

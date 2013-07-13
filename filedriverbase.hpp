@@ -57,7 +57,7 @@ public:
 	// Whether this file system supports media info or not (true == supports it).
 	virtual bool supportsMediaInfo() const;
 	// Send information about file system (whether it is OK, sizes etc.).
-	virtual bool sendMediaInfo() const;
+	virtual bool sendMediaInfo(ISendLine &);
 	// Command to the command channel. When not supported (overridden we just say write protect error).
 	virtual IOErrorMessage cmdChannel(const QString& cmd);
 

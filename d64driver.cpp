@@ -202,7 +202,7 @@ char D64::getc(void)
 	}
 
 	return ret;
-} // fgetc
+} // getc
 
 
 

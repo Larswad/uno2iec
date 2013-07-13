@@ -39,7 +39,7 @@
 namespace {
 // atn command buffer struct
 IEC::ATNCmd cmd;
-char serCmdIOBuf[50];
+char serCmdIOBuf[80];
 
 // The previous cmd is copied to this string:
 char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
@@ -352,7 +352,8 @@ void Interface::sendLineCallback(byte len, char* text)
 	byte i;
 
 	// Increment next line pointer
-	m_basicPtr += len + 5;
+	// note: minus two here because the line number is included in the array already.
+	m_basicPtr += len + 5 - 2;
 
 	// Send that pointer
 	m_iec.send(m_basicPtr bitand 0xFF);
@@ -371,7 +372,7 @@ void Interface::sendLineCallback(byte len, char* text)
 } // sendLineCallback
 
 
-void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
+void Interface::sendListing()
 {
 	noInterrupts();
 	// Reset basic memory pointer:
@@ -386,10 +387,11 @@ void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 	byte resp;
 	do {
 		Serial.write('L'); // initiate request.
-		resp = Serial.read();
+		Serial.readBytes(serCmdIOBuf, 2);
+		resp = serCmdIOBuf[0];
 		if('L' == resp) { // PI will give us something else if we're at last line to send.
 			// get the length as one byte: This is kind of specific: For listings we allow 256 bytes length. Period.
-			byte len = Serial.read();
+			byte len = serCmdIOBuf[1];
 			byte actual = Serial.readBytes(serCmdIOBuf, len);
 			if(len == actual) {
 				// send the bytes directly to CBM!
@@ -397,8 +399,19 @@ void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 				sendLineCallback(len, serCmdIOBuf);
 				interrupts();
 			}
-			else
-				resp = 'E'; // just to end the paint. We're out of sync or somthin'
+			else {
+				resp = 'E'; // just to end the pain. We're out of sync or somthin'
+				sprintf(serCmdIOBuf, "Expected: %d chars, got %d.", len, actual);
+				Log(Error, FAC_IFACE, serCmdIOBuf);
+			}
+		}
+		else {
+			if('l' not_eq resp) {
+				sprintf(serCmdIOBuf, "Ending at char: %d.", resp);
+				Log(Error, FAC_IFACE, serCmdIOBuf);
+				Serial.readBytes(serCmdIOBuf, sizeof(serCmdIOBuf));
+				Log(Error, FAC_IFACE, serCmdIOBuf);
+			}
 		}
 	} while('L' == resp); // keep looping for more lines as long as we got an 'L' indicating we haven't reached end.
 
@@ -417,6 +430,7 @@ void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 //	interrupts();
 
 	// End program
+	noInterrupts();
 	m_iec.send(0);
 	m_iec.sendEOI(0);
 	interrupts();
@@ -425,21 +439,37 @@ void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 
 void Interface::sendFile()
 {
-	// Send file bytes, such that the last one is sent with EOI:
-	Serial.write('R'); // ask for a byte
-	byte s = Serial.read(); // read the ack type ('B' or 'E')
-	byte c = Serial.read(); // read the byte itself
-	while('B' == s) {
-		if(!m_iec.send(c))
-			break; // end if sending to CBM fails.
-		// ask for another.
-		Serial.write('R');
-		s = Serial.read();
-		c = Serial.read();
-	}
+	// Send file bytes, such that the last one is sent with EOI.
+	byte resp;
+	do {
+		Serial.write('R'); // ask for a byte
+		byte len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
+		if(2 not_eq len)
+			break;
+		resp = serCmdIOBuf[0];
+		len = serCmdIOBuf[1];
+		if('B' == len) {
+			byte actual = Serial.readBytes(serCmdIOBuf, len);
+			if(actual not_eq len) {
+				Log(Error, FAC_IFACE, "Less than expected bytes, stopping.");
+				break;
+			}
+			bool success = true;
+			// so we get some bytes, send them to CBM.
+			for(byte i = 0; success and i < len; ++i) { // End if sending to CBM fails.
+				noInterrupts();
+				success = m_iec.send(c);
+				interrupts();
+			}
+		}
+		else if('E' not_eq resp)
+			Log(Error, FAC_IFACE, "Got unexpected command response char.");
+	} while(resp == 'B'); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
 
 	// indicate end of file.
+	noInterrupts();
 	m_iec.sendEOI(c);
+	interrupts();
 } // sendFile
 
 
@@ -485,15 +515,16 @@ void Interface::handler(void)
 	//	}
 	//#endif
 
-	noInterrupts();
 	IEC::ATNCheck retATN = IEC::ATN_IDLE;
 	if(m_iec.checkRESET()) {
 		Log(Information, FAC_IFACE, "GOT RESET, INITIAL STATE");
 		reset();
 	}
-	else
+	else {
+		noInterrupts();
 		retATN = m_iec.checkATN(cmd);
-	interrupts();
+		interrupts();
+	}
 
 	if(retATN == IEC::ATN_ERROR) {
 #ifdef CONSOLE_DEBUG
@@ -564,19 +595,18 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 {
 	byte lengthOrResult;
 	boolean wasSuccess = false;
-	if(lengthOrResult = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf))) {
+	if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 3)) {
 		// process response into m_queuedError.
-		// Response: ><code><CR>
-		serCmdIOBuf[lengthOrResult] = '\0';
-		if('>' == serCmdIOBuf[0]) {
-			lengthOrResult = static_cast<byte>(atoi(&serCmdIOBuf[1]));
+		// Response: ><code in binary><CR>
+		if('>' == serCmdIOBuf[0] and 3 == lengthOrResult) {
+			lengthOrResult = serCmdIOBuf[1];
 			wasSuccess = true;
 		}
+		else
+			Log(Error, FAC_IFACE, serCmdIOBuf);
 	}
 	if(CMD_CHANNEL == chan) {
 		m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
-		sprintf(serCmdIOBuf, "CMD Chan queueErr: %d", m_queuedError);
-		Log(Information, FAC_IFACE, serCmdIOBuf);
 		// Send status message
 		sendStatus();
 		// go back to OK state, we have dispatched the error to IEC host now.
@@ -584,15 +614,13 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 	}
 	else {
 		m_openState = wasSuccess ? lengthOrResult : O_NOTHING;
-		sprintf(serCmdIOBuf, "CMD Chan openState: %d", m_queuedError);
-		Log(Information, FAC_IFACE, serCmdIOBuf);
 
 		switch(m_openState) {
 		case O_INFO:
 			// Reset and send SD card info
 			reset();
-			// TODO: interface with PI (NativeFS file system info).
-			sendListing(/*&send_sdinfo*/);
+			// TODO: interface with PI (file system media info).
+			sendListing();
 			break;
 
 		case O_FILE_ERR:
@@ -608,8 +636,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 		case O_FILE:
 			// Send program file
 			// TODO: interface with PI before file sending TO CBM takes place.
-			sendFile(/*(PFUNC_CHAR_VOID)(pff->getc),
-							 (PFUNC_UCHAR_VOID)(pff->eof)*/);
+			sendFile();
 			break;
 
 		case O_DIR:
@@ -619,6 +646,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 			break;
 		}
 	}
+//	Log(Information, FAC_IFACE, serCmdIOBuf);
 } // handleATNCmdCodeDataTalk
 
 

@@ -72,6 +72,7 @@ void Interface::openFile(const QString& cmdString)
 		// reload sdcard and send info
 		m_currFileDriver = &m_native;
 		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
+		Log(FAC_IFACE, "Going back to NativeFS and sending media info.", info);
 	}
 	else if((CBM_EXCLAMATION == cmd.at(0).toLatin1()) and (CBM_EXCLAMATION == cmd.at(1))) {
 		// to get the media info for any OTHER media, the '!!' should be used on the CBM side.
@@ -246,6 +247,19 @@ void Interface::processLineRequest()
 	}
 
 } // processOpenCommand
+
+
+void Interface::processReadFileRequest(void)
+{
+	QByteArray data;
+	if(m_currFileDriver->isEOF())
+		data.append("E\0", 2);
+	else {
+		data.append("B1");
+		data.append(m_currFileDriver->getc());
+	}
+	m_port.write(data.data(), data.size());
+} // processReadFileRequest
 
 
 void Interface::send(short lineNo, const QString& text)
