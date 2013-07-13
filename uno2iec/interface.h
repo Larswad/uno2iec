@@ -57,13 +57,12 @@ private:
 	void sendListing(/*PFUNC_SEND_LISTING sender*/);
 	void sendStatus(void);
 	bool removeFilePrefix(void);
-	void sendLineCallback(short lineNo, byte len, char* text);
+	void sendLineCallback(byte len, char* text);
 
 	// handler helpers.
 	void handleATNCmdCodeOpen(IEC::ATNCmd &cmd);
 	void handleATNCmdCodeDataTalk(byte chan);
 	void handleATNCmdCodeDataListen();
-	byte readPiResponse();
 
 	// our iec low level driver:
 	IEC& m_iec;

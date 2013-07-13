@@ -395,7 +395,7 @@
       <item>
        <widget class="QPushButton" name="resetMachine">
         <property name="text">
-         <string>Try IEC Reset C64</string>
+         <string>Try IEC Reset CBM</string>
         </property>
        </widget>
       </item>

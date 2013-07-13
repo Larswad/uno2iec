@@ -23,6 +23,7 @@ IEC iec(8);
 Interface iface(iec);
 Max7219* pMax;
 static unsigned long lastMillis = 0;
+static unsigned long now;
 
 void setup()
 {
@@ -52,7 +53,7 @@ void loop()
 	iface.handler();
 #endif
 
-	unsigned long now = millis();
+	now = millis();
 	if(now - lastMillis >= 50) {
 		pMax->doScrollLeft();
 		lastMillis = now;

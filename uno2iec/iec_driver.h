@@ -88,6 +88,10 @@ public:
 	//
 	ATNCheck checkATN(ATNCmd& cmd);
 
+	// Checks if CBM is sending a reset (setting the RESET line high). This is typicall
+	// when the CBM is reset itself. In this case, we are supposed to reset all states to initial.
+	boolean checkRESET();
+
 	// Sends a byte. The communication must be in the correct state: a load command
 	// must just have been recieved. If something is not OK, FALSE is returned.
 	//
@@ -145,6 +149,16 @@ private:
 		return readPIN(m_clockPin);
 	}
 
+	inline boolean readRESET()
+	{
+		return readPIN(m_resetPin);
+	}
+
+//	inline boolean readSRQIN()
+//	{
+//		return readPIN(m_srqInPin);
+//	}
+
 	// true == PULL == HIGH, false == RELEASE == LOW
 	inline void writePIN(byte pinNumber, boolean state)
 	{
@@ -175,6 +189,8 @@ private:
 	byte m_atnPin;
 	byte m_dataPin;
 	byte m_clockPin;
+	//byte m_srqInPin;
+	byte m_resetPin;
 };
 
 #endif

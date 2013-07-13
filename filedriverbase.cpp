@@ -8,7 +8,13 @@ FileDriverBase::FileDriverBase()
 
 FileDriverBase::~FileDriverBase()
 {
-}
+} // dtor
+
+
+bool FileDriverBase::supportsListing() const
+{
+	return false;
+} // supportsListing
 
 
 bool FileDriverBase::sendListing(ISendLine& /*cb*/)
@@ -16,10 +22,17 @@ bool FileDriverBase::sendListing(ISendLine& /*cb*/)
 	return false;
 } // sendListing
 
-bool FileDriverBase::supportsListing() const
+
+bool FileDriverBase::supportsMediaInfo() const
 {
 	return false;
-}
+} // supportsMediaInfo
+
+
+bool FileDriverBase::sendMediaInfo() const
+{
+	return false;
+} // sendMediaInfo
 
 
 IOErrorMessage FileDriverBase::cmdChannel(const QString& cmd)

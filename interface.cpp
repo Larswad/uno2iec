@@ -7,7 +7,11 @@
 
 using namespace Logging;
 
-#define C64_BACK_ARROW 95
+#define CBM_BACK_ARROW 95
+#define CBM_EXCLAMATION '!'
+namespace {
+const QString FAC_IFACE("IFACE");
+}
 
 Interface::Interface(QextSerialPort& port)
 	: m_currFileDriver(0), m_port(port), m_queuedError(ErrOK), m_openState(O_NOTHING)
@@ -51,10 +55,15 @@ void Interface::openFile(const QString& cmdString)
 	m_openState = O_NOTHING;
 
 	// Check double back arrow first
-	if((C64_BACK_ARROW == cmd.at(0).toLatin1()) and (C64_BACK_ARROW == cmd.at(1))) {
+	if((CBM_BACK_ARROW == cmd.at(0).toLatin1()) and (CBM_BACK_ARROW == cmd.at(1))) {
 		// reload sdcard and send info
 		m_currFileDriver = &m_native;
-		m_openState = O_INFO;
+		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
+	}
+	else if((CBM_EXCLAMATION == cmd.at(0).toLatin1()) and (CBM_EXCLAMATION == cmd.at(1))) {
+		// to get the media info for any OTHER media, the '!!' should be used on the CBM side.
+		// whatever file system we have active, check if it supports media info.
+		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	}
 // Commented out here: Not applicable on pi really. However, some kind of sane check of fs might be done anyway...hmmm.
 //	else if(!sdCardOK or !(fatGetStatus() & FAT_STATUS_OK)) {
@@ -66,7 +75,7 @@ void Interface::openFile(const QString& cmdString)
 		// Send directory listing of current dir
 		m_openState = O_DIR;
 	}
-	else if(C64_BACK_ARROW == cmd.at(0)) {
+	else if(CBM_BACK_ARROW == cmd.at(0)) {
 		// Exit current file format or cd..
 		if(m_currFileDriver == &m_native) {
 			m_currFileDriver->setCurrentDirectory("..");
@@ -92,8 +101,9 @@ void Interface::openFile(const QString& cmdString)
 				cmd.replace(QChar(0xFF), "~");
 
 				// Try if cd works, then try open as file and if none of these ok...then give up
-				if(m_native.setCurrentDirectory(cmd))
+				if(m_native.setCurrentDirectory(cmd)) {
 					m_openState = O_DIR;
+				}
 				else if(m_native.openHostFile(cmd)) {
 					// File opened, investigate filetype
 					QList<FileDriverBase*>::iterator i;
@@ -118,15 +128,20 @@ void Interface::openFile(const QString& cmdString)
 						}
 						else {
 							// Error initializing driver, back to native file system.
+							Log("IFACE", QString("Error initializing driver for FS.ext: %1. Going back to native.").arg(m_currFileDriver->extension()), error);
 							m_currFileDriver = &m_native;
 							m_openState = O_FILE_ERR;
 						}
 					}
-					else // No specific file format for this file, stay in FAT and send as straight .PRG
+					else { // No specific file format for this file, stay in FAT and send as straight .PRG
+						Log("IFACE", QString("No specific file format for the names extension: %1, assuming .PRG in native file mode.").arg(cmd), info);
 						m_openState = O_FILE;
+					}
 				}
-				else // File not found, giveup.
+				else { // File not found, giveup.
+					Log("IFACE", QString("File %1 not found. Returning FNF to CBM.").arg(cmd), warning);
 					m_openState = O_NOTHING;
+				}
 			}
 			else if(0 not_eq m_currFileDriver) {
 				// Call file format's own open command
@@ -141,6 +156,8 @@ void Interface::openFile(const QString& cmdString)
 
 	// Remember last cmd string.
 	m_lastCmdString = cmd;
+	if(O_INFO == m_openState or O_DIR == m_openState)
+		buildDirectoryOrMediaList();
 } // openFile
 
 
@@ -159,7 +176,6 @@ void Interface::processOpenCommand(const QString& cmd)
 			// (note: if any previous openfile command has given us an error, the 'current' file system to use is not defined and
 			// therefore the command will fail, we don't even have the native fs to use for the open command).
 			if(0 not_eq m_currFileDriver) {
-				// TODO: here send command, with string sequence. get return code from pi (m_queuedError).
 				m_queuedError = m_currFileDriver->cmdChannel(params.at(1));
 			}
 			else
@@ -182,3 +198,55 @@ void Interface::processOpenCommand(const QString& cmd)
 		}
 	}
 } // processOpenCommand
+
+
+void Interface::processLineRequest()
+{
+	if(O_INFO == m_openState or O_DIR == m_openState) {
+		// TODO: implement.
+		if(m_dirListing.empty()) {
+			// last line was produced. Send back the ending char.
+			m_port.write("l");
+		}
+		else {
+			m_port.write(reinterpret_cast<char*>(m_dirListing.first().data()));
+			m_dirListing.removeFirst();
+		}
+	}
+	else {
+		// TODO: This is a strange error state. return something to CBM.
+	}
+
+} // processOpenCommand
+
+
+void Interface::send(short lineNo, const QString& text)
+{
+	QString line(text);
+	// the line number is included with the line itself. It goes in with lobyte,hibyte.
+	line.prepend(uchar((lineNo bitand 0xFF00) >> 8));
+	line.prepend(uchar(lineNo bitand 0xFF));
+	// length of it all is the first byte.
+	line.prepend((uchar)text.length());
+	// add the response byte.
+	line.prepend('L');
+	// add it to the total dirlisting array.
+	m_dirListing.append(line);
+} // send
+
+
+void Interface::buildDirectoryOrMediaList()
+{
+	m_dirListing.clear();
+	if(O_DIR == m_openState) {
+	Log(FAC_IFACE, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extension()), warning);
+	if(!m_currFileDriver->sendListing(*this))
+		Log(FAC_IFACE, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
+	else
+		Log(FAC_IFACE, QString("Directory listing ok. Ready waiting for line requests from arduino."), success);
+	}
+	else if(O_INFO == m_openState) {
+		// TODO: implement.
+	}
+
+} // buildDirectoryOrMediaList

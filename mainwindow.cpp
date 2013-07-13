@@ -112,6 +112,12 @@ void MainWindow::onDataAvailable()
 			case 'W': // write single character to file in current file system mode.
 				break;
 
+			case 'L':
+				// line request: Just remove the BYTE from queue and do business.
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processLineRequest();
+				break;
+
 			case '!': // register facility string.
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.

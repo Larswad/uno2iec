@@ -79,15 +79,11 @@
 
 IEC::IEC(byte deviceNumber) :
 	m_state(noFlags), m_deviceNumber(deviceNumber),
-	m_atnPin(5), m_dataPin(3), m_clockPin(4)
+	m_atnPin(5), m_dataPin(3), m_clockPin(4), /*m_srqInPin(6),*/ m_resetPin(7)
 #ifdef DEBUGLINES
 	,m_lastMillis(0)
 #endif
 {
-	// wiringPiPin 3 == BroadcomPin 22
-	// wiringPiPin 4 == BroadcomPin 23
-	// wiringPiPin 5 == BroadcomPin 24
-	//  init();
 } // ctor
 
 
@@ -121,7 +117,7 @@ byte IEC::timeoutWait(byte waitBit, boolean whileHigh)
 	while(!readATN());
 
 	// Note: The while above is without timeout. If ATN is held low forever,
-	//       the C64 is out in the woods and needs a reset anyways.
+	//       the CBM is out in the woods and needs a reset anyways.
 
 	return true;
 } // timeoutWait
@@ -433,6 +429,13 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 } // checkATN
 
 
+boolean IEC::checkRESET()
+{
+	// hmmm. Is this all todo?
+	return readRESET();
+} // checkATN
+
+
 // IEC_receive receives a byte
 //
 byte IEC::receive()
@@ -486,14 +489,17 @@ boolean IEC::init()
 	pinMode(m_atnPin, OUTPUT);
 	pinMode(m_dataPin, OUTPUT);
 	pinMode(m_clockPin, OUTPUT);
+	pinMode(m_resetPin, OUTPUT);
 	digitalWrite(m_atnPin, false);
 	digitalWrite(m_dataPin, false);
 	digitalWrite(m_clockPin, false);
+	digitalWrite(m_resetPin, false);	// only early C64's could be reset by a slave going high.
 
 	// initial pin modes in GPIO.
 	pinMode(m_atnPin, INPUT);
 	pinMode(m_dataPin, INPUT);
 	pinMode(m_clockPin, INPUT);
+	pinMode(m_resetPin, INPUT);
 
 #ifdef DEBUGLINES
 	m_lastMillis = millis();

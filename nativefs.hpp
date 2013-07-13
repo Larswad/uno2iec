@@ -28,6 +28,11 @@ public:
 		return true;
 	}
 
+	bool supportsMediaInfo() const
+	{
+		return true;
+	}
+
 	bool newFile(const QString& fileName);
 	bool fopen(const QString& fileName);
 	char getc();

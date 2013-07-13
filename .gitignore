@@ -1,6 +1,8 @@
 *creator.user*
 *.user
 *.o
+moc_*
+rpi2iec
 *.html
 *.htm
 *.D64

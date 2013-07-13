@@ -1,12 +1,14 @@
 #ifndef INTERFACE_HPP
 #define INTERFACE_HPP
 
+#include <qextserialport.h>
+#include <QStringList>
+
 #include "filedriverbase.hpp"
 #include "d64driver.hpp"
 #include "t64driver.hpp"
 #include "m2idriver.hpp"
 #include "nativefs.hpp"
-#include <qextserialport.h>
 
 #define CMD_CHANNEL 15
 
@@ -30,11 +32,17 @@ enum OpenState {
 	O_SAVE_REPLACE	// Save-with-replace is requested
 };
 
-class Interface
+class Interface : public ISendLine
 {
 public:
 	Interface(QextSerialPort& port);
 	void processOpenCommand(const QString &cmd);
+	// State specific: CBM requests a single directory line from us.
+	void processLineRequest();
+	void buildDirectoryOrMediaList();
+
+	// ISendLine implementation.
+	void send(short lineNo, const QString& text);
 
 private:
 	void openFile(const QString &cmdString);
@@ -51,6 +59,7 @@ private:
 	IOErrorMessage m_queuedError;
 	OpenState m_openState;
 	QString m_lastCmdString;
+	QStringList m_dirListing;
 };
 
 #endif // INTERFACE_HPP

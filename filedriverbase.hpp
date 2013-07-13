@@ -50,9 +50,14 @@ public:
 	virtual bool openHostFile(const QString& fileName) = 0;
 	virtual void closeHostFile() = 0;
 
-	// Send realistic $ file basic listing, line by line (returning false means not supported).
-	virtual bool sendListing(ISendLine& cb);
+	// returns true if the file system supports directory listing (t64 for instance doesn't).
 	virtual bool supportsListing() const;
+	// Send realistic $ file basic listing, line by line (returning false means there was some error, but that there is a listing anyway).
+	virtual bool sendListing(ISendLine& cb);
+	// Whether this file system supports media info or not (true == supports it).
+	virtual bool supportsMediaInfo() const;
+	// Send information about file system (whether it is OK, sizes etc.).
+	virtual bool sendMediaInfo() const;
 	// Command to the command channel. When not supported (overridden we just say write protect error).
 	virtual IOErrorMessage cmdChannel(const QString& cmd);
 
@@ -73,8 +78,8 @@ public:
 	// Current status of operation.
 	virtual FSStatus status() const;
 
-	// This method is not relevant for any c64 side file systems (unless future one support such).
-	// It sets the current directory on the native fs. Optionally implemented, base returns false.
+	// This method is not relevant for any CBM side file systems (unless future one support such).
+	// It sets the current directory on the native fs. Optionally implemented for a specific file system, base returns false.
 	virtual bool setCurrentDirectory(const QString& dir);
 
 protected:

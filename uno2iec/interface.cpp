@@ -39,6 +39,7 @@
 namespace {
 // atn command buffer struct
 IEC::ATNCmd cmd;
+char serCmdIOBuf[50];
 
 // The previous cmd is copied to this string:
 char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
@@ -256,7 +257,7 @@ void Interface::openFile(const struct file_format_struct *pff)
 		// Send directory listing of current dir
 		m_openState = O_DIR;
 	}
-	else if(cmd.str[0] == 95) {    // back arrow sign on C64
+	else if(cmd.str[0] == 95) {    // back arrow sign on CBM
 		// One back arrow, exit current file format or cd..
 		if(m_interfaceState == IS_NATIVE) {
 			if(fatCddir(".."))
@@ -346,7 +347,7 @@ void Interface::openFile(const struct file_format_struct *pff)
 */
 
 // send basic line callback
-void Interface::sendLineCallback(short lineNo, byte len, char* text)
+void Interface::sendLineCallback(byte len, char* text)
 {
 	byte i;
 
@@ -358,8 +359,8 @@ void Interface::sendLineCallback(short lineNo, byte len, char* text)
 	m_iec.send(m_basicPtr >> 8);
 
 	// Send line number
-	m_iec.send(lineNo bitand 0xFF);
-	m_iec.send(lineNo >> 8);
+//	m_iec.send(lineNo bitand 0xFF);
+//	m_iec.send(lineNo >> 8);
 
 	// Send line contents
 	for(i = 0; i < len; i++)
@@ -372,20 +373,53 @@ void Interface::sendLineCallback(short lineNo, byte len, char* text)
 
 void Interface::sendListing(/*PFUNC_SEND_LISTING sender*/)
 {
+	noInterrupts();
 	// Reset basic memory pointer:
 	m_basicPtr = C64_BASIC_START;
 
 	// Send load address
 	m_iec.send(C64_BASIC_START bitand 0xff);
 	m_iec.send((C64_BASIC_START >> 8) bitand 0xff);
-
+	interrupts();
 	// This will be slightly tricker: Need to specify the line sending protocol between raspberry and Arduino.
 	// Call the listing function
-	//	(sender)(&send_line_callback);
+	byte resp;
+	do {
+		Serial.write('L'); // initiate request.
+		resp = Serial.read();
+		if('L' == resp) { // PI will give us something else if we're at last line to send.
+			// get the length as one byte: This is kind of specific: For listings we allow 256 bytes length. Period.
+			byte len = Serial.read();
+			byte actual = Serial.readBytes(serCmdIOBuf, len);
+			if(len == actual) {
+				// send the bytes directly to CBM!
+				noInterrupts();
+				sendLineCallback(len, serCmdIOBuf);
+				interrupts();
+			}
+			else
+				resp = 'E'; // just to end the paint. We're out of sync or somthin'
+		}
+	} while('L' == resp); // keep looping for more lines as long as we got an 'L' indicating we haven't reached end.
+
+	// So here the idea:
+	// 1. Ask pi for line, "L"
+	// 2. For first call, pi will fetch all the lines from current disk system (with callback interfaces) and then
+	// collect them in a StringList.
+	// Then it will send the first line in the QStringList as "L<byte_with_length><bytes>, and remove it from top of stringlist.
+	// 3. We will keep asking for next line, if no more lines coming from Pi, then it will answer with little
+	// l instead, and no subsequent bytes (sender)(&send_line_callback);
+
+// experiment: Does it work?
+//	noInterrupts();
+//	sendLineCallback(10, 11, "PRINT \"HEJ\"");
+//	sendLineCallback(20, 7, "GOTO 10");
+//	interrupts();
 
 	// End program
 	m_iec.send(0);
 	m_iec.sendEOI(0);
+	interrupts();
 } // sendListing
 
 
@@ -397,7 +431,7 @@ void Interface::sendFile()
 	byte c = Serial.read(); // read the byte itself
 	while('B' == s) {
 		if(!m_iec.send(c))
-			break; // end if sending to c64 fails.
+			break; // end if sending to CBM fails.
 		// ask for another.
 		Serial.write('R');
 		s = Serial.read();
@@ -424,7 +458,7 @@ void Interface::saveFile()
 
 void Interface::handler(void)
 {
-	const struct file_format_struct *pff;
+//	const struct file_format_struct *pff;
 
 	//  m_iec.setDeviceNumber(8);
 
@@ -452,7 +486,13 @@ void Interface::handler(void)
 	//#endif
 
 	noInterrupts();
-	IEC::ATNCheck retATN = m_iec.checkATN(cmd);
+	IEC::ATNCheck retATN = IEC::ATN_IDLE;
+	if(m_iec.checkRESET()) {
+		Log(Information, FAC_IFACE, "GOT RESET, INITIAL STATE");
+		reset();
+	}
+	else
+		retATN = m_iec.checkATN(cmd);
 	interrupts();
 
 	if(retATN == IEC::ATN_ERROR) {
@@ -475,11 +515,10 @@ void Interface::handler(void)
 		// Make cmd string null terminated
 		cmd.str[cmd.strlen] = '\0';
 #ifdef CONSOLE_DEBUG
-		{
-			char buffer[60];
-			sprintf(buffer, "ATNCMD code:%d cmd: %s (len: %d) retATN: %d", cmd.code, cmd.str, cmd.strlen, retATN);
-			Log(Information, FAC_IFACE, buffer);
-		}
+//		{
+//			sprintf(serCmdIOBuf, "ATNCMD code:%d cmd: %s (len: %d) retATN: %d", cmd.code, cmd.str, cmd.strlen, retATN);
+//			Log(Information, FAC_IFACE, serCmdIOBuf);
+//		}
 #endif
 
 		// lower nibble is the channel.
@@ -514,23 +553,21 @@ void Interface::handler(void)
 
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
 {
-	char serCmdIOBuf[50];
-
 	sprintf(serCmdIOBuf, "O%u|%s\r", cmd.code bitand 0xF, cmd.str);
 	// NOTE: PI side handles BOTH file open command AND the command channel command (from the cmd.code).
-	Serial.println(serCmdIOBuf);
-	// Note: the pi response handling can be done LATER! We're in business with the c64 here!
+	Serial.print(serCmdIOBuf);
+	// Note: the pi response handling can be done LATER! We're in quick business with the CBM here!
 } // handleATNCmdCodeOpen
 
 
 void Interface::handleATNCmdCodeDataTalk(byte chan)
 {
-	char serCmdIOBuf[20];
 	byte lengthOrResult;
 	boolean wasSuccess = false;
 	if(lengthOrResult = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf))) {
 		// process response into m_queuedError.
 		// Response: ><code><CR>
+		serCmdIOBuf[lengthOrResult] = '\0';
 		if('>' == serCmdIOBuf[0]) {
 			lengthOrResult = static_cast<byte>(atoi(&serCmdIOBuf[1]));
 			wasSuccess = true;
@@ -538,17 +575,17 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 	}
 	if(CMD_CHANNEL == chan) {
 		m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
-		sprintf(serCmdIOBuf, "CMD Chan queudErr: %d", lengthOrResult);
-		Log(Information, FAC_IFACE, buf);
+		sprintf(serCmdIOBuf, "CMD Chan queueErr: %d", m_queuedError);
+		Log(Information, FAC_IFACE, serCmdIOBuf);
 		// Send status message
 		sendStatus();
 		// go back to OK state, we have dispatched the error to IEC host now.
 		m_queuedError = ErrOK;
 	}
 	else {
-		m_openState = success ? lengthOrResult : O_NOTHING;
-		sprintf(serCmdIOBuf, "CMD Chan openState: %d", lengthOrResult);
-		Log(Information, FAC_IFACE, buf);
+		m_openState = wasSuccess ? lengthOrResult : O_NOTHING;
+		sprintf(serCmdIOBuf, "CMD Chan openState: %d", m_queuedError);
+		Log(Information, FAC_IFACE, serCmdIOBuf);
 
 		switch(m_openState) {
 		case O_INFO:
@@ -570,7 +607,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 		case O_FILE:
 			// Send program file
-			// TODO: interface with PI before file sending TO c64 takes place.
+			// TODO: interface with PI before file sending TO CBM takes place.
 			sendFile(/*(PFUNC_CHAR_VOID)(pff->getc),
 							 (PFUNC_UCHAR_VOID)(pff->eof)*/);
 			break;

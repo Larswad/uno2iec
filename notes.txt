@@ -48,6 +48,12 @@ git clone https://code.google.com/p/qextserialport/
 
 (simply build with qmake)
 
+How to test the ATN, CLOCK, DATA lines from CBM basic:
+
+10 A=56576
+20 POKE A,PEEK(A) AND (255 - 8 - 16 - 32)
+30 PRINT PEEK)(A) AND 192
+40 GOTO 30
 
 
 // Peer commands:
