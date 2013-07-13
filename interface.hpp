@@ -61,7 +61,8 @@ private:
 	IOErrorMessage m_queuedError;
 	OpenState m_openState;
 	QString m_lastCmdString;
-	QStringList m_dirListing;
+	//QStringList m_dirListing;
+	QList<QByteArray> m_dirListing;
 };
 
 #endif // INTERFACE_HPP

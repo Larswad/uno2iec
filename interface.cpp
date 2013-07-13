@@ -230,10 +230,12 @@ void Interface::processLineRequest()
 		if(m_dirListing.isEmpty()) {
 			// last line was produced. Send back the ending char.
 			m_port.write("l");
+			m_port.flush();
 			Log(FAC_IFACE, "Last line written to arduino.", success);
 		}
 		else {
 			m_port.write(reinterpret_cast<char*>(m_dirListing.first().data()));
+			m_port.flush();
 			m_dirListing.removeFirst();
 			Log(FAC_IFACE, "Writing line to arduino", info);
 		}
@@ -248,12 +250,12 @@ void Interface::processLineRequest()
 
 void Interface::send(short lineNo, const QString& text)
 {
-	QString line(text);
+	QByteArray line(text.toLocal8Bit());
 	// the line number is included with the line itself. It goes in with lobyte,hibyte.
 	line.prepend(uchar((lineNo bitand 0xFF00) >> 8));
 	line.prepend(uchar(lineNo bitand 0xFF));
 	// length of it all is the first byte.
-	line.prepend((uchar)text.length());
+	line.prepend((uchar)text.size() + 2);
 	// add the response byte.
 	line.prepend('L');
 	// add it to the total dirlisting array.
