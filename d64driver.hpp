@@ -81,10 +81,10 @@ public:
 	bool sendListing(ISendLine& cb);
 
 private:
-	typedef struct {
+	typedef struct __attribute__((packed)) {
 		// uchar reserved1[2];  // track/sector of next direntry.
 		// Note: only the very first direntry of a sector has this 'reserved' field.
-		D64FileType type;
+		uchar type; // D64FileType
 		uchar track;
 		uchar sector;
 		uchar name[16];
@@ -94,7 +94,7 @@ private:
 		uchar unused[6];    // Except for GEOS disks
 		uchar blocksLo;     // 16-bit file size in blocks, multiply by
 		uchar blocksHi;     // D64_BLOCK_DATA to get bytes
-	} DirEntry;           // total of 30 bytes
+	} DirEntry;  // total of 30 bytes
 
 
 	uchar hostReadByte(uint length = 1);

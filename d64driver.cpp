@@ -413,7 +413,7 @@ bool D64::sendListing(ISendLine& cb)
 				uchar c = dir.name[i];
 				if(0xA0 == c) {
 					// Ending name with dbl quotes
-					name[i] = QChar('\x22');
+					name[i] = QChar('"');
 					break;  // Filename is no longer
 				}
 
@@ -426,7 +426,7 @@ bool D64::sendListing(ISendLine& cb)
 				fileType = 5;
 
 			// Prepare buffer
-			line = QString("  \x22%1 %2%3%4").arg(name) // %s  %s%c%c
+			line = QString("   \"%1 %2%3%4").arg(name) // %s  %s%c%c
 					.arg(strFileTypes[fileType])
 					.arg((dir.type bitand FILE_LOCKED) ? '<' : ' ') // Perhaps write locked symbol
 					.arg(!(dir.type bitand FILE_CLOSED) ? '*' : ' ');	// Perhaps write splat symbol
