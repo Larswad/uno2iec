@@ -394,6 +394,20 @@ uchar M2I::newFile(char* fileName)
 } // newFile
 
 
+QString M2I::openedFileName() const
+{
+	// TODO: implement!
+	return QString();
+} // openedFileName
+
+
+ushort M2I::openedFileSize() const
+{
+	// TODO: implement!
+	return 0;
+} // openedFileSize
+
+
 char M2I::getc(void)
 {
 	/*

@@ -52,6 +52,18 @@ char NativeFS::getc()
 } // getc
 
 
+QString NativeFS::openedFileName() const
+{
+	return m_hostFile.fileName();
+} // openedFileName
+
+
+ushort NativeFS::openedFileSize() const
+{
+	return m_hostFile.size();
+} // openedFileSize
+
+
 bool NativeFS::isEOF() const
 {
 	return m_hostFile.atEnd();

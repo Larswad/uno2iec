@@ -55,6 +55,8 @@ public:
 
 	// Open a file by filename: Returns true if successfull
 	bool fopen(char* filename);
+	QString openedFileName() const;
+	ushort openedFileSize() const;
 	//
 	// Get character from open file:
 	char getc(void);
@@ -94,6 +96,7 @@ private:
 	uchar  m_fileStartAddress[2]; // first two basic bytes
 	ushort m_fileOffset;           // progress in file
 	ushort m_fileLength;
+	QString m_lastOpenedFileName;
 
 	qint32 hostSize() const
 	{

@@ -107,8 +107,15 @@ void MainWindow::onDataAvailable()
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
 
-			case 'S': // set read / write size in number of bytes.
+			//case 'S': // set read / write size in number of bytes.
+				//
+				//break;
+
+			case 'S': // request for file size before sending file to CBM
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processGetOpenFileSize();
 				break;
+
 
 			case 'W': // write single character to file in current file system mode.
 				break;
@@ -148,6 +155,12 @@ void MainWindow::onDataAvailable()
 					m_pendingBuffer.remove(0, crIndex + 1);
 				}
 				break;
+
+			case 'C': // close command
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processCloseCommand();
+				break;
+
 
 			default:
 				// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.

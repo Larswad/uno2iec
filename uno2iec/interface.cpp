@@ -40,6 +40,7 @@ namespace {
 // atn command buffer struct
 IEC::ATNCmd cmd;
 char serCmdIOBuf[80];
+byte scrollBuffer[30];
 
 // The previous cmd is copied to this string:
 char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
@@ -60,7 +61,7 @@ const char errorEnding[] = ",00,00";
 
 
 Interface::Interface(IEC& iec)
-	: m_iec(iec)
+	: m_iec(iec), m_pDisplay(0)
 {
 	reset();
 
@@ -441,9 +442,18 @@ void Interface::sendFile()
 {
 	// Send file bytes, such that the last one is sent with EOI.
 	byte resp;
+	Serial.write('S'); // ask for file size.
+	byte len = Serial.readBytes(serCmdIOBuf, 2);
+	// it is supposed to answer with S<highByte><LowByte>
+	if(3 not_eq len or serCmdIOBuf[0] not_eq 'S')
+		return;
+	word written = 0;
+	if(0 not_eq m_pDisplay)
+		m_pDisplay->resetPercentage((serCmdIOBuf[1] << 8) bitor serCmdIOBuf[2]);
+
 	do {
 		Serial.write('R'); // ask for a byte
-		byte len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
+		len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
 		if(2 not_eq len) {
 			Log(Error, FAC_IFACE, "Less than expected 2 bytes, stopping.");
 			break;
@@ -465,12 +475,16 @@ void Interface::sendFile()
 				else
 					success = m_iec.send(serCmdIOBuf[i]);
 				interrupts();
+				++written;
+				if(!(written % 32) and 0 not_eq m_pDisplay)
+					m_pDisplay->showPercentage(written);
 			}
 		}
 		else if('E' not_eq resp)
 			Log(Error, FAC_IFACE, "Got unexpected command response char.");
 	} while(resp == 'B'); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
-
+	if(0 not_eq m_pDisplay)
+		m_pDisplay->showPercentage(written);
 } // sendFile
 
 
@@ -571,16 +585,20 @@ void Interface::handler(void)
 				break;
 
 			case IEC::ATN_CODE_CLOSE:
-				// TODO: handle close with PI.
-//				if(0 not_eq pff) {
-//					((PFUNC_UCHAR_VOID)(pff->close))();
-//				}
+				// handle close with PI.
+				handleATNCmdClose();
 				break;
 		}
 
 		//BUSY_LED_OFF();
 	}
 } // handler
+
+
+void Interface::setMaxDisplay(Max7219 *pDisplay)
+{
+	m_pDisplay = pDisplay;
+} // setMaxDisplay
 
 
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
@@ -686,3 +704,39 @@ void Interface::handleATNCmdCodeDataListen()
 			saveFile(/*&dummy_1*/);
 	}
 } // handleATNCmdCodeDataListen
+
+
+void Interface::handleATNCmdClose()
+{
+	// handle close of file. PI will return the name of the last loaded file to us.
+	Serial.print("C");
+	Serial.readBytes(serCmdIOBuf, 2);
+	byte resp = serCmdIOBuf[0];
+	if('N' == resp) { // N indicates we have a name.
+		// get the length of the name as one byte.
+		byte len = serCmdIOBuf[1];
+		byte actual = Serial.readBytes(serCmdIOBuf, len);
+		if(len == actual) {
+			serCmdIOBuf[len] = '\0';
+			strcpy((char*)scrollBuffer, "LOADED: ");
+			strcat((char*)scrollBuffer, serCmdIOBuf);
+			if(m_pDisplay)
+				m_pDisplay->resetScrollText(scrollBuffer);
+
+		}
+		else {
+			resp = 'E'; // just to end the pain. We're out of sync or somthin'
+			sprintf(serCmdIOBuf, "Expected: %d chars, got %d.", len, actual);
+			Log(Error, FAC_IFACE, serCmdIOBuf);
+		}
+	}
+	else {
+		if('l' not_eq resp) {
+			sprintf(serCmdIOBuf, "Ending at char: %d.", resp);
+			Log(Error, FAC_IFACE, serCmdIOBuf);
+			Serial.readBytes(serCmdIOBuf, sizeof(serCmdIOBuf));
+			Log(Error, FAC_IFACE, serCmdIOBuf);
+		}
+	}
+
+} // handleATNCmdClose

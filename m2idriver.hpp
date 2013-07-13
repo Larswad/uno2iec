@@ -42,6 +42,10 @@ public:
 
 	bool fopen(const QString& fileName);
 
+	QString openedFileName() const;
+
+	ushort openedFileSize() const;
+
 	char getc(void);
 
 	bool isEOF(void) const;

@@ -64,6 +64,10 @@ public:
 
 	// Open a file in the image by filename: Returns true if successful
 	bool fopen(const QString& fileName);
+	// return the name of the last opened file (may not be same as fopen in case it resulted in something else, like when using wildcards).
+	QString openedFileName() const;
+	// return the file size of the last opened file.
+	ushort openedFileSize() const;
 	// Get character from open file:
 	char getc(void);
 	// Returns true if last character was retrieved:
@@ -80,22 +84,35 @@ public:
 	// Send realistic $ file basic listing, line by line
 	bool sendListing(ISendLine& cb);
 
-private:
-	typedef struct __attribute__((packed)) {
+	class __attribute__((packed)) DirEntry
+	{
+		public:
+		// Note: This is a POD class, may NOT contain any virtual methods or additional data than the DirType struct.
+
+		DirEntry();
+		~DirEntry();
+		QString name() const;
+		D64FileType type() const;
+		ushort sizeBytes() const;
+		ushort numBlocks() const;
+		uchar track() const;
+		uchar sector() const;
+
 		// uchar reserved1[2];  // track/sector of next direntry.
 		// Note: only the very first direntry of a sector has this 'reserved' field.
-		uchar type; // D64FileType
-		uchar track;
-		uchar sector;
-		uchar name[16];
-		uchar sideTrack;    // For REL files
-		uchar sideSector;   // For REL files
-		uchar recordLength; // For REL files
-		uchar unused[6];    // Except for GEOS disks
-		uchar blocksLo;     // 16-bit file size in blocks, multiply by
-		uchar blocksHi;     // D64_BLOCK_DATA to get bytes
-	} DirEntry;  // total of 30 bytes
+		uchar m_type; // D64FileType
+		uchar m_track;
+		uchar m_sector;
+		uchar m_name[16];
+		uchar m_sideTrack;    // For REL files
+		uchar m_sideSector;   // For REL files
+		uchar m_recordLength; // For REL files
+		uchar m_unused[6];    // Except for GEOS disks
+		uchar m_blocksLo;     // 16-bit file size in blocks, multiply by
+		uchar m_blocksHi;     // D64_BLOCK_DATA to get bytes
+	}; // total of 30 bytes
 
+private:
 
 	uchar hostReadByte(uint length = 1);
 	bool hostSeek(qint32 pos, bool relative = false);
@@ -107,6 +124,7 @@ private:
 	void seekBlock(uchar track, uchar sector);
 	bool seekFirstDir(void);
 	bool getDirEntry(DirEntry& dir);
+	bool getDirEntryByName(DirEntry& dir, const QString& name);
 	void seekToDiskName(void);
 
 	// The real host file system D64 file:
@@ -121,7 +139,7 @@ private:
 	// The current block's link to next block
 	uchar m_currentLinkTrack;
 	uchar m_currentLinkSector;
-
+	DirEntry m_currDirEntry;
 };
 
 #endif

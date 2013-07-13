@@ -37,6 +37,8 @@ public:
 
 	bool newFile(const QString& fileName);
 	bool fopen(const QString& fileName);
+	QString openedFileName() const;
+	ushort openedFileSize() const;
 	char getc();
 	bool isEOF() const;
 	bool putc(char c);

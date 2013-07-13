@@ -41,6 +41,7 @@ void setup()
 
 	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
 	pMax->resetScrollText(myText);
+	iface.setMaxDisplay(pMax);
 } // setup
 
 

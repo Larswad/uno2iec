@@ -225,6 +225,26 @@ void Interface::processOpenCommand(const QString& cmd)
 } // processOpenCommand
 
 
+void Interface::processCloseCommand()
+{
+	QString name = m_currFileDriver->openedFileName();
+	QByteArray data;
+	data.append('N').append((char)name.length()).append(name);
+	m_port.flush();
+} // processCloseCommand
+
+
+void Interface::processGetOpenFileSize()
+{
+	ushort size = m_currFileDriver->openedFileSize();
+
+	QByteArray data;
+	data.append('S').append(size >> 8).append(size bitand 0xff);
+	m_port.write(data.data(), data.size());
+	m_port.flush();
+} // processGetOpenedFileSize
+
+
 void Interface::processLineRequest()
 {
 	if(O_INFO == m_openState or O_DIR == m_openState) {

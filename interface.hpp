@@ -47,6 +47,8 @@ public:
 	// ISendLine implementation.
 	void send(short lineNo, const QString& text);
 
+	void processGetOpenFileSize();
+	void processCloseCommand();
 private:
 	void openFile(const QString &cmdString);
 	bool removeFilePrefix(QString &cmd);

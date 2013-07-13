@@ -63,6 +63,10 @@ public:
 
 	// Open a file in the image/file system by filename: Returns true if successful (false if not supported or error).
 	virtual bool fopen(const QString& fileName);
+	// return the name of the last opened file (may not be same as fopen in case it resulted in something else, like when using wildcards).
+	virtual QString openedFileName() const = 0;
+	// return the file size of the last opened file.
+	virtual ushort openedFileSize() const = 0;
 	// Create a file in the image/file system by filename: Returns true if successful (false if not supported or error).
 	virtual bool newFile(const QString& fileName);
 	// returns a character from the open file. Should always be supported in order to make implementation make any sense.

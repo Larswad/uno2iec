@@ -278,11 +278,24 @@ bool T64::fopen(char *filename)
 
 		hostSeek(dir.fileOffset);
 
+		m_lastOpenedFileName = filename;
 		m_status = IMAGE_OK bitor FILE_OPEN;
 	}
 
 	return found;
 } // fopen
+
+
+QString T64::openedFileName() const
+{
+	return m_hostFile.fileName();
+} // openedFileName
+
+
+ushort T64::openedFileSize() const
+{
+	return m_fileLength;
+} // openedFileSize
 
 
 bool T64::close(void)

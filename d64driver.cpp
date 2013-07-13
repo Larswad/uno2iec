@@ -273,6 +273,19 @@ bool D64::getDirEntry(DirEntry& dir)
 } // getDirEntry
 
 
+bool D64::getDirEntryByName(D64::DirEntry &dir, const QString &name)
+{
+	// Now for the list entries
+	seekFirstDir();
+	while(getDirEntry(dir)) {
+		if(name == dir.name()) // found it?
+			return true;
+	}
+	// no match.
+	return false;
+} // getDirEntry
+
+
 uchar D64::hostReadByte(uint length)
 {
 	char theByte;
@@ -324,21 +337,20 @@ ushort D64::blocksFree(void)
 //
 bool D64::fopen(const QString& fileName)
 {
-	DirEntry dir;
 	bool found = false;
 	uchar len;
 	uchar i;
 
 	len = fileName.length();
-	if(len > sizeof(dir.name))
-		len = sizeof(dir.name);
+	if(len > sizeof(m_currDirEntry.m_name))
+		len = sizeof(m_currDirEntry.m_name);
 
 	seekFirstDir();
 
-	while(!found and getDirEntry(dir)) {
+	while(!found and getDirEntry(m_currDirEntry)) {
 
 		// Acceptable filetype?
-		i = dir.type bitand TYPE_MASK;
+		i = m_currDirEntry.m_type bitand TYPE_MASK;
 		if(SEQ == i or PRG == i) {
 
 			// Compare filename respecting * and ? wildcards
@@ -352,25 +364,37 @@ bool D64::fopen(const QString& fileName)
 					break;
 				}
 				else
-					found = fileName[i] == dir.name[i];
+					found = fileName[i] == m_currDirEntry.m_name[i];
 			}
 
 			// If searched to end of filename, dir.file_name must end here also
 			if(found and (i == len))
 				if(len < 16)
-					found = dir.name[i] == 0xA0;
+					found = m_currDirEntry.m_name[i] == 0xA0;
 
 		}
 	}
 
 	if(found) {
 		// File found. Jump to block and set correct state
-		seekBlock(dir.track, dir.sector);
+		seekBlock(m_currDirEntry.m_track, m_currDirEntry.m_sector);
 		m_status = (FSStatus)(IMAGE_OK bitor FILE_OPEN);
 	}
 
 	return found;
 } // fopen
+
+
+QString D64::openedFileName() const
+{
+	return m_currDirEntry.name();
+} // openedFileName
+
+
+ushort D64::openedFileSize() const
+{
+	return m_currDirEntry.sizeBytes();
+} // // openedFileSize
 
 
 bool D64::sendListing(ISendLine& cb)
@@ -393,7 +417,7 @@ bool D64::sendListing(ISendLine& cb)
 			c = ' ';
 
 		if(18 == i)   // Ending "
-			c = '\x22';
+			c = '"';
 
 		line += c;
 	}
@@ -405,34 +429,35 @@ bool D64::sendListing(ISendLine& cb)
 	DirEntry dir;
 	while(getDirEntry(dir)) {
 		// Determine if dir entry is valid:
-		if(dir.track not_eq 0) {
+		if(dir.m_track not_eq 0) {
 			// A direntry always takes 32 bytes total = 27 chars
 			// Send filename until A0 or 16 chars
 			QString name(16, QChar(' '));
-			for(uchar i = 0; i < name.length(); ++i) {
-				uchar c = dir.name[i];
+			uchar i;
+			for(i = 0; i < name.length(); ++i) {
+				uchar c = dir.m_name[i];
 				if(0xA0 == c) {
-					// Ending name with dbl quotes
-					name[i] = QChar('"');
 					break;  // Filename is no longer
 				}
 
 				name[i] = c;
 			}
+			// Ending name with dbl quotes
+			name[i] = QChar('"');
 
 			// Write filetype
-			uchar fileType = dir.type bitand TYPE_MASK;
+			uchar fileType = dir.m_type bitand TYPE_MASK;
 			if(fileType > 5)
 				fileType = 5;
 
 			// Prepare buffer
 			line = QString("   \"%1 %2%3%4").arg(name) // %s  %s%c%c
 					.arg(strFileTypes[fileType])
-					.arg((dir.type bitand FILE_LOCKED) ? '<' : ' ') // Perhaps write locked symbol
-					.arg(!(dir.type bitand FILE_CLOSED) ? '*' : ' ');	// Perhaps write splat symbol
+					.arg((dir.m_type bitand FILE_LOCKED) ? '<' : ' ') // Perhaps write locked symbol
+					.arg(!(dir.m_type bitand FILE_CLOSED) ? '*' : ' ');	// Perhaps write splat symbol
 
 			// Line number is filesize in blocks:
-			ushort fileSize = dir.blocksLo + (dir.blocksHi << 8);
+			ushort fileSize = dir.m_blocksLo + (dir.m_blocksHi << 8);
 
 			// Send initial spaces (offset) according to file size
 			cb.send(fileSize, line.mid((int)log10(fileSize)));
@@ -445,3 +470,48 @@ bool D64::sendListing(ISendLine& cb)
 
 	return true;
 } // sendListing
+
+
+
+D64::DirEntry::DirEntry()
+{
+}
+
+D64::DirEntry::~DirEntry()
+{
+}
+
+QString D64::DirEntry::name() const
+{
+	return QString::fromLocal8Bit((const char*)(m_name));
+} // getName
+
+
+D64::D64FileType D64::DirEntry::type() const
+{
+	return static_cast<D64FileType>(m_type);
+}
+
+
+ushort D64::DirEntry::numBlocks() const
+{
+	return (m_blocksHi << 8) bitor m_blocksLo;
+} // getNumBlocks
+
+
+ushort D64::DirEntry::sizeBytes() const
+{
+	return numBlocks() * D64_BLOCK_DATA;
+} // getSizeBytes
+
+
+uchar D64::DirEntry::track() const
+{
+	return m_track;
+} // getTrack
+
+
+uchar D64::DirEntry::sector() const
+{
+	return m_sector;
+} // getSector

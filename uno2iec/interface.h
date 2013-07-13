@@ -2,6 +2,7 @@
 #define INTERFACE_H
 
 #include "IEC_driver.h"
+#include <max7219.h>
 
 typedef enum {
 	ErrOK,
@@ -50,6 +51,7 @@ public:
 
 	void handler(void);
 
+	void setMaxDisplay(Max7219* pDisplay);
 private:
 	void reset(void);
 	void saveFile();
@@ -63,6 +65,7 @@ private:
 	void handleATNCmdCodeOpen(IEC::ATNCmd &cmd);
 	void handleATNCmdCodeDataTalk(byte chan);
 	void handleATNCmdCodeDataListen();
+	void handleATNCmdClose();
 
 	// our iec low level driver:
 	IEC& m_iec;
@@ -74,6 +77,7 @@ private:
 
 	// send listing pointer in basic memory:
 	volatile word m_basicPtr;
+	Max7219* m_pDisplay;
 };
 
 #endif
