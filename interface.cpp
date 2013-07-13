@@ -184,7 +184,7 @@ void Interface::processOpenCommand(const QString& cmd)
 			// Response: ><code><CR>
 			// The code return is according to the values of the IOErrorMessage enum.
 			// send back m_queuedError to uno.
-			m_port.write(QString(">%1\r").arg(m_queuedError).toLatin1());
+			m_port.write(QString(">%1\r").arg(QString::number(m_openState)).toLatin1());
 			Log("IFACE", QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 		}
 		else {
@@ -193,7 +193,7 @@ void Interface::processOpenCommand(const QString& cmd)
 			openFile(params.at(1));
 			// Response: ><code><CR>
 			// The code return is according to the values of the IOErrorMessage enum.
-			m_port.write(QString(">%1\r").arg(m_openState).toLatin1());
+			m_port.write(QString(">%1\r").arg(QString::number(m_openState)).toLatin1());
 			bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
 			Log("IFACE", QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
 		}
