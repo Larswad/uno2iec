@@ -14,7 +14,7 @@ const char okString[] = "OK";
 
 const byte INPIN = 11, LOADPIN = 13, CLOCKPIN = 12;
 
-static byte myText[] = "   HEJSAN ALLA GLADA BARNEN, DETTA E LARS MED SIN NYA MAX7219 SCROLL...    ";
+static byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC TO RASPBERRY PI AND ARDUINO BY LARS WADEFALK IN 2013...    ";
 
 void waitForPeer();
 

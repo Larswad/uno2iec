@@ -230,7 +230,9 @@ void Interface::processCloseCommand()
 	QString name = m_currFileDriver->openedFileName();
 	QByteArray data;
 	data.append('N').append((char)name.length()).append(name);
+	m_port.write(data);
 	m_port.flush();
+	Log(FAC_IFACE, QString("Returning file name: %1").arg(name), info);
 } // processCloseCommand
 
 
@@ -266,7 +268,6 @@ void Interface::processLineRequest()
 		// TODO: This is a strange error state. return something to CBM.
 		Log(FAC_IFACE, "Strange state.", error);
 	}
-
 } // processOpenCommand
 
 

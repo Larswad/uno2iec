@@ -720,23 +720,13 @@ void Interface::handleATNCmdClose()
 			serCmdIOBuf[len] = '\0';
 			strcpy((char*)scrollBuffer, "LOADED: ");
 			strcat((char*)scrollBuffer, serCmdIOBuf);
-			if(m_pDisplay)
+			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);
 
 		}
 		else {
-			resp = 'E'; // just to end the pain. We're out of sync or somthin'
 			sprintf(serCmdIOBuf, "Expected: %d chars, got %d.", len, actual);
 			Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
 	}
-	else {
-		if('l' not_eq resp) {
-			sprintf(serCmdIOBuf, "Ending at char: %d.", resp);
-			Log(Error, FAC_IFACE, serCmdIOBuf);
-			Serial.readBytes(serCmdIOBuf, sizeof(serCmdIOBuf));
-			Log(Error, FAC_IFACE, serCmdIOBuf);
-		}
-	}
-
 } // handleATNCmdClose
