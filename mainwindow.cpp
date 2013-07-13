@@ -103,6 +103,7 @@ void MainWindow::onDataAvailable()
 		switch(cmdString.at(0).toLatin1()) {
 			case 'R': // read single byte from current file system mode, note that this command needs no termination, it needs to be short.
 				m_pendingBuffer.remove(0, 1);
+				m_iface.processReadFileRequest();
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
 
@@ -116,10 +117,6 @@ void MainWindow::onDataAvailable()
 				// line request: Just remove the BYTE from queue and do business.
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processLineRequest();
-				break;
-
-			case 'R':
-				m_iface.processReadFileRequest();
 				break;
 
 			case '!': // register facility string.
