@@ -189,6 +189,7 @@ void Interface::processOpenCommand(const QString& cmd)
 			data.append((char)m_queuedError);
 			data.append('\r');
 			m_port.write(data);
+			m_port.flush();
 			Log("IFACE", QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 		}
 		else {
@@ -202,6 +203,7 @@ void Interface::processOpenCommand(const QString& cmd)
 			data.append((char)m_openState);
 			data.append('\r');
 			m_port.write(data);
+			m_port.flush();
 			bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
 			Log("IFACE", QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
 		}
