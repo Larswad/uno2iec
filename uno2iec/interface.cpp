@@ -443,7 +443,7 @@ void Interface::sendFile()
 	// Send file bytes, such that the last one is sent with EOI.
 	byte resp;
 	Serial.write('S'); // ask for file size.
-	byte len = Serial.readBytes(serCmdIOBuf, 2);
+	byte len = Serial.readBytes(serCmdIOBuf, 3);
 	// it is supposed to answer with S<highByte><LowByte>
 	if(3 not_eq len or serCmdIOBuf[0] not_eq 'S')
 		return;

@@ -242,6 +242,7 @@ void Interface::processGetOpenFileSize()
 	data.append('S').append(size >> 8).append(size bitand 0xff);
 	m_port.write(data.data(), data.size());
 	m_port.flush();
+	Log(FAC_IFACE, QString("Returning file size: %1").arg(QString::number(size)), info);
 } // processGetOpenedFileSize
 
 
