@@ -36,7 +36,7 @@ class Interface : public ISendLine
 {
 public:
 	Interface(QextSerialPort& port);
-	void processOpenCommand(const QString &cmd);
+	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
 	void processReadFileRequest();
 	void reset();
 
@@ -49,8 +49,9 @@ public:
 
 	void processGetOpenFileSize();
 	void processCloseCommand();
+	bool changeNativeFSDirectory(const QString &newDir);
 private:
-	void openFile(const QString &cmdString);
+	void openFile(const QString &cmdString, bool localImageSelection = false);
 	bool removeFilePrefix(QString &cmd);
 
 	D64 m_d64;

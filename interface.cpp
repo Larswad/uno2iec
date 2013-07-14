@@ -60,10 +60,14 @@ bool Interface::removeFilePrefix(QString& cmd)
 
 // Parse LOAD command, open either file/directory/d64/t64
 //
-void Interface::openFile(const QString& cmdString)
+void Interface::openFile(const QString& cmdString, bool localImageSelection)
 {
 	QString cmd(cmdString);
 
+	if(localImageSelection) {// for this we have to fall back to nativeFS driver first.
+		m_currFileDriver->closeHostFile();
+		m_currFileDriver = &m_native;
+	}
 	// fall back result
 	m_openState = O_NOTHING;
 
@@ -123,7 +127,7 @@ void Interface::openFile(const QString& cmdString)
 					QList<FileDriverBase*>::iterator i;
 					for(i = m_fsList.begin(); i < m_fsList.end(); ++i) {
 						// if extension matches last three characters in any file system, then we set that filesystem into use.
-						if(!(*i)->extension().isEmpty() and cmd.endsWith((*i)->extension())) {
+						if(!(*i)->extension().isEmpty() and cmd.endsWith((*i)->extension(), Qt::CaseInsensitive)) {
 							m_currFileDriver = *i;
 							break;
 						}
@@ -169,14 +173,16 @@ void Interface::openFile(const QString& cmdString)
 		}
 	}
 
-	// Remember last cmd string.
-	m_lastCmdString = cmd;
-	if(O_INFO == m_openState or O_DIR == m_openState)
-		buildDirectoryOrMediaList();
+	if(!localImageSelection) {
+		// Remember last cmd string.
+		m_lastCmdString = cmd;
+		if(O_INFO == m_openState or O_DIR == m_openState)
+			buildDirectoryOrMediaList();
+	}
 } // openFile
 
 
-void Interface::processOpenCommand(const QString& cmd)
+void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionMode)
 {
 	// Request: <channel>|<command string>
 	Log("IFACE", cmd, info);
@@ -195,31 +201,35 @@ void Interface::processOpenCommand(const QString& cmd)
 			}
 			else
 				m_queuedError = ErrDriveNotReady;
-			// Response: ><code><CR>
-			// The code return is according to the values of the IOErrorMessage enum.
-			// send back m_queuedError to uno.
-			QByteArray data;
-			data.append('>');
-			data.append((char)m_queuedError);
-			data.append('\r');
-			m_port.write(data);
-			m_port.flush();
-			Log("IFACE", QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
+			if(!localImageSelectionMode) {
+				// Response: ><code><CR>
+				// The code return is according to the values of the IOErrorMessage enum.
+				// send back m_queuedError to uno.
+				QByteArray data;
+				data.append('>');
+				data.append((char)m_queuedError);
+				data.append('\r');
+				m_port.write(data);
+				m_port.flush();
+				Log("IFACE", QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
+			}
 		}
 		else {
 			// ...otherwise it was a open file command, be optimistic
 			m_openState = O_NOTHING;
-			openFile(params.at(1));
-			// Response: ><code><CR>
-			// The code return is according to the values of the IOErrorMessage enum.
-			QByteArray data;
-			data.append('>');
-			data.append((char)m_openState);
-			data.append('\r');
-			m_port.write(data);
-			m_port.flush();
-			bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
-			Log("IFACE", QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
+			openFile(params.at(1), localImageSelectionMode);
+			if(!localImageSelectionMode) {
+				// Response: ><code><CR>
+				// The code return is according to the values of the IOErrorMessage enum.
+				QByteArray data;
+				data.append('>');
+				data.append((char)m_openState);
+				data.append('\r');
+				m_port.write(data);
+				m_port.flush();
+				bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
+				Log("IFACE", QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
+			}
 		}
 	}
 } // processOpenCommand
@@ -317,7 +327,10 @@ void Interface::buildDirectoryOrMediaList()
 } // buildDirectoryOrMediaList
 
 
-
+bool Interface::changeNativeFSDirectory(const QString& newDir)
+{
+	return m_native.setCurrentDirectory(newDir);
+} // changeNativeFSDirectory
 
 ////////////////////////////////////////////////////////////////////////////////
 //

@@ -479,14 +479,14 @@ bool D64::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
 	Log("D64", "sendMediaInfo.", info);
-	cb.send(0, QString("T64 FS -> %1").arg(m_hostFile.fileName()));
-	cb.send(1, QString("File size: %1").arg(QString::number(m_hostFile.size())));
+	cb.send(0, QString("D64 FS -> %1").arg(m_hostFile.fileName().toUpper()));
+	cb.send(1, QString("FILE SIZE: %1").arg(QString::number(m_hostFile.size())));
 	seekFirstDir();
 	ushort entryCnt = 0;
 	DirEntry dir;
 	while(getDirEntry(dir))
 		entryCnt++;
-	cb.send(2, QString("%1 entries in image.").arg(QString::number(entryCnt)));
+	cb.send(2, QString("%1 ENTRIES IN IMAGE.").arg(QString::number(entryCnt)));
 
 	return true;
 } // sendMediaInfo

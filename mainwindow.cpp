@@ -11,6 +11,9 @@
 #include <QFileDialog>
 #include <QTextStream>
 #include <QDate>
+#include <QDebug>
+#include <QSettings>
+
 #ifdef HAS_WIRINGPI
 #include <wiringPi.h>
 #endif
@@ -19,6 +22,10 @@ using namespace Logging;
 
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
+
+QStringList IMAGE_LIST_HEADERS = (QStringList()
+															<< QObject::tr("Name")
+															<< QObject::tr("Size (KiB)"));
 
 QStringList LOG_LEVELS = (QStringList()
 													<< QObject::tr("error  ")
@@ -30,28 +37,40 @@ QStringList LOG_LEVELS = (QStringList()
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::MainWindow), m_port(QextSerialPort::EventDriven, this)
-	, m_isConnected(false), m_iface(m_port)
+, m_isConnected(false), m_iface(m_port), m_isInitialized(false)
 {
 	ui->setupUi(this);
 
 	// just for the PI.
+	m_dirListItemModel = new QStandardItemModel(0, IMAGE_LIST_HEADERS.count(), this);
+	Q_ASSERT(m_dirListItemModel);
+	ui->dirList->setModel(m_dirListItemModel);
+	readSettings();
 
 	getLoggerInstance().AddTransport(this);
 
-#ifdef __arm__
-	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
-	m_port.setBaudRate(BAUD1152000);
-#else
-	m_port.setPortName(QLatin1String("COM1"));
-	m_port.setBaudRate(BAUD115200);
-#endif
+	m_port.open(QIODevice::ReadWrite);
+	m_ports = QextSerialEnumerator::getPorts();
+
 	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(115200)), success);
 	m_port.setDataBits(DATA_8);
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
 	m_port.setStopBits(STOP_1);
+#ifdef __arm__
+	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
+	m_port.setBaudRate(BAUD1152000);
+#else
+	if(m_ports.count())
+		m_port.setPortName(m_ports.at(0).portName);
+	m_port.setBaudRate(BAUD115200);
+#endif
 
-	m_port.open(QIODevice::ReadWrite);
+	int ix = 0;
+	foreach (QextPortInfo info, m_ports) {
+		ui->comPort->addItem(info.friendName, QVariant(ix));
+		ix++;
+	}
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 #ifdef HAS_WIRINGPI
@@ -62,7 +81,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	else
 		on_resetArduino_clicked();
 #endif
+//	ui->imageDir->setText(QDir::currentPath());
 	Log("MAIN", "Application Initialized.", success);
+	m_isInitialized = true;
+	updateImageList();
 } // MainWindow
 
 
@@ -72,6 +94,35 @@ MainWindow::~MainWindow()
 		m_port.close();
 	delete ui;
 } // dtor
+
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+	writeSettings();
+	QMainWindow::closeEvent(event);
+} // closeEvent
+
+
+////////////////////////////////////////////////////////////////////////////
+// Settings (persistency) management.
+////////////////////////////////////////////////////////////////////////////
+
+void MainWindow::readSettings()
+{
+	QSettings settings;
+
+	ui->imageDir->setText(settings.value("imageDirectory", QDir::currentPath()).toString());
+	QDir::setCurrent(ui->imageDir->text());
+	ui->imageFilter->setText(settings.value("imageFilter", QString()).toString());
+} // readSettings
+
+
+void MainWindow::writeSettings() const
+{
+	QSettings settings;
+	settings.setValue("imageDirectory", ui->imageDir->text());
+	settings.setValue("imageFilter", ui->imageFilter->text());
+} // writeSettings
 
 
 void MainWindow::onDataAvailable()
@@ -118,6 +169,7 @@ void MainWindow::onDataAvailable()
 
 
 			case 'W': // write single character to file in current file system mode.
+				m_pendingBuffer.remove(0, 1);
 				break;
 
 			case 'L':
@@ -145,6 +197,7 @@ void MainWindow::onDataAvailable()
 				break;
 
 			case 'M': // set mode and include command string.
+				m_pendingBuffer.remove(0, 1);
 				break;
 
 			case 'O': // open command
@@ -208,10 +261,10 @@ void MainWindow::processDebug(const QString& str)
 
 void MainWindow::on_resetArduino_clicked()
 {
-#ifdef HAS_WIRINGPI
-	Log("MAIN", "Moving to disconnected state and resetting arduino...", warning);
 	m_isConnected = false;
 	m_iface.reset();
+#ifdef HAS_WIRINGPI
+	Log("MAIN", "Moving to disconnected state and resetting arduino...", warning);
 	// pull pin 23 to reset arduino.
 	pinMode(23, OUTPUT);
 	digitalWrite(23, 0);
@@ -319,4 +372,104 @@ void MainWindow::appendMessage(const QString& msg)
 	}
 } // appendMessage
 
+void MainWindow::on_comPort_currentIndexChanged(int index)
+{
+	if(m_port.isOpen())
+		m_port.close();
+	m_port.setPortName(m_ports.at(index).portName);
+	m_port.open(QIODevice::ReadWrite);
+} // on_comPort_currentIndexChanged
 
+
+void MainWindow::on_browseImageDir_clicked()
+{
+	QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG images"), ui->imageDir->text());
+	if(!dirPath.isEmpty()) {
+		ui->imageDir->setText(dirPath);
+		m_iface.changeNativeFSDirectory(dirPath);
+	}
+	updateImageList();
+} // on_browseImageDir_clicked()
+
+
+void MainWindow::on_imageDir_editingFinished()
+{
+	if(!m_iface.changeNativeFSDirectory(ui->imageDir->text()))
+		ui->imageDir->setText(QDir::currentPath());
+	updateImageList();
+} // on_imageDir_editingFinished
+
+
+void MainWindow::updateImageList()
+{
+	if(!m_isInitialized)
+		return;
+
+	QStringList filterList;
+	filterList.append("*.D64");
+	filterList.append("*.T64");
+	filterList.append("*.M2I");
+	filterList.append("*.PRG");
+	filterList.append("*.P00");
+
+	m_imageInfoMap.clear();
+	QFileInfoList filesList = QDir(ui->imageDir->text()).entryInfoList(filterList, QDir::Files, QDir::Name);
+	QRegExp filter(ui->imageFilter->text());
+	filter.setCaseSensitivity(Qt::CaseInsensitive);
+
+	foreach(QFileInfo file, filesList) {
+		QString strImage(file.fileName());
+		if(strImage.contains(filter))
+			m_imageInfoMap[strImage] = file;
+	}
+	m_dirListItemModel->clear();
+	bool hasImages = m_imageInfoMap.count() > 0;
+	int numAdded = 0;
+
+	if(hasImages) {
+		// fill headers
+		m_dirListItemModel->setColumnCount(IMAGE_LIST_HEADERS.count());
+		for(int i = 0; i < IMAGE_LIST_HEADERS.count(); ++i)
+			m_dirListItemModel->setHeaderData(i, Qt::Horizontal, IMAGE_LIST_HEADERS.at(i));
+
+		foreach(const QString& strImageName, m_imageInfoMap.keys()) {
+			QList<QStandardItem*> iList;
+			iList << (new QStandardItem(strImageName))
+						<< (new QStandardItem(QString::number(float(m_imageInfoMap.value(strImageName).size()) / 1024, 'f', 1)));
+
+			foreach(QStandardItem* it, iList) {
+				it->setEditable(false);
+				it->setSelectable(true);
+			}
+			m_dirListItemModel->appendRow(iList);
+			numAdded++;
+		}
+		for(int i = 0; i < m_dirListItemModel->columnCount(); ++i)
+			ui->dirList->resizeColumnToContents(i);
+	}
+} // updateImageList
+
+
+void MainWindow::on_imageFilter_textChanged(const QString &arg1)
+{
+	Q_UNUSED(arg1);
+	updateImageList();
+} // on_imageFilter_textChanged
+
+
+void MainWindow::on_mountSelected_clicked()
+{
+	QModelIndexList selected = ui->dirList->selectionModel()->selectedRows(0);
+	QString name = selected.first().data(Qt::DisplayRole).toString();
+
+	m_iface.processOpenCommand(QString("0|") + name, true);
+} // on_mountSelected_clicked
+
+
+void MainWindow::on_browseSingle_clicked()
+{
+}
+
+void MainWindow::on_mountSingle_clicked()
+{
+}

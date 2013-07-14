@@ -136,6 +136,10 @@ int main(int argc, char *argv[])
 	qDebug() << endl << "Welcome." << endl;
 #endif
 
+	a.setOrganizationName("MumboJumbo_Software"/*VER_COMPANYNAME_STR*/);
+	a.setOrganizationDomain("DOMAIN");
+	a.setApplicationName("Uno2IEC");
+
 	MainWindow w;
 	w.show();
 

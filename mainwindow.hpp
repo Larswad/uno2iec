@@ -2,7 +2,10 @@
 #define MAINWINDOW_HPP
 
 #include <QMainWindow>
+#include <QStandardItemModel>
+#include <QFileInfo>
 #include <qextserialport.h>
+#include "qextserialenumerator.h"
 #include <QMap>
 #include "interface.hpp"
 #include "logger.hpp"
@@ -17,11 +20,14 @@ class MainWindow : public QMainWindow, public Logging::ILogTransport
 {
 	Q_OBJECT
 
+	typedef QMap<QString, QFileInfo> QFileInfoMap;
+
 public:
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
 	void processAddNewFacility(const QString &str);
+	void closeEvent(QCloseEvent *event);
 
 public slots:
 		void onDataAvailable();
@@ -38,8 +44,25 @@ private slots:
 		void on_saveHtml_clicked();
 		void on_resetArduino_clicked();
 
+		void on_comPort_currentIndexChanged(int index);
+
+		void on_browseImageDir_clicked();
+
+		void on_imageDir_editingFinished();
+
+		void on_imageFilter_textChanged(const QString &arg1);
+
+		void on_mountSelected_clicked();
+
+		void on_browseSingle_clicked();
+
+		void on_mountSingle_clicked();
+
 private:
 	void processDebug(const QString &str);
+	void updateImageList();
+	void readSettings();
+	void writeSettings() const;
 
 	Ui::MainWindow *ui;
 	QextSerialPort m_port;
@@ -47,6 +70,10 @@ private:
 	bool m_isConnected;
 	FacilityMap m_clientFacilities;
 	Interface m_iface;
+	QList<QextPortInfo> m_ports;
+	QStandardItemModel* m_dirListItemModel;
+	QFileInfoMap m_imageInfoMap;
+	bool m_isInitialized;
 };
 
 #endif // MAINWINDOW_HPP

@@ -30,7 +30,6 @@ bool NativeFS::fopen(const QString& fileName)
 {
 	closeHostFile();
 	m_hostFile.setFileName(fileName);
-	Log("NATIVEFS", "fopen: NOT YET IMPLEMENTED", warning);
 	bool isOpen = m_hostFile.open(QIODevice::ReadOnly);
 	m_status = isOpen ? FILE_OPEN : NOT_READY;
 
@@ -194,10 +193,9 @@ bool NativeFS::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
 	Log("NATIVEFS", "sendMediaInfo.", info);
-	cb.send(0, QString("SD CARD NATIVE FS -> EXT4."));
-	cb.send(1, QString("Current Dir: %1").arg(QDir::currentPath()));
-	cb.send(2, "HELLO FROM PI!");
-	cb.send(3, "HELLO FROM ARDUINO UNO!");
+	cb.send(0, QString("NATIVE FS ACTIVE -> EXT4."));
+	cb.send(1, QString("CURRENT DIR: %1").arg(QDir::currentPath().toUpper()));
+	cb.send(2, "HELLO FROM ARDUINO UNO!");
 
 	return true;
 } // sendMediaInfo
@@ -215,7 +213,7 @@ bool NativeFS::setCurrentDirectory(const QString& dir)
 	if(wasSuccess)
 		Log("NATIVEFS", QString("Changing current directory to: %1").arg(QDir::currentPath()), success);
 	else
-		Log("NATIVEFS", QString("Failed changing current directory to: %1").arg(dir), error);
+		Log("NATIVEFS", QString("Failed changing current directory to: %1").arg(dir), warning);
 	return wasSuccess;
 } // setCurrentDirectory
 

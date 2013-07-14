@@ -325,8 +325,8 @@ bool T64::sendMediaInfo(ISendLine &cb)
 	// TODO: Improve this with information about the file system type AND, usage and free data.
 	Log("T64", "sendMediaInfo.", info);
 	cb.send(0, QString("T64 FS -> %1").arg(m_hostFile.fileName()));
-	cb.send(1, QString("File size: %1").arg(QString::number(m_hostFile.size())));
-	cb.send(2, QString("%1 file(s) in image.").arg(QString::number(m_dirEntries)));
+	cb.send(1, QString("FILE SIZE: %1").arg(QString::number(m_hostFile.size())));
+	cb.send(2, QString("%1 FILE(S) IN IMAGE.").arg(QString::number(m_dirEntries)));
 
 	return true;
 } // sendMediaInfo
