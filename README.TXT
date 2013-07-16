@@ -38,14 +38,13 @@ Hardware setup
 
 How to build
 ------------
-
-
-AVR Fuses
----------
-
+Open the PC/Raspberry project in Qt creator and build either release or debug.
 
 Files in release:
 -----------------
-readme.txt
+README.TXT
+notes.txt
 changes.txt
 license.txt
+./		Under repo root is the PC/Raspberry Qt project files.
+uni2iec/	All files under here is the arduino sketch.
