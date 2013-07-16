@@ -63,7 +63,11 @@ const char errorEnding[] = ",00,00";
 
 
 Interface::Interface(IEC& iec)
-	: m_iec(iec), m_pDisplay(0)
+	: m_iec(iec)
+#ifdef USE_LED_DISPLAY
+	, m_pDisplay(0)
+#endif
+
 {
 	reset();
 } // ctor
@@ -184,8 +188,11 @@ void Interface::sendFile()
 	if(3 not_eq len or serCmdIOBuf[0] not_eq 'S')
 		return;
 	word written = 0;
+
+#ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
 		m_pDisplay->resetPercentage((serCmdIOBuf[1] << 8) bitor serCmdIOBuf[2]);
+#endif
 
 	do {
 		Serial.write('R'); // ask for a byte
@@ -212,15 +219,22 @@ void Interface::sendFile()
 					success = m_iec.send(serCmdIOBuf[i]);
 				interrupts();
 				++written;
+
+#ifdef USE_LED_DISPLAY
 				if(!(written % 32) and 0 not_eq m_pDisplay)
 					m_pDisplay->showPercentage(written);
+#endif
+
 			}
 		}
 		else if('E' not_eq resp)
 			Log(Error, FAC_IFACE, "Got unexpected command response char.");
 	} while(resp == 'B'); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
+
+#ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
 		m_pDisplay->showPercentage(written);
+#endif
 } // sendFile
 
 
@@ -298,10 +312,12 @@ void Interface::handler(void)
 } // handler
 
 
+#ifdef USE_LED_DISPLAY
 void Interface::setMaxDisplay(Max7219 *pDisplay)
 {
 	m_pDisplay = pDisplay;
 } // setMaxDisplay
+#endif
 
 
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
@@ -435,8 +451,11 @@ void Interface::handleATNCmdClose()
 			serCmdIOBuf[len] = '\0';
 			strcpy((char*)scrollBuffer, "   LOADED: ");
 			strcat((char*)scrollBuffer, serCmdIOBuf);
+
+#ifdef USE_LED_DISPLAY
 			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);
+#endif
 
 		}
 		else {

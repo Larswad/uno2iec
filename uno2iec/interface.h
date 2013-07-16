@@ -2,7 +2,9 @@
 #define INTERFACE_H
 
 #include "IEC_driver.h"
+#ifdef USE_LED_DISPLAY
 #include <max7219.h>
+#endif
 
 typedef enum {
 	ErrOK,
@@ -52,7 +54,10 @@ public:
 
 	void handler(void);
 
+#ifdef USE_LED_DISPLAY
 	void setMaxDisplay(Max7219* pDisplay);
+#endif
+
 private:
 	void reset(void);
 	void saveFile();
@@ -78,7 +83,9 @@ private:
 
 	// send listing pointer in basic memory:
 	volatile word m_basicPtr;
+#ifdef USE_LED_DISPLAY
 	Max7219* m_pDisplay;
+#endif
 };
 
 #endif

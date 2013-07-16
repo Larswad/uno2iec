@@ -1,8 +1,12 @@
 #include "log.h"
 #include "iec_driver.h"
 #include "interface.h"
-#include <max7219.h>
 #include "global_defines.h"
+
+#ifdef USE_LED_DISPLAY
+#include <max7219.h>
+#endif
+
 
 #define DEFAULT_BAUD_RATE 57600
 
@@ -21,7 +25,11 @@ void waitForPeer();
 // The global IEC handling singleton:
 IEC iec(8);
 Interface iface(iec);
+
+#ifdef USE_LED_DISPLAY
 Max7219* pMax;
+#endif
+
 static unsigned long lastMillis = 0;
 static unsigned long now;
 
@@ -39,9 +47,11 @@ void setup()
 
 	lastMillis = millis();
 
+#ifdef USE_LED_DISPLAY
 	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
 	pMax->resetScrollText(myText);
 	iface.setMaxDisplay(pMax);
+#endif
 } // setup
 
 
@@ -54,11 +64,13 @@ void loop()
 	iface.handler();
 #endif
 
+#ifdef USE_LED_DISPLAY
 	now = millis();
 	if(now - lastMillis >= 50) {
 		pMax->doScrollLeft();
 		lastMillis = now;
 	}
+#endif
 } // loop
 
 
