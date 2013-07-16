@@ -63,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent) :
 #else
 	if(m_ports.count())
 		m_port.setPortName(m_ports.at(0).portName);
-	m_port.setBaudRate(BAUD115200);
+	m_port.setBaudRate(BAUD57600);
 #endif
 
 	int ix = 0;

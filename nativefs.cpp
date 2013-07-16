@@ -1,6 +1,7 @@
 #include "nativefs.hpp"
 #include "logger.hpp"
 #include <QDir>
+#include <math.h>
 
 using namespace Logging;
 
@@ -99,10 +100,54 @@ bool NativeFS::close()
 
 bool NativeFS::sendListing(ISendLine& cb)
 {
-	Log("NATIVEFS", "sendListing: NOT YET IMPLEMENTED", warning);
-	cb.send(0, "LISTING NOT YET IMPLEMENTED.");
-	Q_UNUSED(cb);
-	QDir dir(".");
+	QDir dir(QDir::current());
+	QString dirName(dir.dirName().toUpper());
+	dirName.truncate(23);
+	dirName = dirName.leftJustified(23);
+
+	QStringList filters;
+	filters.append("*.D64");
+	filters.append("*.T64");
+	filters.append("*.M2I");
+	filters.append("*.PRG");
+	filters.append("*.P00");
+
+	QString line("\x12\x22"); // Invert face, "
+	QString diskLabel("NATIVE FS");
+	uchar i;
+	for(i = 2; i < 25; i++) {
+		uchar c = dirName.at(0).toLatin1();
+		dirName.remove(0, 1);
+
+		if(0xA0 == c) // Convert padding A0 to spaces
+			c = ' ';
+
+		if(18 == i)   // Ending "
+			c = '"';
+
+		line += c;
+	}
+	// Ending name with dbl quotes
+	line[i] = QChar('"').toLatin1();
+
+	cb.send(0, line);
+
+	QFileInfoList list(dir.entryInfoList(filters, QDir::NoDot bitor QDir::AllEntries, QDir::Name));
+	Log("NATIVEFS", QString("Listing %1 entrie(s) to CBM.").arg(QString::number(list.count())), info);
+	while(!list.isEmpty()) {
+		QFileInfo entry = list.first();
+		list.removeFirst();
+		line = "   \"";
+		line.append(entry.fileName().toUpper());
+		if(entry.isDir())
+			line.append(strDir + '"');
+		else
+			line.append('"');
+
+		ushort fileSize = entry.size() / 1024;
+		// Send initial spaces (offset) according to file size
+		cb.send(fileSize, line.mid((int)log10(fileSize)));
+	}
 
 	return true;
 } // sendListing

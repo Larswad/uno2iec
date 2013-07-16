@@ -17,7 +17,7 @@ typedef enum {
 	ErrCount
 } IOErrorMessage;
 
-
+/*
 enum  {
 	IS_FAIL = 0xFF, // IFail: SD card or fat not ok
 	IS_NATIVE = 0,			// Regular file system file state
@@ -28,6 +28,7 @@ enum  {
 	IS_PRG = 4,
 	NumInterfaceStates
 };
+*/
 
 enum OpenState {
 	O_NOTHING,			// Nothing to send / File not found error

@@ -456,20 +456,3 @@ byte dummy_no_newfile(char *s)
 }
 */
 
-/*
-// The previous cmd is copied to this string:
-char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
-
-const char errorStr0[] = "00,OK";
-const char errorStr1[] = "21,READ ERROR";
-const char errorStr2[] = "26,WRITE PROTECT ON";
-const char errorStr3[] = "33,SYNTAX ERROR";
-const char errorStr4[] = "62,FILE NOT FOUND";
-const char errorStr5[] = "63,FILE EXISTS";
-const char errorStr6[] = "73,MMC2IEC DOS V0.8";
-const char errorStr7[] = "74,DRIVE NOT READY";
-const char errorStr8[] = "75,RPI SERIAL ERR.";
-const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7, errorStr8 };
-
-const char errorEnding[] = ",00,00";
-*/

@@ -40,8 +40,25 @@
 namespace {
 // atn command buffer struct
 IEC::ATNCmd cmd;
-char serCmdIOBuf[80];
+char serCmdIOBuf[120];
 byte scrollBuffer[30];
+
+// The previous cmd is copied to this string:
+char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
+
+const char errorStr0[] = "00,OK";
+const char errorStr1[] = "21,READ ERROR";
+const char errorStr2[] = "26,WRITE PROTECT ON";
+const char errorStr3[] = "33,SYNTAX ERROR";
+const char errorStr4[] = "62,FILE NOT FOUND";
+const char errorStr5[] = "63,FILE EXISTS";
+const char errorStr6[] = "73,MMC2IEC DOS V0.8";
+const char errorStr7[] = "74,DRIVE NOT READY";
+const char errorStr8[] = "75,RPI SERIAL ERR.";
+const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7, errorStr8 };
+
+const char errorEnding[] = ",00,00";
+
 } // unnamed namespace
 
 
@@ -56,7 +73,7 @@ void Interface::reset(void)
 {
 	m_openState = O_NOTHING;
 	m_queuedError = ErrIntro;
-	m_interfaceState = IS_NATIVE;
+	//m_interfaceState = IS_NATIVE;
 } // reset
 
 
@@ -124,6 +141,8 @@ void Interface::sendListing()
 		if('L' == resp) { // PI will give us something else if we're at last line to send.
 			// get the length as one byte: This is kind of specific: For listings we allow 256 bytes length. Period.
 			byte len = serCmdIOBuf[1];
+			// TODO: Here we might need to read out the data in portions. The serCmdIOBuf might just be too small
+			// for long lines.
 			byte actual = Serial.readBytes(serCmdIOBuf, len);
 			if(len == actual) {
 				// send the bytes directly to CBM!
@@ -298,53 +317,65 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 {
 	byte lengthOrResult;
 	boolean wasSuccess = false;
-	if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 3)) {
-		// process response into m_queuedError.
-		// Response: ><code in binary><CR>
-		if('>' == serCmdIOBuf[0] and 3 == lengthOrResult) {
-			lengthOrResult = serCmdIOBuf[1];
-			wasSuccess = true;
-		}
-		else
-			Log(Error, FAC_IFACE, serCmdIOBuf);
-	}
-	if(CMD_CHANNEL == chan) {
-		m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
-		// Send status message
-		sendStatus();
-		// go back to OK state, we have dispatched the error to IEC host now.
-		m_queuedError = ErrOK;
+
+	// process response into m_queuedError.
+	// Response: ><code in binary><CR>
+	serCmdIOBuf[0] = 0;
+	do {
+		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
+	} while(lengthOrResult not_eq 1 or serCmdIOBuf[0] not_eq '>');
+
+	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
+		m_iec.sendFNF();
+		Log(Information, FAC_IFACE, "Could not sync to response char.");
 	}
 	else {
-		m_openState = wasSuccess ? lengthOrResult : O_NOTHING;
+		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
+			if(2 == lengthOrResult) {
+				lengthOrResult = serCmdIOBuf[0];
+				wasSuccess = true;
+			}
+			else
+				Log(Error, FAC_IFACE, serCmdIOBuf);
+		}
+		if(CMD_CHANNEL == chan) {
+			m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
+			// Send status message
+			sendStatus();
+			// go back to OK state, we have dispatched the error to IEC host now.
+			m_queuedError = ErrOK;
+		}
+		else {
+			m_openState = wasSuccess ? lengthOrResult : O_NOTHING;
 
-		switch(m_openState) {
-		case O_INFO:
-			// Reset and send SD card info
-			reset();
-			// TODO: interface with PI (file system media info).
-			sendListing();
-			break;
+			switch(m_openState) {
+			case O_INFO:
+				// Reset and send SD card info
+				reset();
+				// TODO: interface with PI (file system media info).
+				sendListing();
+				break;
 
-		case O_FILE_ERR:
-			// TODO: interface with pi for error info.
-			sendListing(/*&send_file_err*/);
-			break;
+			case O_FILE_ERR:
+				// TODO: interface with pi for error info.
+				sendListing(/*&send_file_err*/);
+				break;
 
-		case O_NOTHING: /*or (0 == pff)*/
-			// Say file not found
-			m_iec.sendFNF();
-			break;
+			case O_NOTHING: /*or (0 == pff)*/
+				// Say file not found
+				m_iec.sendFNF();
+				break;
 
-		case O_FILE:
-			// Send program file
-			sendFile();
-			break;
+			case O_FILE:
+				// Send program file
+				sendFile();
+				break;
 
-		case O_DIR:
-			// Send listing
-			sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
-			break;
+			case O_DIR:
+				// Send listing
+				sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
+				break;
+			}
 		}
 	}
 //	Log(Information, FAC_IFACE, serCmdIOBuf);

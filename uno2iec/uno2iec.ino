@@ -4,7 +4,7 @@
 #include <max7219.h>
 #include "global_defines.h"
 
-#define DEFAULT_BAUD_RATE 115200
+#define DEFAULT_BAUD_RATE 57600
 
 // Pin 13 has a LED connected on most Arduino boards.
 const byte ledPort = 13;
