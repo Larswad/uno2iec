@@ -1,7 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <arduino.h>
+#include <Arduino.h>
 
 #define FAC_MAIN 'M'
 #define FAC_IEC 'I'

@@ -1,7 +1,7 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
-#include "IEC_driver.h"
+#include "iec_driver.h"
 #ifdef USE_LED_DISPLAY
 #include <max7219.h>
 #endif
