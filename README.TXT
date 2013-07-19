@@ -45,7 +45,7 @@ Atmel ATMega328 (Arduino Uno) at ~16 MHz, 32KB flash, 2 KB SRAM, 1KB EEPROM.
 Contact
 -------
 This project was created by:
-		Lars Wadefalk, email: lars@wadeefalk.se
+		Lars Wadefalk, email: lars@wadefalk.se
 
 Project homepage:
 		http://TODO.com
@@ -54,9 +54,9 @@ Project homepage:
 Hardware setup
 --------------
 Arduino Uno: ATmega 16U2 328 microcontroller @ 16Mhz, 32KB flash, SRAM 2KB, EEPOM 1 KB.
-Connect at least ATN, CLOCK and DATA pin to the IEC bus on the CBM. The Reset and SRQIN (latter one is unused on C64)
+Connect at least ATN, CLOCK, DATA and GND pin to the IEC bus on the CBM. The Reset and SRQIN (latter one is unused on the C64)
 are optional to wire.
-Can be bought cheap at dx.com:
+The Uno can be bought very cheap at dx.com:
 http://dx.com/p/uno-r3-development-board-microcontroller-mega328p-atmega16u2-compat-for-arduino-blue-black-215600
 
 
@@ -66,15 +66,17 @@ http://dx.com/p/max7219-dot-matrix-module-w-5-dupont-lines-184854
 Whether or not using the LED matrix when compiling, either define or comment out the USE_LED_DISPLAY macro in the
 global_defines.h header in the uno2iec project.
 
-Either connect Arduino to a PC or MAC. Media host side project can be compiled on either Linux, Windows or Mac desktop.
-It works on the Raspberry Pi as a host as well. Connect three serial pins on the PI to the arduino. The raspbian image
-is the suggested linux, needs Qt build and runtime support.
-For more info about how to prepare a raspberry pi for external serial communication, read the notes.txt file.
+Either connect Arduino to a PC, MAC. Media host side project can be compiled on either Linux, Windows or Mac desktop.
+It works on the Raspberry Pi as a host as well. Connect two serial pins (RX, TX, twisted of course) on the PI to the arduino. A third
+pin may also be connected with the purpose to reset the Arduino from the PI side (the PI uses the wiringPi project for GPIO access). The 
+raspbian image is the suggested linux to use, it needs Qt build and runtime support.
+For more info about how to prepare a raspberry pi properly for external serial communication, read the notes.txt file. There are a few 
+details when it comes to releasing the serial port from the kernel log.
 
 
 How to build
 ------------
-Open the PC/Raspberry project in Qt creator and build either release or debug.
+Open the PC/Raspberry project (.pro) file in Qt creator and build either release or debug.
 
 REQUIRES: (external dependencies):
 QExtSerialPort project:
@@ -92,7 +94,7 @@ suite to the arduino target.
 
 Files in release:
 -----------------
-README.TXT
+README.TXT (this file)
 notes.txt
 TODO: changes.txt
 TODO: license.txt
