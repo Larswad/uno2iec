@@ -51,7 +51,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.open(QIODevice::ReadWrite);
 	m_ports = QextSerialEnumerator::getPorts();
 
-	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(115200)), success);
 	m_port.setDataBits(DATA_8);
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
@@ -62,11 +61,14 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
 #elif defined(Q_OS_LINUX)
 	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
+	m_port.setBaudRate(BAUD57600);
 #else
 	if(m_ports.count())
 		m_port.setPortName(m_ports.at(0).portName);
 	m_port.setBaudRate(BAUD57600);
 #endif
+
+	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
 
 	int ix = 0;
 	foreach (QextPortInfo info, m_ports) {
