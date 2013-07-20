@@ -55,26 +55,29 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.setFlowControl(FLOW_OFF);
 	m_port.setStopBits(STOP_1);
 #if defined(__arm__)
-	// just for the Raspberry PI.
-	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
-	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
+			// just for the Raspberry PI.
+	static QExtPortInfo piPort = { "/dev/ttyAMA0", "ttyAMA0", "Arduino AMA0", "", 0, 0 };
+//	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
+	m_ports.insert(0, piPort);
+//	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
 #elif defined(Q_OS_LINUX)
-	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
-	m_port.setBaudRate(BAUD57600);
-#else
-	if(m_ports.count())
-		m_port.setPortName(m_ports.at(0).portName);
-	m_port.setBaudRate(BAUD57600);
+	static QExtPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
+//	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
+	m_ports.insert(0, unixPort);
 #endif
-
-	m_port.open(QIODevice::ReadWrite);
-	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
-
 	int ix = 0;
 	foreach (QextPortInfo info, m_ports) {
 		ui->comPort->addItem(info.friendName, QVariant(ix));
 		ix++;
 	}
+
+	if(m_ports.count())
+		m_port.setPortName(m_ports.at(0).portName);
+	m_port.setBaudRate(BAUD57600);
+
+
+	//	m_port.open(QIODevice::ReadWrite);
+	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
 
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 #ifdef HAS_WIRINGPI
@@ -378,11 +381,11 @@ void MainWindow::appendMessage(const QString& msg)
 
 void MainWindow::on_comPort_currentIndexChanged(int index)
 {
-//	if(m_port.isOpen())
-//		m_port.close();
-//	m_port.setPortName(m_ports.at(index).portName);
-//	m_port.open(QIODevice::ReadWrite);
-//	Log("MAIN", QString("Port name changed to %1").arg(m_port.portName()), info);
+	if(m_port.isOpen())
+		m_port.close();
+	m_port.setPortName(m_ports.at(index).portName);
+	m_port.open(QIODevice::ReadWrite);
+	Log("MAIN", QString("Port name changed to %1").arg(m_port.portName()), info);
 } // on_comPort_currentIndexChanged
 
 
