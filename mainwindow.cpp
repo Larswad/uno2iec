@@ -56,11 +56,11 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
 	m_port.setStopBits(STOP_1);
-#ifdef __arm__
+#if defined(__arm__)
 	// just for the Raspberry PI.
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
 	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
-#elif Q_OS_LINUX
+#elif defined(Q_OS_LINUX)
 	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
 #else
 	if(m_ports.count())
