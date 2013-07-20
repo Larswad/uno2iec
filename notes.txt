@@ -55,6 +55,9 @@ How to test the ATN, CLOCK, DATA lines from CBM basic:
 30 PRINT PEEK)(A) AND 192
 40 GOTO 30
 
+// For ttyACM0 access without sudo on ubuntu (or derivates).
+sudo usermod -a -G tty yourUserName
+sudo usermod -a -G dialout yourUserName
 
 // Peer commands:
 // Tries continuously to connect to host with:
