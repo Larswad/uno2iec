@@ -60,6 +60,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	// just for the Raspberry PI.
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
 	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
+#elif Q_OS_LINUX
+	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
 #else
 	if(m_ports.count())
 		m_port.setPortName(m_ports.at(0).portName);
