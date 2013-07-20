@@ -57,11 +57,17 @@ MainWindow::MainWindow(QWidget *parent) :
 #if defined(__arm__)
 			// just for the Raspberry PI.
 	static QExtPortInfo piPort = { "/dev/ttyAMA0", "ttyAMA0", "Arduino AMA0", "", 0, 0 };
+	static QExtPortInfo piPort = { "/dev/ttyAMA0", "ttyAMA0", "Arduino AMA0", "", 0, 0 };
+=======
+>>>>>>> correcting some port and baud settings.
 //	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
 	m_ports.insert(0, piPort);
 //	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
 #elif defined(Q_OS_LINUX)
 	static QExtPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
+	static QExtPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
+=======
+>>>>>>> correcting some port and baud settings.
 //	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
 	m_ports.insert(0, unixPort);
 #endif
