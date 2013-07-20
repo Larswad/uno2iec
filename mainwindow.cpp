@@ -48,7 +48,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	getLoggerInstance().AddTransport(this);
 
-	m_port.open(QIODevice::ReadWrite);
 	m_ports = QextSerialEnumerator::getPorts();
 
 	m_port.setDataBits(DATA_8);
@@ -68,6 +67,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.setBaudRate(BAUD57600);
 #endif
 
+	m_port.open(QIODevice::ReadWrite);
 	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
 
 	int ix = 0;
