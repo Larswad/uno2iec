@@ -382,6 +382,7 @@ void MainWindow::on_comPort_currentIndexChanged(int index)
 		m_port.close();
 	m_port.setPortName(m_ports.at(index).portName);
 	m_port.open(QIODevice::ReadWrite);
+	Log("MAIN", QString("Port name changed to %1").arg(m_port.portName()), info);
 } // on_comPort_currentIndexChanged
 
 
