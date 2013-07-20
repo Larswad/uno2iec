@@ -41,7 +41,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
 	ui->setupUi(this);
 
-	// just for the PI.
 	m_dirListItemModel = new QStandardItemModel(0, IMAGE_LIST_HEADERS.count(), this);
 	Q_ASSERT(m_dirListItemModel);
 	ui->dirList->setModel(m_dirListItemModel);
@@ -58,8 +57,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_port.setFlowControl(FLOW_OFF);
 	m_port.setStopBits(STOP_1);
 #ifdef __arm__
+	// just for the Raspberry PI.
 	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
-	m_port.setBaudRate(BAUD1152000);
+	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
 #else
 	if(m_ports.count())
 		m_port.setPortName(m_ports.at(0).portName);
