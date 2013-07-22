@@ -302,6 +302,9 @@ void MainWindow::on_resetArduino_clicked()
 	Log("MAIN", "Releasing reset state...", info);
 	// set it high again to release reset state.
 	digitalWrite(23, 1);
+#else
+	m_port.close();
+	m_port.open(QIODevice::ReadWrite);
 #endif
 } // on_resetArduino_clicked
 
