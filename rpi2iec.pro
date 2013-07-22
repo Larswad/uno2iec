@@ -57,6 +57,6 @@ HEADERS  += mainwindow.hpp \
 FORMS    += mainwindow.ui
 
 OTHER_FILES += \
-		readme.txt \
 		changes.txt \
-		notes.txt
+		notes.txt \
+    README.TXT

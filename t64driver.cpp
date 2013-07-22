@@ -78,13 +78,17 @@ bool T64::openHostFile(const QString& fileName)
 
 				// We are happy
 				m_status = IMAGE_OK;
+				m_lastOpenedFileName = QString("Image: ") + fileName;
 				return true;
 			}
 		}
 	}
+	m_lastOpenedFileName.clear();
+
 	// yikes.
 	return false;
-}
+} // openHostFile
+
 
 void T64::closeHostFile()
 {
@@ -265,6 +269,8 @@ bool T64::fopen(const QString& fileName)
 		m_lastOpenedFileName = fileName;
 		m_status = IMAGE_OK bitor FILE_OPEN;
 	}
+	else
+		m_lastOpenedFileName.clear();
 
 	return found;
 } // fopen
@@ -272,7 +278,7 @@ bool T64::fopen(const QString& fileName)
 
 QString T64::openedFileName() const
 {
-	return m_hostFile.fileName();
+	return m_lastOpenedFileName;
 } // openedFileName
 
 

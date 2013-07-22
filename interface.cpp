@@ -135,7 +135,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 
 					if(i not_eq m_fsList.end()) {
 						m_native.closeHostFile();
-						Log("IFACE", QString("Trying driver: %1").arg(m_currFileDriver->extension()), info);
+						Log(FAC_IFACE, QString("Trying driver: %1").arg(m_currFileDriver->extension()), info);
 						// file extension matches, change interface state
 						// call new format's reset
 						if(m_currFileDriver->openHostFile(cmd)) {
@@ -147,24 +147,24 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 						}
 						else {
 							// Error initializing driver, back to native file system.
-							Log("IFACE", QString("Error initializing driver for FS.ext: %1. Going back to native.").arg(m_currFileDriver->extension()), error);
+							Log(FAC_IFACE, QString("Error initializing driver for FS.ext: %1. Going back to native.").arg(m_currFileDriver->extension()), error);
 							m_currFileDriver = &m_native;
 							m_openState = O_FILE_ERR;
 						}
 					}
 					else { // No specific file format for this file, stay in FAT and send as straight .PRG
-						Log("IFACE", QString("No specific file format for the names extension: %1, assuming .PRG in native file mode.").arg(cmd), info);
+						Log(FAC_IFACE, QString("No specific file format for the names extension: %1, assuming .PRG in native file mode.").arg(cmd), info);
 						m_openState = O_FILE;
 					}
 				}
 				else { // File not found, giveup.
-					Log("IFACE", QString("File %1 not found. Returning FNF to CBM.").arg(cmd), warning);
+					Log(FAC_IFACE, QString("File %1 not found. Returning FNF to CBM.").arg(cmd), warning);
 					m_openState = O_NOTHING;
 				}
 			}
 			else if(0 not_eq m_currFileDriver) {
 				// Call file format's own open command
-				Log("IFACE", QString("Trying open FS file: %1 on FS: %2").arg(cmd).arg(m_currFileDriver->extension()), info);
+				Log(FAC_IFACE, QString("Trying open FS file: %1 on FS: %2").arg(cmd).arg(m_currFileDriver->extension()), info);
 				if(m_currFileDriver->fopen(cmd))
 					m_openState = O_FILE;
 				else // File not found
@@ -185,7 +185,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionMode)
 {
 	// Request: <channel>|<command string>
-	Log("IFACE", cmd, info);
+	Log(FAC_IFACE, cmd, info);
 	QStringList params(cmd.split('|'));
 	if(params.count() < 2) // enough params?
 		m_queuedError = ErrSerialComm;
@@ -211,7 +211,7 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 				data.append('\r');
 				m_port.write(data);
 				m_port.flush();
-				Log("IFACE", QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
+				Log(FAC_IFACE, QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 			}
 		}
 		else {
@@ -228,7 +228,7 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 				m_port.write(data);
 				m_port.flush();
 				bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
-				Log("IFACE", QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
+				Log(FAC_IFACE, QString("Open_Response code: %1").arg(QString::number(m_openState)), fail ? error : success);
 			}
 		}
 	}
@@ -274,7 +274,7 @@ void Interface::processLineRequest()
 		}
 	}
 	else {
-		// TODO: This is a strange error state. return something to CBM.
+		// TODO: This is a strange error state. Maybe we should return something to CBM here.
 		Log(FAC_IFACE, "Strange state.", error);
 	}
 } // processOpenCommand

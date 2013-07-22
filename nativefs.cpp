@@ -112,7 +112,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 	filters.append("*.PRG");
 	filters.append("*.P00");
 
-	QString line("\x12\x22"); // Invert face, "
+	QString line("\x12\""); // Invert face, "
 	QString diskLabel("NATIVE FS");
 	uchar i;
 	for(i = 2; i < 25; i++) {
@@ -151,84 +151,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 
 	return true;
 } // sendListing
-/* TODO: Move this to PI, Native file system listing.
-void fat_send_listing(void (*send_line)(short line_no, unsigned char len, char *text))
-{
-	unsigned short s;
-	unsigned char i;
-	char buffer[24];
 
-	struct diriterator di;
-	struct direntry *de;
-
-	// Prepare buffer
-	memset(buffer, ' ', 3);
-	buffer[3] = '"';   // quotes
-
-	// Iterate through directory
-	de = fatFirstDirEntry(fatGetCurDirCluster(), &di);
-
-	while(de not_eq NULL) {
-		if(*de->deName == SLOT_EMPTY)
-			break; // there are no more direntries
-
-		if((*de->deName not_eq SLOT_DELETED) and
-			 (de->deAttributes not_eq ATTR_LONG_FILENAME)) {
-			if(de->deAttributes == ATTR_VOLUME) {
-				// Print volume label line. This will be 11 chars
-				(send_line)(0, 11, de->deName);
-			}
-			else {
-				// Regular file/directory
-				if(de->deAttributes & ATTR_DIRECTORY) {
-					// Its a dir
-					memcpy(&(buffer[4]), de->deName, 8);    // name
-					buffer[12] = ' ';                       // space
-					memcpy(&(buffer[13]), de->deName+8, 3); // ext
-					buffer[16] = 0x22;                      // quote
-					memcpy_P(&(buffer[17]), pstr_dir, 6);   // line end
-
-					(send_line)(0, 23, buffer);
-				}
-				else {
-					// Its a file, calc file size in kB:
-					s = (de->deFileSize + (1 << 10) - 1) >> 10;
-
-					// Calc number of spaces required
-					if(s > 9999) {
-						s = 9999;
-						i = 0;
-					}
-					else if(s >= 1000)
-						i = 0;
-					else if(s >= 100)
-						i = 1;
-					else if(s >= 10)
-						i = 2;
-					else
-						i = 3;
-
-					memcpy(&(buffer[4]), de->deName, 8);    // name
-					buffer[12] = '.';                       // dot
-					memcpy(&(buffer[13]), de->deName + 8, 3); // ext
-					buffer[16] = '"';                      // quote
-
-					(send_line)(s, 14 + i, &(buffer[3 - i]));
-				}
-			}
-		}
-
-		de = fatNextDirEntry(&di);
-	}
-
-	// Was this a natural ending??
-	if(sdCardOK == FALSE) {
-		// say  "ERROR: SD/MMC"
-		memcpy_P(buffer, strSDState1, 13);
-		(send_line)(0, 13, buffer);
-	}
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -238,7 +161,7 @@ bool NativeFS::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
 	Log("NATIVEFS", "sendMediaInfo.", info);
-	cb.send(0, QString("NATIVE FS ACTIVE -> EXT4."));
+	cb.send(0, QString("NATIVE FS ACTIVE -> XXX.")); // TODO: File system type instead of xxx.
 	cb.send(1, QString("CURRENT DIR: %1").arg(QDir::currentPath().toUpper()));
 	cb.send(2, "HELLO FROM ARDUINO UNO!");
 

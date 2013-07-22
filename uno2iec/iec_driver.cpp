@@ -79,7 +79,8 @@
 
 IEC::IEC(byte deviceNumber) :
 	m_state(noFlags), m_deviceNumber(deviceNumber),
-	m_atnPin(5), m_dataPin(3), m_clockPin(4), /*m_srqInPin(6),*/ m_resetPin(7)
+	m_atnPin(DEFAULT_ATN_PIN), m_dataPin(DEFAULT_DATA_PIN),
+	m_clockPin(DEFAULT_CLOCK_PIN), /*m_srqInPin(DEFAULT_SRQIN_PIN),*/ m_resetPin(DEFAULT_RESET_PIN)
 #ifdef DEBUGLINES
 	,m_lastMillis(0)
 #endif

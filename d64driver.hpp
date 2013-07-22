@@ -147,6 +147,7 @@ private:
 	uchar m_currentLinkTrack;
 	uchar m_currentLinkSector;
 	DirEntry m_currDirEntry;
+	QString m_lastName;
 };
 
 #endif

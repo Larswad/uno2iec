@@ -20,6 +20,7 @@
 
 using namespace Logging;
 
+namespace {
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
 
@@ -33,6 +34,17 @@ QStringList LOG_LEVELS = (QStringList()
 													<< QObject::tr("info   ")
 													<< QObject::tr("success"));
 
+const uint DEFAULT_BAUDRATE = BAUD115200;
+
+const uint DEFAULT_DEVICE_NUMBER = 8;
+const uint DEFAULT_RESET_PIN = 7;
+const uint DEFAULT_CLOCK_PIN = 4;
+const uint DEFAULT_DATA_PIN = 3;
+const uint DEFAULT_ATN_PIN = 5;
+
+//const uint DEFAULT_SRQIN_PIN = 2;
+} // unnamed namespace
+
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -44,8 +56,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_dirListItemModel = new QStandardItemModel(0, IMAGE_LIST_HEADERS.count(), this);
 	Q_ASSERT(m_dirListItemModel);
 	ui->dirList->setModel(m_dirListItemModel);
-	readSettings();
-
 	getLoggerInstance().AddTransport(this);
 
 	m_ports = QextSerialEnumerator::getPorts();
@@ -71,10 +81,10 @@ MainWindow::MainWindow(QWidget *parent) :
 		ix++;
 	}
 
+	readSettings();
+
 	if(m_ports.count())
 		m_port.setPortName(m_ports.at(0).portName);
-	m_port.setBaudRate(BAUD115200);
-
 
 	//	m_port.open(QIODevice::ReadWrite);
 	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
@@ -121,6 +131,13 @@ void MainWindow::readSettings()
 	ui->imageDir->setText(settings.value("imageDirectory", QDir::currentPath()).toString());
 	QDir::setCurrent(ui->imageDir->text());
 	ui->imageFilter->setText(settings.value("imageFilter", QString()).toString());
+	ui->baudRate->setCurrentText(settings.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toString());
+	ui->deviceNumber->setCurrentText(settings.value("deviceNumber", QString::number(DEFAULT_DEVICE_NUMBER)).toString());
+	ui->atnPin->setCurrentText(settings.value("atnPin", QString::number(DEFAULT_ATN_PIN)).toString());
+	ui->clockPin->setCurrentText(settings.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toString());
+	ui->dataPin->setCurrentText(settings.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toString());
+	ui->resetPin->setCurrentText(settings.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toString());
+//	ui->baudRate->setCurrentText(settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toString());
 } // readSettings
 
 
@@ -129,6 +146,12 @@ void MainWindow::writeSettings() const
 	QSettings settings;
 	settings.setValue("imageDirectory", ui->imageDir->text());
 	settings.setValue("imageFilter", ui->imageFilter->text());
+	settings.setValue("baudRate", ui->baudRate->currentText());
+	settings.setValue("deviceNumber", ui->deviceNumber->currentText());
+	settings.setValue("atnPin", ui->atnPin->currentText());
+	settings.setValue("clockPin", ui->clockPin->currentText());
+	settings.setValue("dataPin", ui->dataPin->currentText());
+//	settings.setValue("srqInPin", ui->srqInPin->currentText());
 } // writeSettings
 
 
@@ -478,6 +501,19 @@ void MainWindow::on_browseSingle_clicked()
 {
 }
 
+
 void MainWindow::on_mountSingle_clicked()
 {
 }
+
+
+void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)
+{
+	m_port.close();
+	// We are doing something less obvious here: The baudrate types are actually enums corresponding to the rate by
+	// the number itself. So its good enough to just use the number from the combobox as it is.
+	m_port.setBaudRate(static_cast<BaudRateType>(baudRate.toLong()));
+
+	m_port.open(QIODevice::ReadWrite); // open the shop again.
+	m_isConnected = false;
+} // on_baudRate_currentIndexChanged

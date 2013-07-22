@@ -58,6 +58,8 @@ private slots:
 
 		void on_mountSingle_clicked();
 
+		void on_baudRate_currentIndexChanged(const QString& baudRate);
+
 private:
 	void processDebug(const QString &str);
 	void updateImageList();

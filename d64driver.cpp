@@ -96,9 +96,11 @@ bool D64::openHostFile(const QString& fileName)
 		// file size is at least 174.848
 		if(hostSize() >= D64_IMAGE_SIZE) {
 			m_status = IMAGE_OK;
+			m_lastName = QString("Image: ") + fileName;
 			return true;
 		}
 	}
+	m_lastName.clear();
 
 	// yikes.
 	return false;
@@ -382,7 +384,10 @@ bool D64::fopen(const QString& fileName)
 		// File found. Jump to block and set correct state
 		seekBlock(m_currDirEntry.m_track, m_currDirEntry.m_sector);
 		m_status = (FSStatus)(IMAGE_OK bitor FILE_OPEN);
+		m_lastName = fileName;
 	}
+	else
+		m_lastName.clear();
 
 	return found;
 } // fopen
@@ -390,7 +395,7 @@ bool D64::fopen(const QString& fileName)
 
 QString D64::openedFileName() const
 {
-	return m_currDirEntry.name();
+	return m_lastName;
 } // openedFileName
 
 

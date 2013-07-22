@@ -11,4 +11,11 @@
 
 //#define USE_LED_DISPLAY
 
+// The IEC bus pin configuration on the Arduino side.
+#define DEFAULT_ATN_PIN 5
+#define DEFAULT_DATA_PIN 3
+#define DEFAULT_CLOCK_PIN 4
+#define DEFAULT_SRQIN_PIN 6
+#define DEFAULT_RESET_PIN 7
+
 #endif // GLOBAL_DEFINES_HPP
