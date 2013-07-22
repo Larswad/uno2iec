@@ -5,10 +5,13 @@
 
 #ifdef USE_LED_DISPLAY
 #include <max7219.h>
+
+Max7219* pMax;
+// Put ANYTHING in here you want to scroll as an initial text on your MAX7219!
+static byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
 #endif
 
-
-#define DEFAULT_BAUD_RATE 57600
+#define DEFAULT_BAUD_RATE 115200
 
 // Pin 13 has a LED connected on most Arduino boards.
 const byte ledPort = 13;
@@ -18,17 +21,11 @@ const char okString[] = "OK";
 
 const byte INPIN = 11, LOADPIN = 13, CLOCKPIN = 12;
 
-static byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC TO RASPBERRY PI AND ARDUINO BY LARS WADEFALK IN 2013...    ";
-
 void waitForPeer();
 
 // The global IEC handling singleton:
 IEC iec(8);
 Interface iface(iec);
-
-#ifdef USE_LED_DISPLAY
-Max7219* pMax;
-#endif
 
 static unsigned long lastMillis = 0;
 static unsigned long now;
@@ -58,6 +55,9 @@ void setup()
 void loop()
 {
 #ifdef DEBUGLINES
+	// This is just for testing that the IEC lines are working properly (soldering, connections etc.)
+	// Use either the first or second code line below, for outputs it will every second toggle the DATA and CLOCK.
+	// If testing as input, it will log the states to the host every second.
 	iec.testOUTPUTS();
 	//iec.testINPUTS();
 #else
@@ -74,6 +74,7 @@ void loop()
 } // loop
 
 
+// Establish connection to the media host.
 void waitForPeer()
 {
 	// initialize the digital pin as an output.
@@ -94,13 +95,13 @@ void waitForPeer()
 			delay(500 / numBlinks / 2);               // wait for a second
 		}
 		connected = Serial.find((char*)okString);
-	}
+	} // while(!connected)
 
 	char dateTime[30];
 	if(Serial.readBytesUntil('\r', dateTime, sizeof(dateTime))) {
 		// TODO: parse date time and set clock.
 	}
 	registerFacilities();
-	Log(Success, 'M', "CONNECTED TO PEER.");
-	Log(Information, 'M', "READY FOR IEC COMMUNICATION.");
+	// We're in business.
+	Log(Success, 'M', "CONNECTED TO PEER, READY FOR IEC COMMUNICATION WITH CBM.");
 } // waitForPeer

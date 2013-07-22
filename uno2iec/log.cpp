@@ -17,11 +17,12 @@ void registerFacilities(void)
 } // registerFacilities
 
 
-void Log(byte severity , char facility, char* msg)
+void Log(byte severity, char facility, char* msg)
 {
 	char strBuf[4];
 	sprintf(strBuf, "D%c%c", siwe[severity], facility);
 	// TODO: Queueing possible, polling of queue could be handled (called) from 'loop()'.
 	Serial.print(strBuf);
-	Serial.println(msg);
+	Serial.print(msg);
+	Serial.print("\r");
 } // Log

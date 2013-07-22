@@ -44,7 +44,7 @@ char serCmdIOBuf[120];
 byte scrollBuffer[30];
 
 // The previous cmd is copied to this string:
-char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
+//char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
 
 const char errorStr0[] = "00,OK";
 const char errorStr1[] = "21,READ ERROR";
@@ -135,7 +135,7 @@ void Interface::sendListing()
 	m_iec.send(C64_BASIC_START bitand 0xff);
 	m_iec.send((C64_BASIC_START >> 8) bitand 0xff);
 	interrupts();
-	// This will be slightly tricker: Need to specify the line sending protocol between raspberry and Arduino.
+	// This will be slightly tricker: Need to specify the line sending protocol between Host and Arduino.
 	// Call the listing function
 	byte resp;
 	do {
@@ -336,6 +336,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 	// process response into m_queuedError.
 	// Response: ><code in binary><CR>
+
 	serCmdIOBuf[0] = 0;
 	do {
 		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
@@ -428,7 +429,7 @@ void Interface::handleATNCmdCodeDataListen()
 
 		}
 
-		// TODO: saveFile to RP.
+		// TODO: saveFile to host.
 		if(writeSuccess)
 			saveFile(/*(PFUNC_UCHAR_CHAR)(pff->putc)*/);
 		else

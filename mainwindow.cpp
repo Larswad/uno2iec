@@ -73,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	if(m_ports.count())
 		m_port.setPortName(m_ports.at(0).portName);
-	m_port.setBaudRate(BAUD57600);
+	m_port.setBaudRate(BAUD115200);
 
 
 	//	m_port.open(QIODevice::ReadWrite);
