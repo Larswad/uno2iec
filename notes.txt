@@ -52,39 +52,75 @@ How to test the ATN, CLOCK, DATA lines from CBM basic:
 
 10 A=56576
 20 POKE A,PEEK(A) AND (255 - 8 - 16 - 32)
-30 PRINT PEEK)(A) AND 192
+30 PRINT PEEK(A) AND 192
 40 GOTO 30
 
 // For ttyACM0 access without sudo on ubuntu (or derivates).
 sudo usermod -a -G tty yourUserName
 sudo usermod -a -G dialout yourUserName
 
-// Peer commands:
-// Tries continuously to connect to host with:
-// CONNECT
-// response should be: OK><date><time><CR>
-// Whereupon client could set the local time and data according to the returned string.
 
-// Send debug string
-// D<severityId, facilityId, debug string><CR>
+----------------------------------------------------------------------------------------------
+Arduino to Host command description:
+----------------------------------------------------------------------------------------------
+At bootup, Arduino tries continuously to connect to host with:
+CONNECT
+response should from host then be:
+OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<resetpin>(|<srqinpin>)|<date>|<time><CR>
+Whereupon client could set the local time and data according to the returned string.
 
-// Register facility with abbreviating character and corresponding string to expand to on peer side.
-// !<abbreviationChar, string><CR>
+Send debug string to host
+D<severityId><facilityId><debug msg string><CR>
+The severityId is one byte consisting of either 'S', 'I', 'W' or 'E'
+The facilityId is a single id of a previously registered facility.
 
-// Init file from LOAD"",8 command.
-// 'I'
+Register facility with abbreviating character and corresponding string to expand to on peer side.
+!<abbreviationChar><facilityString><CR>
 
-// IEC open command, channel is 0-15, the command string is just like from the iec interface. Pipe separated, CR terminated.
-// The code return is according to the values of the IOErrorMessage enum.
-// Request: O<channel>|command string<CR>
-// Response: ><code><CR>
+IEC open command, channel is 0-15, the command string is just like from the iec interface. Pipe separated, CR terminated.
+The code return is according to the values of the IOErrorMessage enum.
+Request: O<channel>|command string<CR>
+Response: ><code><CR>
 
-// Read byte(s) from current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
-// The host returns 'B' followed by the byte(s) being read, or answers with 'E' if end of file has been reached.
-// 'R'
+Read byte(s) from current file of current (last selected) file system type.
+Current byte read/write byte number size determines number of bytes in sequence.
+The host returns 'B' followed by the byte(s) being read, or answers with 'E' if end of file has been reached.
+Request: 'R'
+Response: B<BYTE NumBytes><Byte 0..n>
+Or Response: E<BYTE NumBytes><Byte 0..n>
 
-// Write byte(s) to current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
-// 'W<byte..n>'
+Write byte(s) to current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
+Request: W<BYTE NumBytes><BYTE 0..n>
 
-// 'C'
-// Close file for current file system
+'C'
+Close file for current file system
+
+'L' request for sending next directory / information line.
+Response: 'L'<BYTE length><line data>
+This response cannot have line data more than 255 chars since the byte specified length limit.
+The line data includes the basic address.
+If 'l' is returned, there was no more data
+
+
+CBM syntax:
+
+LOAD "<-<-",8
+Move up from disk image and get nativefs dir info.
+
+LOAD "!!",8
+Retreive information about the current used file system / image.
+
+LOAD "FILE.D64",8
+Move into a D64 (DISK) image and load directory information
+
+LOAD "FILE.T64",8
+Move into a T64 (TAPE) image and load directory information
+
+LOAD "FILE",8
+Load file from current mounted file system (or native fs)
+
+LOAD "$",8
+Load the current directory, either inside an image or the native fs.
+
+LOAD "*",8
+Load the first file from the current disk image or the native fs.

@@ -16,8 +16,8 @@ which can be found at http://www.gnu.org/licenses/gpl.txt
 Description
 ------------
 The UNO2IEC device simulates a 1541 drive and enables loading and saving files or
-programs between a CBM and any "current" folder on the host system. The host system location can be network share,
-USB, SD flash media, SSD or any hard disk that is supported by a Windows, Linux or Mac operating system.
+programs between a CBM and any "current" folder on the host system. The host system location can be a network share,
+an USB or SD flash media, SSD or any hard disk that is supported by a Windows, Linux or Mac operating systems.
 
 The direct commununication with the CBM is an arduino (uno or similar) communicating over a regular serial line
 with the media host system. The serial line can be either the gpio pin mapped serial port on the arduino or the
@@ -25,11 +25,13 @@ serial over USB port. In case using the USB-over-serial port, the benefit is aut
 host connects to it.
 
 Note: As of writing the project does not yet support any turboloaders. There are however plans or ideas to provide
-this support. It should be possible with some extra work of performance tuning optimum handling of the serial interface.
+this support. It should be possible with some extra work of performance tuning for the optimum handling of the
+serial interface between the arduino and the host.
 
 The project inherits both code and ideas from the MMC2IEC project, originally written by
 Jan Derogee's and Lars Pontoppidan. Their original work is great and highly respected.
-The code in this project however, has been subject to heavy redesign. While ported to C++ the idea is to let the
+
+The code in this project however, has been subject to heavy redesign. While being ported to C++ the main idea is to let the
 old commodore targeted media be transferred from a PC host rather than just a MMC or SD card.
 The design of this project required the IEC protocol between the CBM and the emulated 1541 to be refactored into having
 splitted responsibilities between the arduino and the PC host.

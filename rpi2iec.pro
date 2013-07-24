@@ -60,3 +60,6 @@ OTHER_FILES += \
 		changes.txt \
 		notes.txt \
     README.TXT
+
+RESOURCES += \
+    resources.qrc
