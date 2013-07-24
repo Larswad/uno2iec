@@ -89,7 +89,7 @@ REQUIRES: (external dependencies):
 QextSerialPort project:
 https://code.google.com/p/qextserialport/
 
-The QextSerialPort project should be located on the same directory level as the rpi2iec project.
+The QextSerialPort project should be located on the same directory level as the "rpi2iec" project.
 
 Optional: Max7219 driver library (modified by Lars Wadefalk to c++ with support for progress bar display and scroller).
 Github project:
