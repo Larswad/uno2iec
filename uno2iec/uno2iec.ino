@@ -9,6 +9,7 @@
 Max7219* pMax;
 // Put ANYTHING in here you want to scroll as an initial text on your MAX7219!
 static byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
+const byte MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 #endif
 
 #define DEFAULT_BAUD_RATE 115200
@@ -17,9 +18,8 @@ static byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WA
 const byte ledPort = 13;
 const byte numBlinks = 4;
 const char connectionString[] = "CONNECT\r";
-const char okString[] = "OK";
+const char okString[] = "OK>";
 
-const byte INPIN = 11, LOADPIN = 13, CLOCKPIN = 12;
 
 void waitForPeer();
 
@@ -35,6 +35,13 @@ void setup()
 	// Initialize serial and wait for port to open:
 	Serial.begin(DEFAULT_BAUD_RATE);
 	Serial.setTimeout(2000);
+
+#ifdef USE_LED_DISPLAY
+	pMax = new Max7219(MAX_INPIN, MAX_LOADPIN, MAX_CLOCKPIN);
+	pMax->setToCharacter('R');
+	iface.setMaxDisplay(pMax);
+#endif
+
 	// Now we're ready to wait for the PI to respond to our connection attempts.
 	// initial connection handling.
 	waitForPeer();
@@ -42,13 +49,11 @@ void setup()
 	// set all digital pins in a defined state.
 	iec.init();
 
-	lastMillis = millis();
-
 #ifdef USE_LED_DISPLAY
-	pMax = new Max7219(INPIN, LOADPIN, CLOCKPIN);
 	pMax->resetScrollText(myText);
-	iface.setMaxDisplay(pMax);
 #endif
+
+	lastMillis = millis();
 } // setup
 
 
@@ -77,6 +82,9 @@ void loop()
 // Establish connection to the media host.
 void waitForPeer()
 {
+	char tempBuffer[80];
+	byte deviceNumber, atnPin, clockPin, dataPin, resetPin;
+
 	// initialize the digital pin as an output.
 	pinMode(ledPort, OUTPUT);
 
@@ -97,11 +105,16 @@ void waitForPeer()
 		connected = Serial.find((char*)okString);
 	} // while(!connected)
 
-	char dateTime[30];
-	if(Serial.readBytesUntil('\r', dateTime, sizeof(dateTime))) {
-		// TODO: parse date time and set clock.
+	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
+		sscanf(tempBuffer, "%hhu|%hhu|%hhu|%hhu|%hhu", &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
+		// we got the config from the HOST.
+		iec.setDeviceNumber(deviceNumber);
+		iec.setPins(atnPin, clockPin, dataPin, resetPin);
 	}
 	registerFacilities();
 	// We're in business.
-	Log(Success, 'M', "CONNECTED TO PEER, READY FOR IEC COMMUNICATION WITH CBM.");
+	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u.", deviceNumber);
+	Log(Success, 'M', tempBuffer);
+	sprintf(tempBuffer, "IEC pins: ATN:%u CLK:%u DATA:%u RST:%u", atnPin, clockPin, dataPin, resetPin);
+	Log(Information, 'M', tempBuffer);
 } // waitForPeer

@@ -562,6 +562,15 @@ void IEC::setDeviceNumber(const byte deviceNumber)
 } // setDeviceNumber
 
 
+void IEC::setPins(byte atn, byte clock, byte data, byte reset)
+{
+	m_atnPin = atn;
+	m_clockPin = clock;
+	m_dataPin = data;
+	m_resetPin = reset;
+} // setPins
+
+
 IEC::IECState IEC::state() const
 {
 	return static_cast<IECState>(m_state);

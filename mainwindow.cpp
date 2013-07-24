@@ -102,6 +102,28 @@ MainWindow::MainWindow(QWidget *parent) :
 	Log("MAIN", "Application Initialized.", success);
 	m_isInitialized = true;
 	updateImageList();
+	/*
+	QListWidgetItem* a = new QListWidgetItem("\"GURRA      \"");
+	ui->imageDirList->addItem(a);
+	a->setTextColor(QColor(255,255,255));
+	a->setBackgroundColor(QColor(0,0,0));
+	ui->imageDirList->addItem("LIST VIEW 1");
+	ui->imageDirList->addItem("LIST VIEW 2");
+	ui->imageDirList->addItem("LIST VIEW 3");
+	ui->imageDirList->addItem("LIST VIEW 4");
+	ui->imageDirList->addItem("LIST VIEW 5");
+	ui->imageDirList->addItem("LIST VIEW 6");
+	ui->imageDirList->addItem("LIST VIEW 7");
+	ui->imageDirList->addItem("LIST VIEW 8");
+	ui->imageDirList->addItem("LIST VIEW 9");
+	ui->imageDirList->addItem("LIST VIEW 10");
+	ui->imageDirList->addItem("LIST VIEW 11");
+	ui->imageDirList->addItem("LIST VIEW 12");
+	ui->imageDirList->addItem("LIST VIEW 13");
+	ui->imageDirList->addItem("LIST VIEW 14");
+	ui->imageDirList->addItem("LIST VIEW 15");
+	ui->imageDirList->addItem("LIST VIEW 16");
+	*/
 } // MainWindow
 
 
@@ -129,6 +151,7 @@ void MainWindow::readSettings()
 	QSettings settings;
 
 	ui->imageDir->setText(settings.value("imageDirectory", QDir::currentPath()).toString());
+	ui->singleImageName->setText(settings.value("singleImageName").toString());
 	QDir::setCurrent(ui->imageDir->text());
 	ui->imageFilter->setText(settings.value("imageFilter", QString()).toString());
 	ui->baudRate->setCurrentText(settings.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toString());
@@ -145,6 +168,7 @@ void MainWindow::writeSettings() const
 {
 	QSettings settings;
 	settings.setValue("imageDirectory", ui->imageDir->text());
+	settings.setValue("singleImageName", ui->singleImageName->text());
 	settings.setValue("imageFilter", ui->imageFilter->text());
 	settings.setValue("baudRate", ui->baudRate->currentText());
 	settings.setValue("deviceNumber", ui->deviceNumber->currentText());
@@ -165,8 +189,10 @@ void MainWindow::onDataAvailable()
 			m_pendingBuffer.clear();
 			Log("MAIN", "Now connected to Arduino.", success);
 			// give the client current date and time in the response string.
-			m_port.write((OkString + QDate::currentDate().toString("yyyy-MM-dd") +
-										 QTime::currentTime().toString(" hh:mm:ss:zzz") + '\r').toLatin1().data());
+			m_port.write((OkString + ui->deviceNumber->currentText() + '|' + ui->atnPin->currentText() + '|' + ui->clockPin->currentText()
+										+ '|' + ui->dataPin->currentText() + '|' + ui->resetPin->currentText() /*+ '|' + ui->srqInPin->currentText()*/
+										+ '\r').toLatin1().data());
+			// Assume connected, maybe a real ack sequence is needed here from the client?
 			m_isConnected = true;
 			// client is supposed to send it's facilities each start.
 			m_clientFacilities.clear();
@@ -182,32 +208,6 @@ void MainWindow::onDataAvailable()
 
 		// Get the first waiting character, which should be the commend to perform.
 		switch(cmdString.at(0).toLatin1()) {
-			case 'R': // read single byte from current file system mode, note that this command needs no termination, it needs to be short.
-				m_pendingBuffer.remove(0, 1);
-				m_iface.processReadFileRequest();
-				hasDataToProcess = !m_pendingBuffer.isEmpty();
-				break;
-
-			//case 'S': // set read / write size in number of bytes.
-				//
-				//break;
-
-			case 'S': // request for file size before sending file to CBM
-				m_pendingBuffer.remove(0, 1);
-				m_iface.processGetOpenFileSize();
-				break;
-
-
-			case 'W': // write single character to file in current file system mode.
-				m_pendingBuffer.remove(0, 1);
-				break;
-
-			case 'L':
-				// line request: Just remove the BYTE from queue and do business.
-				m_pendingBuffer.remove(0, 1);
-				m_iface.processLineRequest();
-				break;
-
 			case '!': // register facility string.
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.
@@ -226,8 +226,14 @@ void MainWindow::onDataAvailable()
 				}
 				break;
 
-			case 'M': // set mode and include command string.
+//			case 'M': // set mode and include command string.
+//				m_pendingBuffer.remove(0, 1);
+//				break;
+
+			case 'S': // request for file size in bytes before sending file to CBM
 				m_pendingBuffer.remove(0, 1);
+				m_iface.processGetOpenFileSize();
+				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
 
 			case 'O': // open command
@@ -239,10 +245,39 @@ void MainWindow::onDataAvailable()
 				}
 				break;
 
+			case 'R': // read single byte from current file system mode, note that this command needs no termination, it needs to be short.
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processReadFileRequest();
+				hasDataToProcess = !m_pendingBuffer.isEmpty();
+				break;
+
+			case 'W': // write single character to file in current file system mode.
+				if(cmdString.size() < 1)
+					hasDataToProcess = false;
+				m_iface.processWriteFileRequest(m_pendingBuffer.at(1));
+				m_pendingBuffer.remove(0, 2);
+				hasDataToProcess = !m_pendingBuffer.isEmpty();
+				break;
+
+			case 'L':
+				// line request: Just remove the BYTE from queue and do business.
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processLineRequest();
+				break;
+
 			case 'C': // close command
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processCloseCommand();
 				break;
+
+			case 'E': // Ask for error string from error code
+				if(cmdString.size() < 1)
+					hasDataToProcess = false;
+				m_iface.processErrorStringRequest(static_cast<IOErrorMessage>(m_pendingBuffer.at(1)));
+				m_pendingBuffer.remove(0, 2);
+				hasDataToProcess = !m_pendingBuffer.isEmpty();
+				break;
+
 
 
 			default:
@@ -502,12 +537,19 @@ void MainWindow::on_mountSelected_clicked()
 
 void MainWindow::on_browseSingle_clicked()
 {
-}
+	QString file = QFileDialog::getOpenFileName(this, tr("Please choose image to mount."), ui->singleImageName->text(), tr("CBM Images (*.d64 *.t64 *.m2i);;All files (*)"));
+	if(!file.isEmpty())
+		ui->singleImageName->setText(file);
+} // on_browseSingle_clicked
 
 
 void MainWindow::on_mountSingle_clicked()
 {
-}
+	m_iface.processOpenCommand(QString("0|") + ui->singleImageName->text(), true);
+//	QFileInfo fileInfo(ui->singleImageName->text());
+//	fileInfo.path();
+//	fileInfo.baseName();
+} // on_mountSingle_clicked
 
 
 void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)

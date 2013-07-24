@@ -111,6 +111,7 @@ public:
 
 	byte deviceNumber() const;
 	void setDeviceNumber(const byte deviceNumber);
+	void setPins(byte atn, byte clock, byte data, byte reset);
 	IECState state() const;
 
 #ifdef DEBUGLINES

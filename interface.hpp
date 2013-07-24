@@ -40,6 +40,7 @@ public:
 	Interface(QextSerialPort& port);
 	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
 	void processReadFileRequest();
+	void processWriteFileRequest(uchar theByte);
 	void reset();
 
 	// State specific: CBM requests a single directory line from us.
@@ -51,7 +52,9 @@ public:
 
 	void processGetOpenFileSize();
 	void processCloseCommand();
+	void processErrorStringRequest(IOErrorMessage code);
 	bool changeNativeFSDirectory(const QString &newDir);
+
 private:
 	void openFile(const QString &cmdString, bool localImageSelection = false);
 	bool removeFilePrefix(QString &cmd);

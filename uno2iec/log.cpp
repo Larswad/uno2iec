@@ -1,5 +1,7 @@
 #include "log.h"
 
+#ifndef NO_LOGGING
+
 const struct {
 	char abbreviated;
 	char* string;
@@ -26,3 +28,5 @@ void Log(byte severity, char facility, char* msg)
 	Serial.print(msg);
 	Serial.print("\r");
 } // Log
+
+#endif

@@ -1,6 +1,9 @@
 #ifndef GLOBAL_DEFINES_HPP
 #define GLOBAL_DEFINES_HPP
 
+// Define this if you want no logging to host enabled. Saves space in device.
+//#define NO_LOGGING
+
 #define CONSOLE_DEBUG
 //#define DEBUGLINES
 
@@ -8,10 +11,9 @@
 // What it does is showing loading progress on the display and some nice scrolling of the filename and other
 // stuff on the display. The display hardware can be bought here at dx.com:
 // http://dx.com/p/max7219-dot-matrix-module-w-5-dupont-lines-184854
+#define USE_LED_DISPLAY
 
-//#define USE_LED_DISPLAY
-
-// The IEC bus pin configuration on the Arduino side.
+// The IEC bus pin configuration on the Arduino side (Deprecated: This will be defined from host side).
 #define DEFAULT_ATN_PIN 5
 #define DEFAULT_DATA_PIN 3
 #define DEFAULT_CLOCK_PIN 4

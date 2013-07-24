@@ -38,26 +38,11 @@
 
 
 namespace {
+
 // atn command buffer struct
 IEC::ATNCmd cmd;
 char serCmdIOBuf[120];
 byte scrollBuffer[30];
-
-// The previous cmd is copied to this string:
-//char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
-
-const char errorStr0[] = "00,OK";
-const char errorStr1[] = "21,READ ERROR";
-const char errorStr2[] = "26,WRITE PROTECT ON";
-const char errorStr3[] = "33,SYNTAX ERROR";
-const char errorStr4[] = "62,FILE NOT FOUND";
-const char errorStr5[] = "63,FILE EXISTS";
-const char errorStr6[] = "73,MMC2IEC DOS V0.8";
-const char errorStr7[] = "74,DRIVE NOT READY";
-const char errorStr8[] = "75,RPI SERIAL ERR.";
-const char *error_table[ErrCount] = { errorStr0, errorStr1, errorStr2, errorStr3, errorStr4, errorStr5, errorStr6, errorStr7, errorStr8 };
-
-const char errorEnding[] = ",00,00";
 
 } // unnamed namespace
 
@@ -83,19 +68,24 @@ void Interface::reset(void)
 
 void Interface::sendStatus(void)
 {
-	byte i;
-	// Send error string
-	const char* str = (const char*)error_table[m_queuedError];
+	byte i, readResult;
+	Serial.write('E'); // ask for error string from the last queued error.
+	Serial.write(m_queuedError);
 
-	while((i = *(str++)))
-		m_iec.send(i);
+	// first sync the response.
+	do {
+		readResult = Serial.readBytes(serCmdIOBuf, 1);
+	} while(readResult not_eq 1 or serCmdIOBuf[0] not_eq ':');
+	// get the string.
+	readResult = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf));
+	if(!readResult)
+		return; // something went wrong with result from host.
 
-	// Send common ending string ,00,00
-	for(i = 0; i < sizeof(errorEnding) - 1; ++i)
-		m_iec.send(errorEnding[i]);
-
+	// Length does not include the CR, write all but the last one should be with EOI.
+	for(i = 0; i < readResult - 2; ++i)
+		m_iec.send(serCmdIOBuf[i]);
 	// ...and last byte in string as with EOI marker.
-	m_iec.sendEOI(errorEnding[i]);
+	m_iec.sendEOI(serCmdIOBuf[i]);
 } // sendStatus
 
 
@@ -242,7 +232,9 @@ void Interface::saveFile()
 {
 	// Recieve bytes until a EOI is detected
 	do {
+		noInterrupts();
 		byte c = m_iec.receive();
+		interrupts();
 		// indicate to PI host that we want to write a byte.
 		Serial.write('W');
 		// and then we send the byte itself.
@@ -344,7 +336,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
 		m_iec.sendFNF();
-		Log(Information, FAC_IFACE, "Could not sync to response char.");
+		Log(Error, FAC_IFACE, "response not sync.");
 	}
 	else {
 		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
@@ -369,7 +361,6 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 			case O_INFO:
 				// Reset and send SD card info
 				reset();
-				// TODO: interface with PI (file system media info).
 				sendListing();
 				break;
 
@@ -378,7 +369,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 				sendListing(/*&send_file_err*/);
 				break;
 
-			case O_NOTHING: /*or (0 == pff)*/
+			case O_NOTHING:
 				// Say file not found
 				m_iec.sendFNF();
 				break;
@@ -390,7 +381,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 			case O_DIR:
 				// Send listing
-				sendListing(/*(PFUNC_SEND_LISTING)(pff->send_listing)*/);
+				sendListing();
 				break;
 			}
 		}

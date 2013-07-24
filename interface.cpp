@@ -11,7 +11,33 @@ using namespace Logging;
 #define CBM_EXCLAMATION '!'
 namespace {
 const QString FAC_IFACE("IFACE");
+
+// The previous cmd is copied to this string:
+//char oldCmdStr[IEC::ATN_CMD_MAX_LENGTH];
+
+const QStringList s_IOErrorMessages = QStringList()
+		<< "00,OK"
+		<< "21,READ ERROR"
+		<< "26,WRITE PROTECT ON"
+		<< "33,SYNTAX ERROR"
+		<< "62,FILE NOT FOUND"
+		<< "63,FILE EXISTS"
+		<< "73,UNO2IEC DOS V0.1"
+		<< "74,DRIVE NOT READY"
+		<< "75,RPI SERIAL ERR.";
+const QString s_unknownMessage = "99, UNKNOWN ERROR";
+const QString s_errorEnding = ",00,00";
+
 }
+
+
+class IMountNotify
+{
+public:
+	virtual void directoryChanged(const QString& newPath) = 0;
+	virtual void imageMounted(const QString& imagePath, FileDriverBase* pFileSystem) = 0;
+};
+
 
 Interface::Interface(QextSerialPort& port)
 	: m_currFileDriver(0), m_port(port), m_queuedError(ErrOK), m_openState(O_NOTHING)
@@ -120,6 +146,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 
 				// Try if cd works, then try open as file and if none of these ok...then give up
 				if(m_native.setCurrentDirectory(cmd)) {
+					Log(FAC_IFACE, QString("Changed to native FS directory: %1").arg(cmd), success);
 					m_openState = O_DIR;
 				}
 				else if(m_native.openHostFile(cmd)) {
@@ -135,7 +162,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 
 					if(i not_eq m_fsList.end()) {
 						m_native.closeHostFile();
-						Log(FAC_IFACE, QString("Trying driver: %1").arg(m_currFileDriver->extension()), info);
+						Log(FAC_IFACE, QString("Trying image mount using driver: %1").arg(m_currFileDriver->extension()), info);
 						// file extension matches, change interface state
 						// call new format's reset
 						if(m_currFileDriver->openHostFile(cmd)) {
@@ -144,6 +171,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 								m_openState = O_FILE;
 							else // otherwise we're in directory mode now on this selected file system image.
 								m_openState = O_DIR;
+							Log(FAC_IFACE, QString("Mount OK of image: %1").arg(m_currFileDriver->openedFileName()), success);
 						}
 						else {
 							// Error initializing driver, back to native file system.
@@ -290,6 +318,26 @@ void Interface::processReadFileRequest(void)
 
 	m_port.write(data.data(), data.size());
 } // processReadFileRequest
+
+
+void Interface::processWriteFileRequest(uchar theByte)
+{
+	m_currFileDriver->putc(theByte);
+} // processReadFileRequest
+
+
+void Interface::processErrorStringRequest(IOErrorMessage code)
+{
+	// the return message begins with ':' for sync.
+	QByteArray retStr(1, ':');
+	retStr.append(code >= s_IOErrorMessages.count() ? s_unknownMessage : s_IOErrorMessages.at(code));
+	// append the common ending.
+	retStr.append(s_errorEnding);
+	// terminate with CR.
+	retStr.append('\r');
+	m_port.write(retStr);
+	m_port.flush();
+} // processErrorStringRequest
 
 
 void Interface::send(short lineNo, const QString& text)
