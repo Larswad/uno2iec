@@ -124,11 +124,14 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->imageDirList->addItem("LIST VIEW 15");
 	ui->imageDirList->addItem("LIST VIEW 16");
 	*/
+	// register ourselves to listen for CBM events from the Arduino.
+	m_iface.setMountNotifyListener(this);
 } // MainWindow
 
 
 MainWindow::~MainWindow()
 {
+	m_iface.setMountNotifyListener(0);
 	if(m_port.isOpen())
 		m_port.close();
 	delete ui;
@@ -160,13 +163,18 @@ void MainWindow::readSettings()
 	ui->clockPin->setCurrentText(settings.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toString());
 	ui->dataPin->setCurrentText(settings.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toString());
 	ui->resetPin->setCurrentText(settings.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toString());
-//	ui->baudRate->setCurrentText(settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toString());
+	//	ui->srqInPin->setCurrentText(settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toString());
+	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+	restoreState(settings.value("mainWindowState").toByteArray());
 } // readSettings
 
 
 void MainWindow::writeSettings() const
 {
 	QSettings settings;
+	settings.setValue("mainWindowGeometry", saveGeometry());
+	settings.setValue("mainWindowState", saveState());
+
 	settings.setValue("imageDirectory", ui->imageDir->text());
 	settings.setValue("singleImageName", ui->singleImageName->text());
 	settings.setValue("imageFilter", ui->imageFilter->text());
@@ -562,3 +570,35 @@ void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)
 	m_port.open(QIODevice::ReadWrite); // open the shop again.
 	m_isConnected = false;
 } // on_baudRate_currentIndexChanged
+
+//////////////////////////////////////////////////////////////////////////////
+// IMountNotifyListener interface implementation
+//////////////////////////////////////////////////////////////////////////////
+void MainWindow::directoryChanged(const QString&/* newPath */)
+{
+}
+
+
+void MainWindow::imageMounted(const QString& /*imagePath*/, FileDriverBase* /*pFileSystem*/)
+{
+}
+
+
+void MainWindow::fileLoading(const QString& /*fileName*/)
+{
+}
+
+
+void MainWindow::bytesRead(uint /*numBytes*/)
+{
+}
+
+
+void MainWindow::bytesWritten(uint /*numBytes*/)
+{
+}
+
+
+void MainWindow::fileClosed(const QString& /*lastFileName*/)
+{
+}

@@ -31,23 +31,14 @@ const QString s_errorEnding = ",00,00";
 }
 
 
-class IMountNotify
-{
-public:
-	virtual void directoryChanged(const QString& newPath) = 0;
-	virtual void imageMounted(const QString& imagePath, FileDriverBase* pFileSystem) = 0;
-};
-
-
 Interface::Interface(QextSerialPort& port)
-	: m_currFileDriver(0), m_port(port), m_queuedError(ErrOK), m_openState(O_NOTHING)
+	: m_currFileDriver(0), m_port(port), m_queuedError(ErrOK), m_openState(O_NOTHING), m_pListener(0)
 {
 	m_fsList.append(&m_native);
 	m_fsList.append(&m_d64);
 	m_fsList.append(&m_t64);
 //	m_fsList.append(&m_m2i);
 	m_currFileDriver = &m_native;
-
 } // ctor
 
 
@@ -61,6 +52,12 @@ void Interface::reset()
 	foreach(FileDriverBase* fs, m_fsList)
 		fs->closeHostFile(); // TODO: Better with a reset or init method on all file systems.
 } // reset
+
+
+void Interface::setMountNotifyListener(IMountNotify* pListener)
+{
+	m_pListener = pListener;
+} // setMountNotifyListener
 
 
 // This function crops cmd string of initial @ or until :

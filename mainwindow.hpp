@@ -16,7 +16,7 @@ class MainWindow;
 
 typedef QMap<QChar, QString> FacilityMap;
 
-class MainWindow : public QMainWindow, public Logging::ILogTransport
+class MainWindow : public QMainWindow, public Logging::ILogTransport, public Interface::IMountNotify
 {
 	Q_OBJECT
 
@@ -28,6 +28,14 @@ public:
 
 	void processAddNewFacility(const QString &str);
 	void closeEvent(QCloseEvent *event);
+
+	// IMountNotifyListener interface implementation
+	void directoryChanged(const QString &);
+	void imageMounted(const QString &, FileDriverBase *);
+	void fileLoading(const QString &);
+	void bytesRead(uint);
+	void bytesWritten(uint);
+	void fileClosed(const QString &);
 
 public slots:
 		void onDataAvailable();
