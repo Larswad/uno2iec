@@ -585,7 +585,7 @@ void MainWindow::on_mountSingle_clicked()
 
 void MainWindow::on_unmountCurrent_clicked()
 {
-	m_iface.processOpenCommand(QString("0|") + QChar(CBM_BACK_ARROW) + QChar(CBM_BACK_ARROW));
+	m_iface.processOpenCommand(QString("0|") + QChar(CBM_BACK_ARROW) + QChar(CBM_BACK_ARROW), true);
 }
 
 void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)
