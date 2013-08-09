@@ -497,14 +497,15 @@ bool D64::sendMediaInfo(ISendLine &cb)
 } // sendMediaInfo
 
 
-
 D64::DirEntry::DirEntry()
 {
-}
+} // ctor
+
 
 D64::DirEntry::~DirEntry()
 {
-}
+} // dtor
+
 
 QString D64::DirEntry::name() const
 {
@@ -515,7 +516,7 @@ QString D64::DirEntry::name() const
 D64::D64FileType D64::DirEntry::type() const
 {
 	return static_cast<D64FileType>(m_type);
-}
+} // type
 
 
 ushort D64::DirEntry::numBlocks() const

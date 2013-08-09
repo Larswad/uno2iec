@@ -38,13 +38,15 @@ enum OpenState {
 class Interface : public ISendLine
 {
 public:
-	// Callback Interface for notification when Arduino triggers various (upon CBM requests).
-	// This is typically for UI reflection, updating progress bars, mounted file names, directory lists etc.
-	struct IMountNotify
+	// Callback Interface for notification when Arduino triggers various operations (upon CBM requests).
+	// This is typically just for UI reflection, updating progress bars, mounted file names, directory lists etc.
+	struct IFileOpsNotify
 	{
 		virtual void directoryChanged(const QString& newPath) = 0;
 		virtual void imageMounted(const QString& imagePath, FileDriverBase* pFileSystem) = 0;
-		virtual void fileLoading(const QString& fileName) = 0;
+		virtual void imageUnmounted() = 0;
+		virtual void fileLoading(const QString& fileName, ushort fileSize) = 0;
+		virtual void fileSaving(const QString& fileName) = 0;
 		virtual void bytesRead(uint numBytes) = 0;
 		virtual void bytesWritten(uint numBytes) = 0;
 		virtual void fileClosed(const QString& lastFileName) = 0;
@@ -68,7 +70,7 @@ public:
 	void processCloseCommand();
 	void processErrorStringRequest(IOErrorMessage code);
 	bool changeNativeFSDirectory(const QString &newDir);
-	void setMountNotifyListener(IMountNotify *pListener);
+	void setMountNotifyListener(IFileOpsNotify *pListener);
 
 private:
 	void openFile(const QString &cmdString, bool localImageSelection = false);
@@ -87,7 +89,7 @@ private:
 	QString m_lastCmdString;
 	//QStringList m_dirListing;
 	QList<QByteArray> m_dirListing;
-	IMountNotify* m_pListener;
+	IFileOpsNotify* m_pListener;
 };
 
 #endif // INTERFACE_HPP

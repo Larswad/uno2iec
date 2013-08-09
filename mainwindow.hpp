@@ -16,7 +16,8 @@ class MainWindow;
 
 typedef QMap<QChar, QString> FacilityMap;
 
-class MainWindow : public QMainWindow, public Logging::ILogTransport, public Interface::IMountNotify
+class MainWindow : public QMainWindow, public Logging::ILogTransport, public Interface::IFileOpsNotify,
+		public ISendLine
 {
 	Q_OBJECT
 
@@ -27,15 +28,21 @@ public:
 	~MainWindow();
 
 	void processAddNewFacility(const QString &str);
+	void checkVersion();
 	void closeEvent(QCloseEvent *event);
 
 	// IMountNotifyListener interface implementation
-	void directoryChanged(const QString &);
-	void imageMounted(const QString &, FileDriverBase *);
-	void fileLoading(const QString &);
-	void bytesRead(uint);
-	void bytesWritten(uint);
-	void fileClosed(const QString &);
+	void directoryChanged(const QString& newPath);
+	void imageMounted(const QString&imagePath, FileDriverBase*pFileSystem);
+	void imageUnmounted();
+	void fileLoading(const QString &fileName, ushort fileSize);
+	void fileSaving(const QString& fileName);
+	void bytesRead(uint numBytes);
+	void bytesWritten(uint numBytes);
+	void fileClosed(const QString &lastFileName);
+
+	// ISendLine interface implementation.
+	void send(short lineNo, const QString &text);
 
 public slots:
 		void onDataAvailable();
@@ -51,22 +58,18 @@ private slots:
 		void on_saveLog_clicked();
 		void on_saveHtml_clicked();
 		void on_resetArduino_clicked();
-
 		void on_comPort_currentIndexChanged(int index);
-
 		void on_browseImageDir_clicked();
-
 		void on_imageDir_editingFinished();
-
 		void on_imageFilter_textChanged(const QString &arg1);
-
 		void on_mountSelected_clicked();
-
 		void on_browseSingle_clicked();
-
 		void on_mountSingle_clicked();
-
 		void on_baudRate_currentIndexChanged(const QString& baudRate);
+
+		void on_actionAbout_triggered();
+
+		void on_unmountCurrent_clicked();
 
 private:
 	void processDebug(const QString &str);
@@ -84,6 +87,8 @@ private:
 	QStandardItemModel* m_dirListItemModel;
 	QFileInfoMap m_imageInfoMap;
 	bool m_isInitialized;
+	QString m_programVersion;
+	QStringList m_imageDirListing;
 };
 
 #endif // MAINWINDOW_HPP

@@ -2,4 +2,7 @@
     <qresource prefix="/fonts">
         <file>fonts/PetMe64.ttf</file>
     </qresource>
+    <qresource prefix="/icons">
+        <file>icons/1541.ico</file>
+    </qresource>
 </RCC>

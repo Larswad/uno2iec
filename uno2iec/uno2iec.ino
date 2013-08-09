@@ -1,15 +1,16 @@
+#include "global_defines.h"
 #include "log.h"
 #include "iec_driver.h"
 #include "interface.h"
-#include "global_defines.h"
 
 #ifdef USE_LED_DISPLAY
 #include <max7219.h>
 
-Max7219* pMax;
+static Max7219* pMax;
 // Put ANYTHING in here you want to scroll as an initial text on your MAX7219!
-static byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
-const byte MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
+static const byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
+// Note: This is the pin configuration for the MAX7219 display, if used (not IEC related).
+static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 #endif
 
 #define DEFAULT_BAUD_RATE 115200
@@ -21,14 +22,13 @@ const char connectionString[] = "CONNECT\r";
 const char okString[] = "OK>";
 
 
-void waitForPeer();
+static void waitForPeer();
 
 // The global IEC handling singleton:
-IEC iec(8);
-Interface iface(iec);
+static IEC iec(8);
+static Interface iface(iec);
 
-static unsigned long lastMillis = 0;
-static unsigned long now;
+static ulong lastMillis = 0;
 
 void setup()
 {
@@ -70,7 +70,7 @@ void loop()
 #endif
 
 #ifdef USE_LED_DISPLAY
-	now = millis();
+	ulong now = millis();
 	if(now - lastMillis >= 50) {
 		pMax->doScrollLeft();
 		lastMillis = now;
@@ -80,7 +80,7 @@ void loop()
 
 
 // Establish connection to the media host.
-void waitForPeer()
+static void waitForPeer()
 {
 	char tempBuffer[80];
 	byte deviceNumber, atnPin, clockPin, dataPin, resetPin;
@@ -96,7 +96,7 @@ void waitForPeer()
 			Serial.read();
 		Serial.print(connectionString);
 		Serial.flush();
-		for(int i = 0; i < numBlinks; ++i) {
+		for(byte i = 0; i < numBlinks; ++i) {
 			digitalWrite(ledPort, HIGH);   // turn the LED on (HIGH is the voltage level)
 			delay(500 / numBlinks / 2);               // wait for a second
 			digitalWrite(ledPort, LOW);   // turn the LED on (HIGH is the voltage level)
@@ -105,6 +105,7 @@ void waitForPeer()
 		connected = Serial.find((char*)okString);
 	} // while(!connected)
 
+	// Now read whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
 		sscanf(tempBuffer, "%hhu|%hhu|%hhu|%hhu|%hhu", &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
 		// we got the config from the HOST.
@@ -112,6 +113,7 @@ void waitForPeer()
 		iec.setPins(atnPin, clockPin, dataPin, resetPin);
 	}
 	registerFacilities();
+
 	// We're in business.
 	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u.", deviceNumber);
 	Log(Success, 'M', tempBuffer);

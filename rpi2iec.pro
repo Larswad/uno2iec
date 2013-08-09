@@ -23,15 +23,19 @@ include(../qextserialport/src/qextserialport.pri)
 QMAKE_CXXFLAGS += -std=gnu++0x
 
 !win32 {
-# So wiringPi include files can be found during compile
-INCLUDEPATH += /usr/local/include
-# Note: Do only add this linkage and define if you want to build for Raspberry PI!
-# To link the wiringPi library when making the executable
-#LIBS += -L/usr/local/lib -lwiringPi
-# To conditionally compile wiringPi so that it still builds on other platforms.
-#DEFINES += "HAS_WIRINGPI="
+	# So wiringPi include files can be found during compile
+	INCLUDEPATH += /usr/local/include
+	# Note: Do only add this linkage and define if you want to build for Raspberry PI!
+	# To link the wiringPi library when making the executable
+	#LIBS += -L/usr/local/lib -lwiringPi
+	# To conditionally compile wiringPi so that it still builds on other platforms.
+	#DEFINES += "HAS_WIRINGPI="
 } #!win32
 
+win32 {
+	# version resource and appicon.
+	RC_FILE = rpi2iec.rc
+}
 
 # QMAKE_CXXFLAGS +=-std=c++0x
 
@@ -43,7 +47,9 @@ SOURCES += main.cpp\
 		filedriverbase.cpp \
 		interface.cpp \
 		nativefs.cpp \
-    logger.cpp
+		logger.cpp \
+		x00fs.cpp \
+		aboutdialog.cpp
 
 HEADERS  += mainwindow.hpp \
 		t64driver.hpp \
@@ -52,14 +58,19 @@ HEADERS  += mainwindow.hpp \
 		filedriverbase.hpp \
 		interface.hpp \
 		nativefs.hpp \
-    logger.hpp
+		logger.hpp \
+		x00fs.hpp \
+		version.h \
+		aboutdialog.hpp
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+		aboutdialog.ui
 
 OTHER_FILES += \
 		changes.txt \
 		notes.txt \
-    README.TXT
+		README.TXT \
+		rpi2iec.rc
 
 RESOURCES += \
-    resources.qrc
+		resources.qrc

@@ -24,7 +24,7 @@
     <item>
      <widget class="QGroupBox" name="groupBox">
       <property name="title">
-       <string>Arduino IEC GPIO Config</string>
+       <string>Arduino IEC Device and GPIO Configuration</string>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <property name="spacing">
@@ -44,7 +44,76 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_10">
            <item>
+            <widget class="QLabel" name="label_10">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>IEC Device Number</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="deviceNumber">
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <item>
+              <property name="text">
+               <string>8</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>9</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>10</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>11</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>12</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>13</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>14</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>15</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
             <widget class="QLabel" name="label_5">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
               <string>Reset Pin (optional)</string>
              </property>
@@ -52,6 +121,12 @@
            </item>
            <item>
             <widget class="QComboBox" name="resetPin">
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
              <item>
               <property name="text">
                <string>2</string>
@@ -116,6 +191,12 @@
            </item>
            <item>
             <widget class="QLabel" name="label_4">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
               <string>Clock Pin</string>
              </property>
@@ -123,6 +204,12 @@
            </item>
            <item>
             <widget class="QComboBox" name="clockPin">
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
              <item>
               <property name="text">
                <string>2</string>
@@ -187,6 +274,12 @@
            </item>
            <item>
             <widget class="QLabel" name="label_3">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
               <string>ATN Pin</string>
              </property>
@@ -194,6 +287,12 @@
            </item>
            <item>
             <widget class="QComboBox" name="atnPin">
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
              <item>
               <property name="text">
                <string>2</string>
@@ -258,6 +357,12 @@
            </item>
            <item>
             <widget class="QLabel" name="label">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
               <string>Data Pin</string>
              </property>
@@ -265,6 +370,12 @@
            </item>
            <item>
             <widget class="QComboBox" name="dataPin">
+             <property name="maximumSize">
+              <size>
+               <width>40</width>
+               <height>16777215</height>
+              </size>
+             </property>
              <item>
               <property name="text">
                <string>2</string>
@@ -327,73 +438,60 @@
              </item>
             </widget>
            </item>
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
           </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
-            <widget class="QLabel" name="label_10">
-             <property name="text">
-              <string>IEC Device Number</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QComboBox" name="deviceNumber">
-             <item>
-              <property name="text">
-               <string>8</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>9</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>10</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>11</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>12</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>13</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>14</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>15</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item>
             <widget class="QLabel" name="label_11">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
               <string>COM Port</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QComboBox" name="comPort"/>
+            <widget class="QComboBox" name="comPort">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QLabel" name="label_7">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
               <string>Serial Speed</string>
              </property>
@@ -401,6 +499,18 @@
            </item>
            <item>
             <widget class="QComboBox" name="baudRate">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
              <item>
               <property name="text">
                <string>2400</string>
@@ -443,6 +553,19 @@
              </item>
             </widget>
            </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
           </layout>
          </item>
         </layout>
@@ -460,6 +583,12 @@
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
           <widget class="QLabel" name="label_6">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="minimumSize">
             <size>
              <width>140</width>
@@ -470,19 +599,6 @@
             <string>Single file name to mount at any path</string>
            </property>
           </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_2">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
          </item>
          <item>
           <widget class="QLineEdit" name="singleImageName">
@@ -502,6 +618,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="browseSingle">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Browse</string>
            </property>
@@ -509,6 +631,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="mountSingle">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Mount</string>
            </property>
@@ -524,19 +652,6 @@
             <string>Folder for D64/T64 Collection</string>
            </property>
           </widget>
-         </item>
-         <item>
-          <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
          </item>
          <item>
           <widget class="QLineEdit" name="imageDir">
@@ -556,6 +671,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="browseImageDir">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Browse</string>
            </property>
@@ -627,6 +748,12 @@
             <layout class="QHBoxLayout" name="horizontalLayout_8">
              <item>
               <widget class="QPushButton" name="mountSelected">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="text">
                 <string>Mount Selected Image</string>
                </property>
@@ -634,24 +761,52 @@
              </item>
              <item>
               <widget class="QLabel" name="label_13">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
                <property name="text">
                 <string>Mounted now:</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="label_14">
+              <widget class="QLabel" name="nowMounted">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
+               <property name="minimumSize">
+                <size>
+                 <width>80</width>
+                 <height>0</height>
+                </size>
+               </property>
                <property name="frameShape">
                 <enum>QFrame::StyledPanel</enum>
                </property>
                <property name="text">
                 <string/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="unmountCurrent">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Unmount</string>
                </property>
               </widget>
              </item>
@@ -763,6 +918,12 @@
         <layout class="QHBoxLayout" name="horizontalLayout">
          <item>
           <widget class="QPushButton" name="pauseLog">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Pause Log</string>
            </property>
@@ -773,6 +934,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="clearLog">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Clear Log</string>
            </property>
@@ -780,6 +947,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="saveLog">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Save Log</string>
            </property>
@@ -787,6 +960,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="saveHtml">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="text">
             <string>Save Log as Html</string>
            </property>
@@ -801,6 +980,12 @@
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
        <widget class="QPushButton" name="resetMachine">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="statusTip">
          <string>By rumour, only very first C64's would be reset if the RESET line was grounded.</string>
         </property>
@@ -811,6 +996,12 @@
       </item>
       <item>
        <widget class="QPushButton" name="resetArduino">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="toolTip">
          <string>If arduino is trying to connect, or using raspberry to reset, click here.</string>
         </property>
@@ -820,21 +1011,42 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="label_15">
+       <widget class="QLabel" name="progressInfoText">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="text">
-         <string>Load Progress:</string>
+         <string>Loaded:</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QProgressBar" name="loadProgress">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="value">
-         <number>24</number>
+         <number>0</number>
+        </property>
+        <property name="textVisible">
+         <bool>true</bool>
+        </property>
+        <property name="invertedAppearance">
+         <bool>false</bool>
+        </property>
+        <property name="textDirection">
+         <enum>QProgressBar::TopToBottom</enum>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="quit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
          <string>Quit</string>
         </property>
@@ -859,7 +1071,14 @@
     </property>
     <addaction name="actionQuit"/>
    </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
    <addaction name="menuMain"/>
+   <addaction name="menuHelp"/>
   </widget>
   <action name="actionQuit">
    <property name="text">
@@ -867,6 +1086,11 @@
    </property>
    <property name="shortcut">
     <string>Esc</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
    </property>
   </action>
  </widget>

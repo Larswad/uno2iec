@@ -140,11 +140,14 @@ int main(int argc, char *argv[])
 
 	MainWindow w;
 	w.show();
+	w.checkVersion();
 
 	return a.exec();
 } // main
 
 
+// Add embedded (truetype) fonts located in resources to application font database.
+// This works even if the font is not registered in system globally.
 void addEmbeddedFonts()
 {
 	QStringList list;

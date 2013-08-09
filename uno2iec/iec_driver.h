@@ -90,7 +90,7 @@ public:
 
 	// Checks if CBM is sending a reset (setting the RESET line high). This is typicall
 	// when the CBM is reset itself. In this case, we are supposed to reset all states to initial.
-	boolean checkRESET();
+	boolean checkRESET() const;
 
 	// Sends a byte. The communication must be in the correct state: a load command
 	// must just have been recieved. If something is not OK, FALSE is returned.
@@ -109,7 +109,7 @@ public:
 	//
 	byte receive();
 
-	byte deviceNumber() const;
+	inline byte deviceNumber() const;
 	void setDeviceNumber(const byte deviceNumber);
 	void setPins(byte atn, byte clock, byte data, byte reset);
 	IECState state() const;
@@ -164,8 +164,6 @@ private:
 	inline void writePIN(byte pinNumber, boolean state)
 	{
 		pinMode(pinNumber, state ? OUTPUT : INPUT);
-		// Don't set the pin itself to HIGH, DDR drives the line from host.
-//		digitalWrite(pinNumber, state ? HIGH : LOW);
 	}
 
 	inline void writeATN(boolean state)

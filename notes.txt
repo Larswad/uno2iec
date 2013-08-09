@@ -36,45 +36,49 @@ dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=d
 
 REBOOT!
 
-
-test with minicom:
+test that this works with minicom:
 minicom -b 9600 -o -D /dev/ttyAMA0
 
 --------------------------------------------------
 qt support for serial port:
+--------------------------------------------------
 
 qextserialport is found here:
 git clone https://code.google.com/p/qextserialport/
 
 (simply build with qmake)
 
+------------------------------------------------------
 How to test the ATN, CLOCK, DATA lines from CBM basic:
+------------------------------------------------------
 
 10 A=56576
 20 POKE A,PEEK(A) AND (255 - 8 - 16 - 32)
 30 PRINT PEEK(A) AND 192
 40 GOTO 30
 
-// For ttyACM0 access without sudo on ubuntu (or derivates).
+---------------------------------------------------------
+For ttyACM0 access without sudo on ubuntu (or derivates).
+---------------------------------------------------------
 sudo usermod -a -G tty yourUserName
 sudo usermod -a -G dialout yourUserName
 
 
 ----------------------------------------------------------------------------------------------
-Arduino to Host command description:
+Arduino to Host command protocol description:
 ----------------------------------------------------------------------------------------------
 At bootup, Arduino tries continuously to connect to host with:
 CONNECT
-response should from host then be:
-OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<resetpin>(|<srqinpin>)|<date>|<time><CR>
-Whereupon client could set the local time and data according to the returned string.
+response should from host when ready then be:
+OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<resetpin>(|<srqinpin>)<CR>
+Whereupon client could set the pin configuration according to the returned string.
 
 Send debug string to host
 D<severityId><facilityId><debug msg string><CR>
 The severityId is one byte consisting of either 'S', 'I', 'W' or 'E'
 The facilityId is a single id of a previously registered facility.
 
-Register facility with abbreviating character and corresponding string to expand to on peer side.
+Register facility with abbreviating character and corresponding string to expand to on host side.
 !<abbreviationChar><facilityString><CR>
 
 IEC open command, channel is 0-15, the command string is just like from the iec interface. Pipe separated, CR terminated.
@@ -97,13 +101,14 @@ Close file for current file system
 
 'L' request for sending next directory / information line.
 Response: 'L'<BYTE length><line data>
-This response cannot have line data more than 255 chars since the byte specified length limit.
+This response cannot have line data more than 255 chars since the length for each line is specified by a byte.
 The line data includes the basic address.
 If 'l' is returned, there was no more data
 
 
+--------------------------------------------------
 CBM syntax:
-
+--------------------------------------------------
 LOAD "<-<-",8
 Move up from disk image and get nativefs dir info.
 
@@ -115,6 +120,9 @@ Move into a D64 (DISK) image and load directory information
 
 LOAD "FILE.T64",8
 Move into a T64 (TAPE) image and load directory information
+
+LOAD "FILE.M2I",8
+Move into a M2I "image" and load the list of contained native fs files.
 
 LOAD "FILE",8
 Load file from current mounted file system (or native fs)

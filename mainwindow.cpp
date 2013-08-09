@@ -5,14 +5,17 @@
 // TODO: T64 / D64 formats should read out entire disk into memory for caching (network performance).
 // DONE: Check the port name to use on the PI in the port constructor / setPortName(QLatin1String("/dev/ttyS0"));
 
-#include "mainwindow.hpp"
-#include "ui_mainwindow.h"
 #include <QString>
 #include <QFileDialog>
 #include <QTextStream>
 #include <QDate>
 #include <QDebug>
 #include <QSettings>
+
+#include "mainwindow.hpp"
+#include "ui_mainwindow.h"
+#include "aboutdialog.hpp"
+#include "version.h"
 
 #ifdef HAS_WIRINGPI
 #include <wiringPi.h>
@@ -21,6 +24,8 @@
 using namespace Logging;
 
 namespace {
+#define CBM_BACK_ARROW 95
+
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
 
@@ -43,6 +48,21 @@ const uint DEFAULT_DATA_PIN = 3;
 const uint DEFAULT_ATN_PIN = 5;
 
 //const uint DEFAULT_SRQIN_PIN = 2;
+const QString PROGRAM_VERSION_HISTORY = qApp->tr(
+	"<hr>"
+	"<ul><li>FIX: Faster serial handling. The arduino receives a range of bytes instead of a single byte at a time. Should now be as fast as "
+			" a real 1541, or at least close to. More optimizations on serial handling can be done."
+	"<li>NEW: Added this about dialog. It will automatically show every time a new version is released. There is also an application icon "
+	" and a version resource added for windows targets. A C64 truetype font is embedded to the application for some UI controls."
+	"<li>CHANGE: Some source and README/NOTES commenting to shape up the things that is left to do."
+	"<li>NEW: Added skeleton class for .x00 (e.g. .P00) formats."
+	"<li>NEW: Displays current mounted image content, even automatically when CBM does the operations."
+	"<li>NEW: Notification interface added so that UI can react to and reflect progress and mounting changes."
+	"<li>NEW: Some rearrangement of UI controls for better screen alignment and adaptation to windows resizing.</ul>"
+
+/*	"<span style=\" font-weight:600; color:#0404c2;\">Application Version 1.0.7:</span><hr>"
+	"<ul><li>BUGFIX: ....</ul>"*/
+	);
 } // unnamed namespace
 
 
@@ -102,28 +122,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	Log("MAIN", "Application Initialized.", success);
 	m_isInitialized = true;
 	updateImageList();
-	/*
-	QListWidgetItem* a = new QListWidgetItem("\"GURRA      \"");
-	ui->imageDirList->addItem(a);
-	a->setTextColor(QColor(255,255,255));
-	a->setBackgroundColor(QColor(0,0,0));
-	ui->imageDirList->addItem("LIST VIEW 1");
-	ui->imageDirList->addItem("LIST VIEW 2");
-	ui->imageDirList->addItem("LIST VIEW 3");
-	ui->imageDirList->addItem("LIST VIEW 4");
-	ui->imageDirList->addItem("LIST VIEW 5");
-	ui->imageDirList->addItem("LIST VIEW 6");
-	ui->imageDirList->addItem("LIST VIEW 7");
-	ui->imageDirList->addItem("LIST VIEW 8");
-	ui->imageDirList->addItem("LIST VIEW 9");
-	ui->imageDirList->addItem("LIST VIEW 10");
-	ui->imageDirList->addItem("LIST VIEW 11");
-	ui->imageDirList->addItem("LIST VIEW 12");
-	ui->imageDirList->addItem("LIST VIEW 13");
-	ui->imageDirList->addItem("LIST VIEW 14");
-	ui->imageDirList->addItem("LIST VIEW 15");
-	ui->imageDirList->addItem("LIST VIEW 16");
-	*/
 	// register ourselves to listen for CBM events from the Arduino.
 	m_iface.setMountNotifyListener(this);
 } // MainWindow
@@ -136,6 +134,27 @@ MainWindow::~MainWindow()
 		m_port.close();
 	delete ui;
 } // dtor
+
+
+void MainWindow::on_actionAbout_triggered()
+{
+	QString aboutText(tr("<span style=\" font-weight:600; font-size:12pt;\">Qt based host application for Arduino to CBM over IEC.</span><br><br>"
+											 "<span style=\" font-weight:600; color:#c20404;\">Application Version ") +
+										m_programVersion + tr("</span>"
+																					"<span style =  font-style:italic; color:#c20404;\">: Current</span>") + PROGRAM_VERSION_HISTORY);
+
+	AboutDialog about(aboutText, this);
+	about.exec();
+} // on_actionAbout_triggered
+
+
+void MainWindow::checkVersion()
+{
+	if(m_programVersion not_eq VER_PRODUCTVERSION_STR) {
+		m_programVersion = VER_PRODUCTVERSION_STR;
+		on_actionAbout_triggered();
+	}
+} // checkVersion
 
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -164,6 +183,7 @@ void MainWindow::readSettings()
 	ui->dataPin->setCurrentText(settings.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toString());
 	ui->resetPin->setCurrentText(settings.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toString());
 	//	ui->srqInPin->setCurrentText(settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toString());
+	m_programVersion = settings.value("lastProgramVersion", "unset").toString();
 	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
 	restoreState(settings.value("mainWindowState").toByteArray());
 } // readSettings
@@ -174,6 +194,7 @@ void MainWindow::writeSettings() const
 	QSettings settings;
 	settings.setValue("mainWindowGeometry", saveGeometry());
 	settings.setValue("mainWindowState", saveState());
+	settings.setValue("lastProgramVersion", m_programVersion);
 
 	settings.setValue("imageDirectory", ui->imageDir->text());
 	settings.setValue("singleImageName", ui->singleImageName->text());
@@ -448,6 +469,7 @@ void MainWindow::appendMessage(const QString& msg)
 	}
 } // appendMessage
 
+
 void MainWindow::on_comPort_currentIndexChanged(int index)
 {
 	if(m_port.isOpen())
@@ -460,7 +482,7 @@ void MainWindow::on_comPort_currentIndexChanged(int index)
 
 void MainWindow::on_browseImageDir_clicked()
 {
-	QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG images"), ui->imageDir->text());
+	QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG/SID images"), ui->imageDir->text());
 	if(!dirPath.isEmpty()) {
 		ui->imageDir->setText(dirPath);
 		m_iface.changeNativeFSDirectory(dirPath);
@@ -488,6 +510,7 @@ void MainWindow::updateImageList()
 	filterList.append("*.M2I");
 	filterList.append("*.PRG");
 	filterList.append("*.P00");
+	filterList.append("*.SID");
 
 	m_imageInfoMap.clear();
 	QFileInfoList filesList = QDir(ui->imageDir->text()).entryInfoList(filterList, QDir::Files, QDir::Name);
@@ -560,6 +583,11 @@ void MainWindow::on_mountSingle_clicked()
 } // on_mountSingle_clicked
 
 
+void MainWindow::on_unmountCurrent_clicked()
+{
+	m_iface.processOpenCommand(QString("0|") + QChar(CBM_BACK_ARROW) + QChar(CBM_BACK_ARROW));
+}
+
 void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)
 {
 	m_port.close();
@@ -571,34 +599,87 @@ void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)
 	m_isConnected = false;
 } // on_baudRate_currentIndexChanged
 
+
+void MainWindow::send(short lineNo, const QString& text)
+{
+	QString line(text);
+	line.prepend(QString::number(lineNo) + ' ');
+	// add it to the total dirlisting array.
+	m_imageDirListing.append(line);
+} // send
+
 //////////////////////////////////////////////////////////////////////////////
 // IMountNotifyListener interface implementation
 //////////////////////////////////////////////////////////////////////////////
-void MainWindow::directoryChanged(const QString&/* newPath */)
+void MainWindow::directoryChanged(const QString& newPath)
 {
+	ui->imageDir->setText(newPath);
+	updateImageList();
+} // directoryChanged
+
+
+void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSystem)
+{
+	ui->nowMounted->setText(imagePath);
+	ui->imageDirList->clear();
+	m_imageDirListing.clear();
+	if(pFileSystem->sendListing(*this)) {
+		foreach(QString line, m_imageDirListing) {
+			if(line.contains('\x12')) {
+				line.replace('\x12', ' ');
+				QListWidgetItem* a = new QListWidgetItem(line);
+				ui->imageDirList->addItem(a);
+				a->setTextColor(QColor(255,255,255));
+				a->setBackgroundColor(QColor(0,0,0));
+			}
+			else
+				ui->imageDirList->addItem(line);
+		}
+		m_imageDirListing.clear();
+	}ui->unmountCurrent->setEnabled(true);
+	// TODO: select the image name in the directory file list!
+} // imageMounted
+
+
+void MainWindow::imageUnmounted()
+{
+	ui->imageDirList->clear();
+	ui->nowMounted->setText("None, Local FS");
+	ui->unmountCurrent->setEnabled(false);
+} // imageUnmounted
+
+
+void MainWindow::fileLoading(const QString& fileName, ushort fileSize)
+{
+	ui->progressInfoText->setText(QString("LOADING: %1").arg(fileName));
+	ui->progressInfoText->setEnabled(true);
+	ui->loadProgress->setEnabled(true);
+	ui->loadProgress->setRange(0, fileSize);
 }
 
 
-void MainWindow::imageMounted(const QString& /*imagePath*/, FileDriverBase* /*pFileSystem*/)
+void MainWindow::fileSaving(const QString& fileName)
 {
-}
+	ui->progressInfoText->setText(QString("SAVING: %1").arg(fileName));
+} // fileLoading
 
 
-void MainWindow::fileLoading(const QString& /*fileName*/)
+void MainWindow::bytesRead(uint numBytes)
 {
-}
+	ui->loadProgress->setValue(numBytes);
+} // bytesRead
 
 
-void MainWindow::bytesRead(uint /*numBytes*/)
+void MainWindow::bytesWritten(uint numBytes)
 {
-}
+	ui->loadProgress->setValue(numBytes);
+} // bytesWritten
 
 
-void MainWindow::bytesWritten(uint /*numBytes*/)
+void MainWindow::fileClosed(const QString& lastFileName)
 {
-}
-
-
-void MainWindow::fileClosed(const QString& /*lastFileName*/)
-{
-}
+	Q_UNUSED(lastFileName);
+	ui->progressInfoText->setText("READY.");
+	ui->loadProgress->setEnabled(false);
+	ui->loadProgress->setValue(0);
+} // fileClosed

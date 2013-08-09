@@ -218,6 +218,8 @@ boolean IEC::sendByte(byte data, boolean signalEOI)
 		return false;
 
 	if(signalEOI) {
+		// TODO: Make this like sd2iec and may not need a fixed delay here.
+
 		// Signal eoi by waiting 200 us
 		delayMicroseconds(TIMING_EOI_WAIT);
 
@@ -233,12 +235,11 @@ boolean IEC::sendByte(byte data, boolean signalEOI)
 
 	// Send bits
 	for(byte n = 0; n < 8; n++) {
+		// TODO: Here check whether data pin goes low, if so end (enter cleanup)!
+
 		writeCLOCK(true);
 		// set data
-		if(data bitand 1)
-			writeDATA(false);
-		else
-			writeDATA(true);
+		writeDATA((data bitand 1) ? false : true);
 
 		delayMicroseconds(TIMING_BIT);
 		writeCLOCK(false);
@@ -249,6 +250,8 @@ boolean IEC::sendByte(byte data, boolean signalEOI)
 
 	writeCLOCK(true);
 	writeDATA(false);
+
+	// TODO: Maybe make the following ending more like sd2iec instead.
 
 	// Line stabilization delay
 	delayMicroseconds(TIMING_STABLE_WAIT);
@@ -405,11 +408,11 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 			delayMicroseconds(TIMING_ATN_DELAY);
 			writeDATA(false);
 			writeCLOCK(false);
-			{
-				//char buffer[20];
-				//sprintf(buffer, "NOTUS: %u", c);
-				//Log(Information, FAC_IEC, buffer);
-			}
+//			{
+//				char buffer[20];
+//				sprintf(buffer, "NOTUS: %u", c);
+//				Log(Information, FAC_IEC, buffer);
+//			}
 
 			// Wait for ATN to release and quit
 			while(not readATN());
@@ -430,7 +433,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 } // checkATN
 
 
-boolean IEC::checkRESET()
+boolean IEC::checkRESET() const
 {
 	return false;
 //	// hmmm. Is this all todo?
@@ -546,7 +549,6 @@ void IEC::testOUTPUTS()
 		lowOrHigh ^= true;
 	}
 } // testOUTPUTS
-
 #endif
 
 
@@ -575,4 +577,3 @@ IEC::IECState IEC::state() const
 {
 	return static_cast<IECState>(m_state);
 } // state
-

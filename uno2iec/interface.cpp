@@ -41,7 +41,7 @@ namespace {
 
 // atn command buffer struct
 IEC::ATNCmd cmd;
-char serCmdIOBuf[120];
+char serCmdIOBuf[160];
 byte scrollBuffer[30];
 
 } // unnamed namespace
@@ -181,14 +181,15 @@ void Interface::sendFile()
 
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
-		m_pDisplay->resetPercentage((serCmdIOBuf[1] << 8) bitor serCmdIOBuf[2]);
+		m_pDisplay->resetPercentage(((word)(serCmdIOBuf[1]) << 8) bitor serCmdIOBuf[2]);
 #endif
 
+	bool success = true;
 	do {
-		Serial.write('R'); // ask for a byte
+		Serial.write('R'); // ask for a byte/bunch of bytes
 		len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
 		if(2 not_eq len) {
-			Log(Error, FAC_IFACE, "Less than expected 2 bytes, stopping.");
+			Log(Error, FAC_IFACE, "2 Host bytes expected, stopping");
 			break;
 		}
 		resp = serCmdIOBuf[0];
@@ -196,10 +197,9 @@ void Interface::sendFile()
 		if('B' == resp or 'E' == resp) {
 			byte actual = Serial.readBytes(serCmdIOBuf, len);
 			if(actual not_eq len) {
-				Log(Error, FAC_IFACE, "Less than expected bytes, stopping.");
+				Log(Error, FAC_IFACE, "Host bytes expected, stopping");
 				break;
 			}
-			bool success = true;
 			// so we get some bytes, send them to CBM.
 			for(byte i = 0; success and i < len; ++i) { // End if sending to CBM fails.
 				noInterrupts();
@@ -214,12 +214,11 @@ void Interface::sendFile()
 				if(!(written % 32) and 0 not_eq m_pDisplay)
 					m_pDisplay->showPercentage(written);
 #endif
-
 			}
 		}
 		else if('E' not_eq resp)
-			Log(Error, FAC_IFACE, "Got unexpected command response char.");
-	} while(resp == 'B'); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
+			Log(Error, FAC_IFACE, "Got unexp. cmd resp.char.");
+	} while(resp == 'B' and success); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
 
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
@@ -245,11 +244,9 @@ void Interface::saveFile()
 
 void Interface::handler(void)
 {
-	//  m_iec.setDeviceNumber(8);
-
 	IEC::ATNCheck retATN = IEC::ATN_IDLE;
 	if(m_iec.checkRESET()) {
-		Log(Information, FAC_IFACE, "GOT RESET, INITIAL STATE");
+		Log(Information, FAC_IFACE, "IECRESET: INIT.STATE");
 		reset();
 	}
 	else {
@@ -451,7 +448,7 @@ void Interface::handleATNCmdClose()
 
 		}
 		else {
-			sprintf(serCmdIOBuf, "Expected: %d chars, got %d.", len, actual);
+			sprintf(serCmdIOBuf, "Exp: %d chars, got %d.", len, actual);
 			Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
 	}
