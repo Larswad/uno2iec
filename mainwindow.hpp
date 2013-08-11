@@ -5,10 +5,10 @@
 #include <QStandardItemModel>
 #include <QFileInfo>
 #include <qextserialport.h>
-#include "qextserialenumerator.h"
 #include <QMap>
 #include "interface.hpp"
 #include "logger.hpp"
+#include "settingsdialog.hpp"
 
 namespace Ui {
 class MainWindow;
@@ -33,7 +33,7 @@ public:
 
 	// IMountNotifyListener interface implementation
 	void directoryChanged(const QString& newPath);
-	void imageMounted(const QString&imagePath, FileDriverBase*pFileSystem);
+	void imageMounted(const QString& imagePath, FileDriverBase* pFileSystem);
 	void imageUnmounted();
 	void fileLoading(const QString &fileName, ushort fileSize);
 	void fileSaving(const QString& fileName);
@@ -58,22 +58,23 @@ private slots:
 		void on_saveLog_clicked();
 		void on_saveHtml_clicked();
 		void on_resetArduino_clicked();
-		void on_comPort_currentIndexChanged(int index);
 		void on_browseImageDir_clicked();
 		void on_imageDir_editingFinished();
-		void on_imageFilter_textChanged(const QString &arg1);
+		void on_imageFilter_textChanged(const QString &filter);
 		void on_mountSelected_clicked();
 		void on_browseSingle_clicked();
 		void on_mountSingle_clicked();
-		void on_baudRate_currentIndexChanged(const QString& baudRate);
-
 		void on_actionAbout_triggered();
-
 		void on_unmountCurrent_clicked();
+		void on_actionSettings_triggered();
+		void on_reloadImageDir_clicked();
 
 private:
+	void enumerateComPorts();
+	void usePortByFriendlyName(const QString &friendlyName);
 	void processDebug(const QString &str);
-	void updateImageList();
+	void updateImageList(bool reloadDirectory = true);
+	void boldifyItem(QStandardItem *pItem);
 	void readSettings();
 	void writeSettings() const;
 
@@ -83,12 +84,13 @@ private:
 	bool m_isConnected;
 	FacilityMap m_clientFacilities;
 	Interface m_iface;
-	QList<QextPortInfo> m_ports;
+	QextPortInfoList m_ports;
 	QStandardItemModel* m_dirListItemModel;
-	QFileInfoMap m_imageInfoMap;
+	QFileInfoList m_filteredInfoList;
+	QFileInfoList m_infoList;
 	bool m_isInitialized;
-	QString m_programVersion;
 	QStringList m_imageDirListing;
+	AppSettings m_appSettings;
 };
 
 #endif // MAINWINDOW_HPP

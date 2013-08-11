@@ -49,7 +49,8 @@ SOURCES += main.cpp\
 		nativefs.cpp \
 		logger.cpp \
 		x00fs.cpp \
-		aboutdialog.cpp
+		aboutdialog.cpp \
+    settingsdialog.cpp
 
 HEADERS  += mainwindow.hpp \
 		t64driver.hpp \
@@ -61,10 +62,12 @@ HEADERS  += mainwindow.hpp \
 		logger.hpp \
 		x00fs.hpp \
 		version.h \
-		aboutdialog.hpp
+		aboutdialog.hpp \
+    settingsdialog.hpp
 
 FORMS    += mainwindow.ui \
-		aboutdialog.ui
+		aboutdialog.ui \
+    settingsdialog.ui
 
 OTHER_FILES += \
 		changes.txt \

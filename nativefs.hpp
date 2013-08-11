@@ -16,6 +16,8 @@ public:
 		return ext;
 	} // extension
 
+	// Special method only for native fs: Filtering is supported here.
+	void setListingFilters(const QString& filters, bool listDirectories);
 
 	// method below performs init of the driver with the given ATN command string.
 	bool openHostFile(const QString& fileName);
@@ -51,6 +53,9 @@ public:
 private:
 	// File to open, either as for checking its existance before trying another FS, or for reading .PRG native files.
 	QFile m_hostFile;
+
+	QString m_filters;
+	bool m_listDirectories;
 
 };
 

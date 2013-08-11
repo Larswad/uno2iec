@@ -1,9 +1,7 @@
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
 // TODO: Finalize Native FS routines.
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
-// TODO: Parse date and time on connection at arduino side.
 // TODO: T64 / D64 formats should read out entire disk into memory for caching (network performance).
-// DONE: Check the port name to use on the PI in the port constructor / setPortName(QLatin1String("/dev/ttyS0"));
 
 #include <QString>
 #include <QFileDialog>
@@ -25,6 +23,8 @@ using namespace Logging;
 
 namespace {
 #define CBM_BACK_ARROW 95
+const QColor CCS64_BG_COLOR(64,64,224);
+const QColor CCS64_FG_COLOR(160,160,255);
 
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
@@ -50,8 +50,23 @@ const uint DEFAULT_ATN_PIN = 5;
 //const uint DEFAULT_SRQIN_PIN = 2;
 const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 	"<hr>"
+	"<ul><li>NEW: Added nicely fitting icons for all buttons."
+	"<li>NEW: Completely revised UI with configuration dialog making main window much more clean. "
+	"The dialog now also keeps settings for file filters and whether directories should be displayed. The settings dialog "
+	"is accessed from the menu or with CTRL+O shortcut."
+	"<li>NEW: Using Qt theming (styles). The default one will be Windows XP, otherwise Fusion."
+	"<li>NEW: Made the event log sit in a dockable window that can be either hidden or detached from the main window. "
+	"This will save a lot of screen real estate and gives space for much more files in the file list."
+	"<li>NEW: The mounted image directory listing is now displayed in classic C64 colors. The image name selection in the file list "
+	"is also automatically updated even if it is the CBM that triggers a new selection."
+	"NEW: A refresh button has been added for the file list."
+	"NEW: Directories are optionally display and in such case in bold font weight."
+	"<li>BUGFIX: When application started it always selected the first com-port in the list even if another was selected when "
+	"the application exited and the settings was saved. It now selects the right comport when application starts.</ul>"
+
+	"<span style=\" font-weight:600; color:#0404c2;\">Application Version 0.2.1:</span><hr>"
 	"<ul><li>FIX: Faster serial handling. The arduino receives a range of bytes instead of a single byte at a time. Should now be as fast as "
-			" a real 1541, or at least close to. More optimizations on serial handling can be done."
+	" a real 1541, or at least close to. More optimizations on serial handling can be done."
 	"<li>NEW: Added this about dialog. It will automatically show every time a new version is released. There is also an application icon "
 	" and a version resource added for windows targets. A C64 truetype font is embedded to the application for some UI controls."
 	"<li>CHANGE: Some source and README/NOTES commenting to shape up the things that is left to do."
@@ -59,9 +74,6 @@ const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 	"<li>NEW: Displays current mounted image content, even automatically when CBM does the operations."
 	"<li>NEW: Notification interface added so that UI can react to and reflect progress and mounting changes."
 	"<li>NEW: Some rearrangement of UI controls for better screen alignment and adaptation to windows resizing.</ul>"
-
-/*	"<span style=\" font-weight:600; color:#0404c2;\">Application Version 1.0.7:</span><hr>"
-	"<ul><li>BUGFIX: ....</ul>"*/
 	);
 } // unnamed namespace
 
@@ -78,38 +90,25 @@ MainWindow::MainWindow(QWidget *parent) :
 	ui->dirList->setModel(m_dirListItemModel);
 	getLoggerInstance().AddTransport(this);
 
-	m_ports = QextSerialEnumerator::getPorts();
-
+	// Set up the port basic parameters, these won't change...promise.
 	m_port.setDataBits(DATA_8);
 	m_port.setParity(PAR_NONE);
 	m_port.setFlowControl(FLOW_OFF);
 	m_port.setStopBits(STOP_1);
-#if defined(__arm__)
-			// just for the Raspberry PI.
-	static QextPortInfo piPort = { "/dev/ttyAMA0", "ttyAMA0", "Arduino AMA0", "", 0, 0 };
-//	m_port.setPortName(QLatin1String("/dev/ttyAMA0"));
-	m_ports.insert(0, piPort);
-//	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
-#elif defined(Q_OS_LINUX)
-	static QextPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
-//	m_port.setPortName(QLatin1String("/dev/ttyACM0"));
-	m_ports.insert(0, unixPort);
-#endif
-	int ix = 0;
-	foreach (QextPortInfo info, m_ports) {
-		ui->comPort->addItem(info.friendName, QVariant(ix));
-		ix++;
-	}
+
+	enumerateComPorts();
 
 	readSettings();
+	m_port.setBaudRate(static_cast<BaudRateType>(m_appSettings.baudRate));
+	usePortByFriendlyName(m_appSettings.portName);
 
-	if(m_ports.count())
-		m_port.setPortName(m_ports.at(0).portName);
-
-	//	m_port.open(QIODevice::ReadWrite);
+	m_port.open(QIODevice::ReadWrite);
 	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
-
+	// we want events from the port.
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
+	ui->dockWidget->toggleViewAction()->setShortcut(QKeySequence("CTRL+L"));
+	ui->menuMain->insertAction(ui->menuMain->actions().first(), ui->dockWidget->toggleViewAction());
+	// Initialize WiringPI stuff, if we're on the Raspberry Pi platform.
 #ifdef HAS_WIRINGPI
 	system("/usr/local/bin/gpio -g mode 23 out");
 	system("/usr/local/bin/gpio export 23 out");
@@ -118,13 +117,44 @@ MainWindow::MainWindow(QWidget *parent) :
 	else
 		on_resetArduino_clicked();
 #endif
-//	ui->imageDir->setText(QDir::currentPath());
+
 	Log("MAIN", "Application Initialized.", success);
 	m_isInitialized = true;
 	updateImageList();
-	// register ourselves to listen for CBM events from the Arduino.
+
+	// register ourselves to listen for all CBM events from the Arduino so that we can reflect this on UI controls.
 	m_iface.setMountNotifyListener(this);
-} // MainWindow
+	m_iface.setImageFilters(m_appSettings.imageFilters, m_appSettings.showDirectories);
+} // ctor
+
+
+void MainWindow::enumerateComPorts()
+{
+	m_ports = QextSerialEnumerator::getPorts();
+
+	// Manually add the ports that the enumerator can't know about.
+#if defined(__arm__)
+	// just for the Raspberry PI.
+	static QextPortInfo piPort = { "/dev/ttyAMA0", "ttyAMA0", "Arduino AMA0", "", 0, 0 };
+	m_ports.insert(0, piPort);
+//	m_port.setBaudRate(BAUD57600/*BAUD1152000*/);
+#elif defined(Q_OS_LINUX)
+	static QextPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
+	m_ports.insert(0, unixPort);
+#endif
+} // enumerateComPorts
+
+
+void MainWindow::usePortByFriendlyName(const QString& friendlyName)
+{
+	foreach(QextPortInfo port, m_ports) {
+		if(port.friendName == friendlyName) {
+			// found it, set it and be done.
+			m_port.setPortName(port.portName);
+			break;
+		}
+	}
+} // usePortByFriendlyName
 
 
 MainWindow::~MainWindow()
@@ -140,7 +170,7 @@ void MainWindow::on_actionAbout_triggered()
 {
 	QString aboutText(tr("<span style=\" font-weight:600; font-size:12pt;\">Qt based host application for Arduino to CBM over IEC.</span><br><br>"
 											 "<span style=\" font-weight:600; color:#c20404;\">Application Version ") +
-										m_programVersion + tr("</span>"
+										m_appSettings.programVersion + tr("</span>"
 																					"<span style =  font-style:italic; color:#c20404;\">: Current</span>") + PROGRAM_VERSION_HISTORY);
 
 	AboutDialog about(aboutText, this);
@@ -148,10 +178,38 @@ void MainWindow::on_actionAbout_triggered()
 } // on_actionAbout_triggered
 
 
+void MainWindow::on_actionSettings_triggered()
+{
+	enumerateComPorts();
+
+	AppSettings oldSettings = m_appSettings;
+	SettingsDialog settings(m_ports, m_appSettings);
+	if(QDialog::Accepted == settings.exec()) { // user pressed Ok?
+		if(m_appSettings.imageFilters not_eq oldSettings.imageFilters
+			 or m_appSettings.showDirectories not_eq oldSettings.showDirectories) {
+			m_iface.setImageFilters(m_appSettings.imageFilters, m_appSettings.showDirectories);
+			updateImageList();
+		}
+		if(m_appSettings.baudRate not_eq oldSettings.baudRate)
+			m_port.setBaudRate(static_cast<BaudRateType>(m_appSettings.baudRate));
+
+		// Was port changed?
+		if(m_appSettings.portName not_eq oldSettings.portName) {
+			m_isConnected = false;
+			if(m_port.isOpen())
+				m_port.close();
+			usePortByFriendlyName(m_appSettings.portName);
+			m_port.open(QIODevice::ReadWrite);
+			Log("MAIN", QString("Port name changed to %1").arg(m_port.portName()), info);
+		}
+	}
+} // on_actionSettings_triggered
+
+
 void MainWindow::checkVersion()
 {
-	if(m_programVersion not_eq VER_PRODUCTVERSION_STR) {
-		m_programVersion = VER_PRODUCTVERSION_STR;
+	if(m_appSettings.programVersion not_eq VER_PRODUCTVERSION_STR) {
+		m_appSettings.programVersion = VER_PRODUCTVERSION_STR;
 		on_actionAbout_triggered();
 	}
 } // checkVersion
@@ -176,14 +234,17 @@ void MainWindow::readSettings()
 	ui->singleImageName->setText(settings.value("singleImageName").toString());
 	QDir::setCurrent(ui->imageDir->text());
 	ui->imageFilter->setText(settings.value("imageFilter", QString()).toString());
-	ui->baudRate->setCurrentText(settings.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toString());
-	ui->deviceNumber->setCurrentText(settings.value("deviceNumber", QString::number(DEFAULT_DEVICE_NUMBER)).toString());
-	ui->atnPin->setCurrentText(settings.value("atnPin", QString::number(DEFAULT_ATN_PIN)).toString());
-	ui->clockPin->setCurrentText(settings.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toString());
-	ui->dataPin->setCurrentText(settings.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toString());
-	ui->resetPin->setCurrentText(settings.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toString());
-	//	ui->srqInPin->setCurrentText(settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toString());
-	m_programVersion = settings.value("lastProgramVersion", "unset").toString();
+	m_appSettings.baudRate = settings.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toUInt();
+	m_appSettings.deviceNumber = settings.value("deviceNumber", QString::number(DEFAULT_DEVICE_NUMBER)).toUInt();
+	m_appSettings.atnPin = settings.value("atnPin", QString::number(DEFAULT_ATN_PIN)).toUInt();
+	m_appSettings.clockPin = settings.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toUInt();
+	m_appSettings.dataPin = settings.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toUInt();
+	m_appSettings.resetPin = settings.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toUInt();
+	//	ui->srqInPin = settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toUInt();
+
+	m_appSettings.imageFilters = settings.value("imageFilters", "*.D64,*.T64,*.M2I,*.PRG,*.P00,*.SID").toString();
+	m_appSettings.showDirectories = settings.value("showDirectories", false).toBool();
+	m_appSettings.programVersion = settings.value("lastProgramVersion", "unset").toString();
 	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
 	restoreState(settings.value("mainWindowState").toByteArray());
 } // readSettings
@@ -194,20 +255,25 @@ void MainWindow::writeSettings() const
 	QSettings settings;
 	settings.setValue("mainWindowGeometry", saveGeometry());
 	settings.setValue("mainWindowState", saveState());
-	settings.setValue("lastProgramVersion", m_programVersion);
+	settings.setValue("lastProgramVersion", m_appSettings.programVersion);
 
 	settings.setValue("imageDirectory", ui->imageDir->text());
 	settings.setValue("singleImageName", ui->singleImageName->text());
 	settings.setValue("imageFilter", ui->imageFilter->text());
-	settings.setValue("baudRate", ui->baudRate->currentText());
-	settings.setValue("deviceNumber", ui->deviceNumber->currentText());
-	settings.setValue("atnPin", ui->atnPin->currentText());
-	settings.setValue("clockPin", ui->clockPin->currentText());
-	settings.setValue("dataPin", ui->dataPin->currentText());
-//	settings.setValue("srqInPin", ui->srqInPin->currentText());
+	settings.setValue("baudRate", QString::number(m_appSettings.baudRate));
+	settings.setValue("deviceNumber", QString::number(m_appSettings.deviceNumber));
+	settings.setValue("atnPin", QString::number(m_appSettings.atnPin));
+	settings.setValue("clockPin", QString::number(m_appSettings.clockPin));
+	settings.setValue("dataPin", QString::number(m_appSettings.dataPin));
+//	settings.setValue("srqInPin", QString::number(m_appSettings.srqInPin));
+	settings.setValue("imageFilters", m_appSettings.imageFilters);
+	settings.setValue("showDirectories", m_appSettings.showDirectories);
 } // writeSettings
 
 
+////////////////////////////////////////////////////////////////////////////
+// Dispatcher for when something has arrived on the serial port.
+////////////////////////////////////////////////////////////////////////////
 void MainWindow::onDataAvailable()
 {
 //	bool wasEmpty = m_pendingBuffer.isEmpty();
@@ -218,8 +284,8 @@ void MainWindow::onDataAvailable()
 			m_pendingBuffer.clear();
 			Log("MAIN", "Now connected to Arduino.", success);
 			// give the client current date and time in the response string.
-			m_port.write((OkString + ui->deviceNumber->currentText() + '|' + ui->atnPin->currentText() + '|' + ui->clockPin->currentText()
-										+ '|' + ui->dataPin->currentText() + '|' + ui->resetPin->currentText() /*+ '|' + ui->srqInPin->currentText()*/
+			m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin) + '|' + QString::number(m_appSettings.clockPin)
+										+ '|' + QString::number(m_appSettings.dataPin) + '|' + QString::number(m_appSettings.resetPin) /*+ '|' + QString::number(m_appSettings.srqInPin)*/
 										+ '\r').toLatin1().data());
 			// Assume connected, maybe a real ack sequence is needed here from the client?
 			m_isConnected = true;
@@ -254,10 +320,6 @@ void MainWindow::onDataAvailable()
 					m_pendingBuffer.remove(0, crIndex + 1);
 				}
 				break;
-
-//			case 'M': // set mode and include command string.
-//				m_pendingBuffer.remove(0, 1);
-//				break;
 
 			case 'S': // request for file size in bytes before sending file to CBM
 				m_pendingBuffer.remove(0, 1);
@@ -306,7 +368,6 @@ void MainWindow::onDataAvailable()
 				m_pendingBuffer.remove(0, 2);
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
-
 
 
 			default:
@@ -386,9 +447,6 @@ void MainWindow::on_clearLog_clicked()
 } // on_m_clearLog_clicked
 
 
-////
-/// \brief MainWindow::on_saveLog_clicked
-///
 void MainWindow::on_saveLog_clicked()
 {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Log"), QString(), tr("Text Files (*.log *.txt)"));
@@ -403,9 +461,6 @@ void MainWindow::on_saveLog_clicked()
 } // on_saveLog_clicked
 
 
-///
-/// \brief MainWindow::on_saveHtml_clicked
-///
 void MainWindow::on_saveHtml_clicked()
 {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Log as HTML"), QString(), tr("Html Files (*.html *.htm)"));
@@ -420,17 +475,15 @@ void MainWindow::on_saveHtml_clicked()
 } // on_saveHtml_clicked
 
 
-///
-/// \brief MainWindow::on_pauseLog_toggled
-/// \param checked
-///
 void MainWindow::on_pauseLog_toggled(bool checked)
 {
 	ui->pauseLog->setText(checked ? tr("Resume") : tr("Pause"));
 } // on_m_pauseLog_toggled
 
 
+////////////////////////////////////////////////////////////////////////////////
 // ILogTransport implementation.
+////////////////////////////////////////////////////////////////////////////////
 void MainWindow::appendTime(const QString& dateTime)
 {
 	if(ui->pauseLog->isChecked())
@@ -470,16 +523,6 @@ void MainWindow::appendMessage(const QString& msg)
 } // appendMessage
 
 
-void MainWindow::on_comPort_currentIndexChanged(int index)
-{
-	if(m_port.isOpen())
-		m_port.close();
-	m_port.setPortName(m_ports.at(index).portName);
-	m_port.open(QIODevice::ReadWrite);
-	Log("MAIN", QString("Port name changed to %1").arg(m_port.portName()), info);
-} // on_comPort_currentIndexChanged
-
-
 void MainWindow::on_browseImageDir_clicked()
 {
 	QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG/SID images"), ui->imageDir->text());
@@ -499,31 +542,29 @@ void MainWindow::on_imageDir_editingFinished()
 } // on_imageDir_editingFinished
 
 
-void MainWindow::updateImageList()
+void MainWindow::updateImageList(bool reloadDirectory)
 {
 	if(!m_isInitialized)
 		return;
 
-	QStringList filterList;
-	filterList.append("*.D64");
-	filterList.append("*.T64");
-	filterList.append("*.M2I");
-	filterList.append("*.PRG");
-	filterList.append("*.P00");
-	filterList.append("*.SID");
+	QStringList filterList = m_appSettings.imageFilters.split(',', QString::SkipEmptyParts);
 
-	m_imageInfoMap.clear();
-	QFileInfoList filesList = QDir(ui->imageDir->text()).entryInfoList(filterList, QDir::Files, QDir::Name);
+	if(reloadDirectory) {
+		m_infoList = QDir(ui->imageDir->text()).entryInfoList(filterList, QDir::NoDot bitor QDir::Files
+			bitor (m_appSettings.showDirectories ? QDir::AllDirs : QDir::Files),
+			QDir::DirsFirst bitor QDir::Name);
+	}
 	QRegExp filter(ui->imageFilter->text());
 	filter.setCaseSensitivity(Qt::CaseInsensitive);
 
-	foreach(QFileInfo file, filesList) {
+	m_filteredInfoList.clear();
+	foreach(QFileInfo file, m_infoList) {
 		QString strImage(file.fileName());
 		if(strImage.contains(filter))
-			m_imageInfoMap[strImage] = file;
+			m_filteredInfoList.append(file);
 	}
 	m_dirListItemModel->clear();
-	bool hasImages = m_imageInfoMap.count() > 0;
+	bool hasImages = m_filteredInfoList.count() > 0;
 	int numAdded = 0;
 
 	if(hasImages) {
@@ -532,10 +573,16 @@ void MainWindow::updateImageList()
 		for(int i = 0; i < IMAGE_LIST_HEADERS.count(); ++i)
 			m_dirListItemModel->setHeaderData(i, Qt::Horizontal, IMAGE_LIST_HEADERS.at(i));
 
-		foreach(const QString& strImageName, m_imageInfoMap.keys()) {
+		foreach(const QFileInfo& fInfo, m_filteredInfoList) {
 			QList<QStandardItem*> iList;
-			iList << (new QStandardItem(strImageName))
-						<< (new QStandardItem(QString::number(float(m_imageInfoMap.value(strImageName).size()) / 1024, 'f', 1)));
+			QStandardItem* pItem = new QStandardItem(fInfo.fileName());
+			if(fInfo.isDir())
+				boldifyItem(pItem);
+			iList << pItem;
+			pItem = new QStandardItem(fInfo.isDir() ? "<DIR>" : QString::number(float(fInfo.size()) / 1024, 'f', 1));
+			if(fInfo.isDir())
+				boldifyItem(pItem);
+			iList << pItem;
 
 			foreach(QStandardItem* it, iList) {
 				it->setEditable(false);
@@ -550,11 +597,26 @@ void MainWindow::updateImageList()
 } // updateImageList
 
 
-void MainWindow::on_imageFilter_textChanged(const QString &arg1)
+void MainWindow::boldifyItem(QStandardItem* pItem)
 {
-	Q_UNUSED(arg1);
-	updateImageList();
+	QFont font = pItem->font();
+	font.setWeight(QFont::Bold);
+	pItem->setFont(font);
+} // boldifyItem
+
+
+void MainWindow::on_imageFilter_textChanged(const QString& filter)
+{
+	Q_UNUSED(filter);
+	updateImageList(false);
 } // on_imageFilter_textChanged
+
+
+void MainWindow::on_reloadImageDir_clicked()
+{
+	updateImageList();
+	Log("MAIN", "Program / Image directory reloaded.", info);
+} // on_reloadImageDir_clicked
 
 
 void MainWindow::on_mountSelected_clicked()
@@ -586,18 +648,7 @@ void MainWindow::on_mountSingle_clicked()
 void MainWindow::on_unmountCurrent_clicked()
 {
 	m_iface.processOpenCommand(QString("0|") + QChar(CBM_BACK_ARROW) + QChar(CBM_BACK_ARROW), true);
-}
-
-void MainWindow::on_baudRate_currentIndexChanged(const QString &baudRate)
-{
-	m_port.close();
-	// We are doing something less obvious here: The baudrate types are actually enums corresponding to the rate by
-	// the number itself. So its good enough to just use the number from the combobox as it is.
-	m_port.setBaudRate(static_cast<BaudRateType>(baudRate.toLong()));
-
-	m_port.open(QIODevice::ReadWrite); // open the shop again.
-	m_isConnected = false;
-} // on_baudRate_currentIndexChanged
+} // on_unmountCurrent_clicked
 
 
 void MainWindow::send(short lineNo, const QString& text)
@@ -629,15 +680,26 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 				line.replace('\x12', ' ');
 				QListWidgetItem* a = new QListWidgetItem(line);
 				ui->imageDirList->addItem(a);
-				a->setTextColor(QColor(255,255,255));
-				a->setBackgroundColor(QColor(0,0,0));
+				a->setTextColor(CCS64_BG_COLOR);
+				a->setBackgroundColor(CCS64_FG_COLOR);
 			}
 			else
 				ui->imageDirList->addItem(line);
 		}
 		m_imageDirListing.clear();
-	}ui->unmountCurrent->setEnabled(true);
-	// TODO: select the image name in the directory file list!
+	}
+	ui->unmountCurrent->setEnabled(true);
+
+	int ix = 0;
+	// select the image name in the directory file list!
+	foreach(QFileInfo finfo, m_filteredInfoList) {
+		if(finfo.fileName() == imagePath) {
+			ui->dirList->setFocus();
+			ui->dirList->selectionModel()->setCurrentIndex(m_dirListItemModel->index(ix ,0), QItemSelectionModel::Rows bitor QItemSelectionModel::SelectCurrent);
+			break;
+		}
+		++ix;
+	}
 } // imageMounted
 
 
@@ -655,7 +717,7 @@ void MainWindow::fileLoading(const QString& fileName, ushort fileSize)
 	ui->progressInfoText->setEnabled(true);
 	ui->loadProgress->setEnabled(true);
 	ui->loadProgress->setRange(0, fileSize);
-}
+} // fileLoading
 
 
 void MainWindow::fileSaving(const QString& fileName)

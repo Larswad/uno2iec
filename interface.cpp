@@ -45,6 +45,12 @@ Interface::Interface(QextSerialPort& port)
 } // ctor
 
 
+void Interface::setImageFilters(const QString& filters, bool showDirs)
+{
+	m_native.setListingFilters(filters, showDirs);
+} // setImageFilters
+
+
 void Interface::reset()
 {
 	m_currFileDriver = &m_native;

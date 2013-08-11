@@ -10,8 +10,17 @@ const QString strDir(" <DIR>");
 }
 
 NativeFS::NativeFS()
+	: m_listDirectories(false)
 {
 } // ctor
+
+
+void NativeFS::setListingFilters(const QString &filters, bool listDirectories)
+{
+	m_filters = filters;
+	m_listDirectories = listDirectories;
+} // setListingFilters
+
 
 bool NativeFS::openHostFile(const QString& fileName)
 {
@@ -44,6 +53,8 @@ bool NativeFS::newFile(const QString& fileName)
 	// TODO: Implement.
 	return false;
 } // newFile
+
+
 /* TODO: Move this to PI NativeFS and recode, create new file.
 byte fat_newfile(char *filename)
 {
@@ -105,12 +116,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 	dirName.truncate(23);
 	dirName = dirName.leftJustified(23);
 
-	QStringList filters;
-	filters.append("*.D64");
-	filters.append("*.T64");
-	filters.append("*.M2I");
-	filters.append("*.PRG");
-	filters.append("*.P00");
+	QStringList filters = m_filters.split(',', QString::SkipEmptyParts);
 
 	QString line("\x12\""); // Invert face, "
 	QString diskLabel("NATIVE FS");
@@ -132,7 +138,9 @@ bool NativeFS::sendListing(ISendLine& cb)
 
 	cb.send(0, line);
 
-	QFileInfoList list(dir.entryInfoList(filters, QDir::NoDot bitor QDir::AllEntries, QDir::Name));
+	QFileInfoList list(dir.entryInfoList(filters, QDir::NoDot bitor QDir::Files
+		bitor (m_listDirectories ? QDir::AllDirs : QDir::Files), QDir::Name bitor QDir::DirsFirst));
+
 	Log("NATIVEFS", QString("Listing %1 entrie(s) to CBM.").arg(QString::number(list.count())), info);
 	while(!list.isEmpty()) {
 		QFileInfo entry = list.first();

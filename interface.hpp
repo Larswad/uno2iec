@@ -71,6 +71,7 @@ public:
 	void processErrorStringRequest(IOErrorMessage code);
 	bool changeNativeFSDirectory(const QString &newDir);
 	void setMountNotifyListener(IFileOpsNotify *pListener);
+	void setImageFilters(const QString &filters, bool showDirs);
 
 private:
 	void openFile(const QString &cmdString, bool localImageSelection = false);

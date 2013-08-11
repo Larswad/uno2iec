@@ -115,6 +115,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QFontDatabase>
+#include <QStyleFactory>
 
 #ifdef CONSOLE_DEBUG
 #include <QDebug>
@@ -131,6 +132,14 @@ int main(int argc, char *argv[])
 	// Say hi
 	qDebug() << endl << "Welcome." << endl;
 #endif
+
+//	foreach(QString style, QStyleFactory::keys())
+//		qDebug() << "style: " << style;
+
+	if(QStyleFactory::keys().contains("WindowsXP"))
+		a.setStyle(QStyleFactory::create("WindowsXP"));
+	else
+		a.setStyle(QStyleFactory::create("Fusion"));
 
 	a.setOrganizationName("MumboJumbo_Software"/*VER_COMPANYNAME_STR*/);
 	a.setOrganizationDomain("DOMAIN");

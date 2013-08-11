@@ -4,5 +4,15 @@
     </qresource>
     <qresource prefix="/icons">
         <file>icons/1541.ico</file>
+        <file>icons/arrow_refresh.png</file>
+        <file>icons/browse.png</file>
+        <file>icons/clear.png</file>
+        <file>icons/exit.png</file>
+        <file>icons/floppy_mount.png</file>
+        <file>icons/floppy_unmount.png</file>
+        <file>icons/html.png</file>
+        <file>icons/pause.png</file>
+        <file>icons/restart.png</file>
+        <file>icons/save.png</file>
     </qresource>
 </RCC>
