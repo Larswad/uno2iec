@@ -60,7 +60,7 @@ const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 	"<li>NEW: The mounted image directory listing is now displayed in classic C64 colors. The image name selection in the file list "
 	"is also automatically updated even if it is the CBM that triggers a new selection."
 	"NEW: A refresh button has been added for the file list."
-	"NEW: Directories are optionally display and in such case in bold font weight."
+	"NEW: Directories are optionally displayed and in such case in bold font weight."
 	"<li>BUGFIX: When application started it always selected the first com-port in the list even if another was selected when "
 	"the application exited and the settings was saved. It now selects the right comport when application starts.</ul>"
 
