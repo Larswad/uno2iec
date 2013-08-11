@@ -46,8 +46,8 @@ const uint DEFAULT_RESET_PIN = 7;
 const uint DEFAULT_CLOCK_PIN = 4;
 const uint DEFAULT_DATA_PIN = 3;
 const uint DEFAULT_ATN_PIN = 5;
-
 //const uint DEFAULT_SRQIN_PIN = 2;
+
 const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 	"<hr>"
 	"<ul><li>NEW: Added nicely fitting icons for all buttons."

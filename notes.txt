@@ -109,26 +109,39 @@ If 'l' is returned, there was no more data
 --------------------------------------------------
 CBM syntax:
 --------------------------------------------------
-LOAD "<-<-",8
-Move up from disk image and get nativefs dir info.
+LOAD"<<",8      Reset interface and communication state. Do this if there is problem with PC to arduino sync.
+								Read < as the petscii back-arrow.
 
 LOAD "!!",8
 Retreive information about the current used file system / image.
 
-LOAD "FILE.D64",8
-Move into a D64 (DISK) image and load directory information
+In Nativs FS mode: (the default mode)
 
-LOAD "FILE.T64",8
-Move into a T64 (TAPE) image and load directory information
+LOAD "*",8					Load the first file from the current disk image or the native fs.
+LOAD"$",8           Gets directory listing, equivalent to LOAD".",8
+										Loads the current directory, either inside an image or the native fs.
+LOAD"gamesdir",8    Enter the "gamesdir" directory, and get listing.
+LOAD"..",8          Up one directory and get directory listing.
+LOAD"tetris.prg",8  Loads the "tetris.prg" program file.
+SAVE"example.prg",8 Save into "example.prg" which is a native fs file.
+LOAD"disk.d64",8    Loads the disk.d64 disk image and enters D64 mode.
+LOAD"tape.t64",8    Loads the tape.t64 tape image and enters T64 mode.
+LOAD "FILE.M2I",8		Move into a M2I "image" and load the list of contained native fs files.
 
-LOAD "FILE.M2I",8
-Move into a M2I "image" and load the list of contained native fs files.
+In D64 mode:
+	Load "$", "*"				wildcards, filenames works (almost) as espected on a 1541.
+	LOAD"<",8           (back-arrow). Escape D64 mode, and back to FAT mode.
+	SAVE"abc",8         Fools the CBM, but has no effect. Saves in D64 are
+											not implemented
 
-LOAD "FILE",8
-Load file from current mounted file system (or native fs)
+In T64 mode:
+	Load "$", "*"				wildcards, filenames works as if it was a D64.
+	LOAD"<",8           (back-arrow). Escape T64 mode, and back to FAT mode.
+	SAVE"abc",8         Fools the CBM, but has no effect.
 
-LOAD "$",8
-Load the current directory, either inside an image or the native fs.
 
-LOAD "*",8
-Load the first file from the current disk image or the native fs.
+NOTE:
+-----
+The FILE NOT FOUND ERROR is used to message both the original meaning, but
+it is also used to inform if there is an error with the host communication or filesystem.
+Try a LOAD"<<",8 to try going into initial state.
