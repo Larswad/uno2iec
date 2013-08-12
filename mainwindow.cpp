@@ -234,6 +234,7 @@ void MainWindow::readSettings()
 	ui->singleImageName->setText(settings.value("singleImageName").toString());
 	QDir::setCurrent(ui->imageDir->text());
 	ui->imageFilter->setText(settings.value("imageFilter", QString()).toString());
+	m_appSettings.portName = settings.value("portName", m_ports.isEmpty() ? "COM1" : m_ports.first().friendName).toString();
 	m_appSettings.baudRate = settings.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toUInt();
 	m_appSettings.deviceNumber = settings.value("deviceNumber", QString::number(DEFAULT_DEVICE_NUMBER)).toUInt();
 	m_appSettings.atnPin = settings.value("atnPin", QString::number(DEFAULT_ATN_PIN)).toUInt();
@@ -260,6 +261,7 @@ void MainWindow::writeSettings() const
 	settings.setValue("imageDirectory", ui->imageDir->text());
 	settings.setValue("singleImageName", ui->singleImageName->text());
 	settings.setValue("imageFilter", ui->imageFilter->text());
+	settings.setValue("portName", m_appSettings.portName);
 	settings.setValue("baudRate", QString::number(m_appSettings.baudRate));
 	settings.setValue("deviceNumber", QString::number(m_appSettings.deviceNumber));
 	settings.setValue("atnPin", QString::number(m_appSettings.atnPin));

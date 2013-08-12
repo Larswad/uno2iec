@@ -115,8 +115,8 @@ static void waitForPeer()
 	registerFacilities();
 
 	// We're in business.
-	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u.", deviceNumber);
+	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %hhu.", deviceNumber);
 	Log(Success, 'M', tempBuffer);
-	sprintf(tempBuffer, "IEC pins: ATN:%u CLK:%u DATA:%u RST:%u", atnPin, clockPin, dataPin, resetPin);
+	sprintf(tempBuffer, "IEC pins: ATN:%hhu CLK:%hhu DATA:%hhu RST:%hhu", atnPin, clockPin, dataPin, resetPin);
 	Log(Information, 'M', tempBuffer);
 } // waitForPeer
