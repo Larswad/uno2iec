@@ -10,20 +10,11 @@
 #include "m2idriver.hpp"
 #include "nativefs.hpp"
 
+#define READPRG_CHANNEL 0
+#define WRITEPRG_CHANNEL 1
 #define CMD_CHANNEL 15
 
-/*
-enum  {
-	IS_FAIL = 0xFF, // IFail: SD card or fat not ok
-	IS_NATIVE = 0,			// Regular file system file state
-	// states 1 -> NumInterfaceStates are also valid, representing what's open
-	IS_D64 = 1,
-	IS_T64 = 2,
-	IS_M2I = 3,
-	IS_PRG = 4,
-	NumInterfaceStates
-};
-*/
+typedef QList<FileDriverBase*> FileDriverList;
 
 enum OpenState {
 	O_NOTHING,			// Nothing to send / File not found error
@@ -79,16 +70,15 @@ private:
 
 	D64 m_d64;
 	T64 m_t64;
-//	M2I m_m2i;
+	M2I m_m2i;
 	NativeFS m_native; // In fact, this is .PRG
 
-	QList<FileDriverBase*> m_fsList;
+	FileDriverList m_fsList;
 	FileDriverBase* m_currFileDriver;
 	QextSerialPort& m_port;
 	IOErrorMessage m_queuedError;
 	OpenState m_openState;
 	QString m_lastCmdString;
-	//QStringList m_dirListing;
 	QList<QByteArray> m_dirListing;
 	IFileOpsNotify* m_pListener;
 };

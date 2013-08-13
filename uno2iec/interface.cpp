@@ -62,7 +62,6 @@ void Interface::reset(void)
 {
 	m_openState = O_NOTHING;
 	m_queuedError = ErrIntro;
-	//m_interfaceState = IS_NATIVE;
 } // reset
 
 
@@ -242,28 +241,25 @@ void Interface::saveFile()
 } // saveFile
 
 
-void Interface::handler(void)
+byte Interface::handler(void)
 {
-	IEC::ATNCheck retATN = IEC::ATN_IDLE;
 	if(m_iec.checkRESET()) {
-		Log(Information, FAC_IFACE, "IECRESET: INIT.STATE");
+		// IEC reset line is in reset state, so we should set all states in reset.
 		reset();
+		return IEC::ATN_RESET;
 	}
-	else {
-		noInterrupts();
-		retATN = m_iec.checkATN(cmd);
-		interrupts();
-	}
+	noInterrupts();
+	IEC::ATNCheck retATN = m_iec.checkATN(cmd);
+	interrupts();
 
 	if(retATN == IEC::ATN_ERROR) {
 #ifdef CONSOLE_DEBUG
 		Log(Error, FAC_IFACE, "ATNCMD: IEC_ERROR!");
 #endif
-		return;
+		reset();
 	}
-
 	// Did anything happen from the host side?
-	if(retATN not_eq IEC::ATN_IDLE) {
+	else if(retATN not_eq IEC::ATN_IDLE) {
 		// A command is recieved, make cmd string null terminated
 		cmd.str[cmd.strlen] = '\0';
 #ifdef CONSOLE_DEBUG
@@ -279,13 +275,19 @@ void Interface::handler(void)
 		// check upper nibble, the command itself.
 		switch(cmd.code bitand 0xF0) {
 			case IEC::ATN_CODE_OPEN:
+				// Open either file or prg for reading or writing. Issue comm
+				// Note: The host response handling is done LATER, since we will get a TALK or LISTEN after this.
+				// Also, simply issuing the request we are more responsive to the CBM here.
 				handleATNCmdCodeOpen(cmd);
 			break;
 
-
 			case IEC::ATN_CODE_DATA:  // data channel opened
-				if(retATN == IEC::ATN_CMD_TALK)
+				if(retATN == IEC::ATN_CMD_TALK) {
+					 // when the CMD channel is read, we first need to issue the host request. The data channel is opened directly.
+					if(CMD_CHANNEL == chan)
+						handleATNCmdCodeOpen(cmd);
 					handleATNCmdCodeDataTalk(chan);
+				}
 				else if(retATN == IEC::ATN_CMD_LISTEN)
 					handleATNCmdCodeDataListen();
 				break;
@@ -295,9 +297,8 @@ void Interface::handler(void)
 				handleATNCmdClose();
 				break;
 		}
-
-		//BUSY_LED_OFF();
 	}
+	return retATN;
 } // handler
 
 
@@ -312,9 +313,8 @@ void Interface::setMaxDisplay(Max7219 *pDisplay)
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
 {
 	sprintf(serCmdIOBuf, "O%u|%s\r", cmd.code bitand 0xF, cmd.str);
-	// NOTE: PI side handles BOTH file open command AND the command channel command (from the cmd.code).
+	// NOTE: Host side handles BOTH file open command AND the command channel command (from the cmd.code).
 	Serial.print(serCmdIOBuf);
-	// Note: the pi response handling can be done LATER! We're in quick business with the CBM here!
 } // handleATNCmdCodeOpen
 
 

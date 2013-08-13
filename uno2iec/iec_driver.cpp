@@ -433,11 +433,11 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 } // checkATN
 
 
-boolean IEC::checkRESET() const
+boolean IEC::checkRESET()
 {
-	return false;
+//	return false;
 //	// hmmm. Is this all todo?
-//	return readRESET();
+	return readRESET();
 } // checkATN
 
 

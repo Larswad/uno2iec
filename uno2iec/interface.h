@@ -52,7 +52,8 @@ public:
 	Interface(IEC& iec);
 	virtual ~Interface() {}
 
-	void handler(void);
+	// The handler returns the current IEC state, see the iec_driver.hpp for possible states.
+	byte handler(void);
 
 #ifdef USE_LED_DISPLAY
 	void setMaxDisplay(Max7219* pDisplay);
@@ -75,8 +76,6 @@ private:
 
 	// our iec low level driver:
 	IEC& m_iec;
-	// What operation state and media type we are dealing with
-	byte m_interfaceState; // see InterfaceState
 	// This var is set after an open command and determines what to send next
 	byte m_openState;			// see OpenState
 	byte m_queuedError;

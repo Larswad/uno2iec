@@ -3,14 +3,6 @@
 
 #include "filedriverbase.hpp"
 
-//
-// Title        : MMC2IEC - M2IDRIVER
-// Author       : Lars Pontoppidan
-// Version      : 0.1
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-// DESCRIPTION:
-//
 // DISCLAIMER:
 // The author is in no way responsible for any problems or damage caused by
 // using this code. Use at your own risk.

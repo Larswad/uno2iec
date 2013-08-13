@@ -38,7 +38,8 @@ void setup()
 
 #ifdef USE_LED_DISPLAY
 	pMax = new Max7219(MAX_INPIN, MAX_LOADPIN, MAX_CLOCKPIN);
-	pMax->setToCharacter('R');
+	// indicate on display that we are waiting for connection.
+	pMax->setToCharacter('C');
 	iface.setMaxDisplay(pMax);
 #endif
 
@@ -66,7 +67,15 @@ void loop()
 	iec.testOUTPUTS();
 	//iec.testINPUTS();
 #else
-	iface.handler();
+	if(IEC::ATN_RESET == iface.handler()) {
+#ifdef USE_LED_DISPLAY
+		pMax->resetScrollText(myText);
+		// Indicate that IEC is in reset state.
+		pMax->setToCharacter('R');
+#endif
+		// Wait for it to get out of reset.
+		while(IEC::ATN_RESET == iface.handler());
+	}
 #endif
 
 #ifdef USE_LED_DISPLAY

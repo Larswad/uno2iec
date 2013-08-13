@@ -46,7 +46,8 @@ public:
 		ATN_CMD = 1,        // A command is recieved
 		ATN_CMD_LISTEN = 2, // A command is recieved and data is coming to us
 		ATN_CMD_TALK = 3,   // A command is recieved and we must talk now
-		ATN_ERROR = 4       // A problem occoured, reset communication
+		ATN_ERROR = 4,      // A problem occoured, reset communication
+		ATN_RESET = 5				// The IEC bus is in a reset state (RESET line).
 	};
 
 	// IEC ATN commands:
@@ -90,7 +91,7 @@ public:
 
 	// Checks if CBM is sending a reset (setting the RESET line high). This is typicall
 	// when the CBM is reset itself. In this case, we are supposed to reset all states to initial.
-	boolean checkRESET() const;
+	boolean checkRESET();
 
 	// Sends a byte. The communication must be in the correct state: a load command
 	// must just have been recieved. If something is not OK, FALSE is returned.
@@ -152,7 +153,7 @@ private:
 
 	inline boolean readRESET()
 	{
-		return readPIN(m_resetPin);
+		return !readPIN(m_resetPin);
 	}
 
 //	inline boolean readSRQIN()
@@ -164,6 +165,7 @@ private:
 	inline void writePIN(byte pinNumber, boolean state)
 	{
 		pinMode(pinNumber, state ? OUTPUT : INPUT);
+		digitalWrite(pinNumber, state ? LOW : HIGH);
 	}
 
 	inline void writeATN(boolean state)

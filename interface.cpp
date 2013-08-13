@@ -37,11 +37,12 @@ const QString s_errorEnding = ",00,00";
 Interface::Interface(QextSerialPort& port)
 	: m_currFileDriver(0), m_port(port), m_queuedError(ErrOK), m_openState(O_NOTHING), m_pListener(0)
 {
+	// Build the list of implemented file systems.
 	m_fsList.append(&m_native);
 	m_fsList.append(&m_d64);
 	m_fsList.append(&m_t64);
-//	m_fsList.append(&m_m2i);
-	m_currFileDriver = &m_native;
+	m_fsList.append(&m_m2i);
+	reset();
 } // ctor
 
 
@@ -54,8 +55,8 @@ void Interface::setImageFilters(const QString& filters, bool showDirs)
 void Interface::reset()
 {
 	m_currFileDriver = &m_native;
-	m_queuedError	= ErrOK;
-	m_openState = O_NOTHING;
+	m_queuedError	= ErrIntro;
+	m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	m_dirListing.empty();
 	m_lastCmdString.clear();
 	foreach(FileDriverBase* fs, m_fsList)
@@ -103,31 +104,33 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 	// fall back result
 	m_openState = O_NOTHING;
 
-	// Check double back arrow first
-	if((CBM_BACK_ARROW == cmd.at(0).toLatin1()) and (CBM_BACK_ARROW == cmd.at(1))) {
-		// reload sdcard and send info
-		m_currFileDriver = &m_native;
-		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
-		if(0 not_eq m_pListener)
+	// Check double back arrow first, it is a reset state.
+	if(cmd.size() == 2 and CBM_BACK_ARROW == cmd.at(0).toLatin1() and CBM_BACK_ARROW == cmd.at(1)) {
+		// move to reset state of interface.
+		reset();
+		if(0 not_eq m_pListener) // make sure UI does not assume any mounted media as well.
 			m_pListener->imageUnmounted();
-		Log(FAC_IFACE, "Going back to NativeFS and sending media info.", info);
+		Log(FAC_IFACE, "Going back to NativeFS and sending media info.", success);
 	}
 	else if((CBM_EXCLAMATION == cmd.at(0).toLatin1()) and (CBM_EXCLAMATION == cmd.at(1))) {
 		// to get the media info for any OTHER media, the '!!' should be used on the CBM side.
 		// whatever file system we have active, check if it supports media info.
 		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	}
-// Commented out here: Not applicable on pi really. However, some kind of sane check of fs might be done anyway...hmmm.
-//	else if(!sdCardOK or !(fatGetStatus() & FAT_STATUS_OK)) {
+	// TODO: This following code is commented out here because it is not applicable on a PC/PI host really, at least not like the
+	// MMC2IEC having an ejected/unreadable SD card.
+	// However, some kind of sane check of FS might be suitable anyway...hmmm.
+	// What if the selected folder for the file/image directory on the native fs is not a valid one?
+	// That could be the corresponding handling here. Anyhow, What the user needs to do is issue the double arrow reset,
+	// to get out of it and retry.
+//	else if(!sdCardOK or !(fatGetStatus() bitand FAT_STATUS_OK)) {
 //		// User tries to open stuff and there is a problem. Status is fail
 //		m_queuedError = ErrDriveNotReady;
 //		m_currFileDriver = 0;
 //	}
-	else if(cmd.at(0) == QChar('$')) {
-		// Send directory listing of current dir
+	else if(cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
 		m_openState = O_DIR;
-	}
-	else if(CBM_BACK_ARROW == cmd.at(0)) {
+	else if(CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
 		// Exit current file format or cd..
 		if(m_currFileDriver == &m_native) {
 			m_currFileDriver->setCurrentDirectory("..");
@@ -154,7 +157,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 			if(m_currFileDriver == &m_native) {
 				// Exchange 0xFF with tilde to allow shortened long filenames
 				// HMM: This is DOS mumble jumble, we're on a linux FS...will not work.
-				cmd.replace(QChar(0xFF), "~");
+//				cmd.replace(QChar(0xFF), "~");
 
 				// Try if cd works, then try open as file and if none of these ok...then give up
 				if(m_native.setCurrentDirectory(cmd)) {
@@ -165,15 +168,15 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 				}
 				else if(m_native.openHostFile(cmd)) {
 					// File opened, investigate filetype
-					QList<FileDriverBase*>::iterator i;
-					for(i = m_fsList.begin(); i < m_fsList.end(); ++i) {
+					FileDriverList::const_iterator i;
+					for(i = m_fsList.constBegin(); i < m_fsList.constEnd(); ++i) {
 						// if extension matches last three characters in any file system, then we set that filesystem into use.
 						if(!(*i)->extension().isEmpty() and cmd.endsWith((*i)->extension(), Qt::CaseInsensitive)) {
 							m_currFileDriver = *i;
 							break;
 						}
 					}
-
+					// did we have a match?
 					if(i not_eq m_fsList.end()) {
 						m_native.closeHostFile();
 						Log(FAC_IFACE, QString("Trying image mount using driver: %1").arg(m_currFileDriver->extension()), info);
@@ -194,9 +197,10 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 						}
 						else {
 							// Error initializing driver, back to native file system.
-							Log(FAC_IFACE, QString("Error initializing driver for FS.ext: %1. Going back to native.").arg(m_currFileDriver->extension()), error);
+							Log(FAC_IFACE, QString("Error initializing driver for FS.ext: %1. Going back to Native FS.").arg(m_currFileDriver->extension()), error);
 							m_currFileDriver = &m_native;
 							m_openState = O_FILE_ERR;
+							m_queuedError = ErrDriveNotReady;
 						}
 					}
 					else { // No specific file format for this file, stay in FAT and send as straight .PRG
@@ -207,6 +211,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 				else { // File not found, giveup.
 					Log(FAC_IFACE, QString("File %1 not found. Returning FNF to CBM.").arg(cmd), warning);
 					m_openState = O_NOTHING;
+					m_queuedError = ErrFileNotFound;
 				}
 			}
 			else if(0 not_eq m_currFileDriver) {
@@ -214,8 +219,10 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 				Log(FAC_IFACE, QString("Trying open FS file: %1 on FS: %2").arg(cmd).arg(m_currFileDriver->extension()), info);
 				if(m_currFileDriver->fopen(cmd))
 					m_openState = O_FILE;
-				else // File not found
+				else {// File not found
 					m_openState = O_NOTHING;
+					m_queuedError = ErrFileNotFound;
+				}
 			}
 		}
 	}
@@ -238,13 +245,14 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 		m_queuedError = ErrSerialComm;
 	else {
 		uchar chan = params.at(0).toInt();
+		const QString cmd = params.at(1);
 		// Are we addressing the command channel?
 		if(CMD_CHANNEL == chan) {
 			// command channel command
 			// (note: if any previous openfile command has given us an error, the 'current' file system to use is not defined and
 			// therefore the command will fail, we don't even have the native fs to use for the open command).
 			if(0 not_eq m_currFileDriver) {
-				m_queuedError = m_currFileDriver->cmdChannel(params.at(1));
+				//m_queuedError = m_currFileDriver->cmdChannel(cmd);
 			}
 			else
 				m_queuedError = ErrDriveNotReady;
@@ -261,10 +269,10 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 				Log(FAC_IFACE, QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)), m_queuedError == ErrOK ? success : error);
 			}
 		}
-		else {
+		else if(READPRG_CHANNEL == chan) {
 			// ...otherwise it was a open file command.
 			m_openState = O_NOTHING;
-			openFile(params.at(1), localImageSelectionMode);
+			openFile(cmd, localImageSelectionMode);
 			// if it was not only a local "UI" operation, we need to return some response to client.
 			if(!localImageSelectionMode) {
 				// Response: ><code><CR>
@@ -284,6 +292,9 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 					m_pListener->fileLoading(m_currFileDriver->openedFileName(), m_currFileDriver->openedFileSize());
 			}
 		}
+		else if(WRITEPRG_CHANNEL == chan) {
+			// TODO: Implement open file for writing on given file system.
+		}
 	}
 } // processOpenCommand
 
@@ -298,6 +309,7 @@ void Interface::processCloseCommand()
 	if(0 not_eq m_pListener) // notify UI listener of change.
 		m_pListener->fileClosed(name);
 	Log(FAC_IFACE, QString("Returning last opened file name: %1").arg(name), info);
+	m_queuedError = ErrOK;
 } // processCloseCommand
 
 
@@ -357,7 +369,7 @@ void Interface::processReadFileRequest(void)
 void Interface::processWriteFileRequest(uchar theByte)
 {
 	m_currFileDriver->putc(theByte);
-} // processReadFileRequest
+} // processWriteFileRequest
 
 
 void Interface::processErrorStringRequest(IOErrorMessage code)
@@ -393,18 +405,26 @@ void Interface::buildDirectoryOrMediaList()
 {
 	m_dirListing.clear();
 	if(O_DIR == m_openState) {
-	Log(FAC_IFACE, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extension()), info);
-	if(!m_currFileDriver->sendListing(*this))
-		Log(FAC_IFACE, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
-	else
-		Log(FAC_IFACE, QString("Directory listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
+		Log(FAC_IFACE, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extension()), info);
+		if(!m_currFileDriver->sendListing(*this)) {
+			m_queuedError = ErrReadError;
+			Log(FAC_IFACE, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
+		}
+		else {
+			Log(FAC_IFACE, QString("Directory listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
+			m_queuedError = ErrOK;
+		}
 	}
 	else if(O_INFO == m_openState) {
 		Log(FAC_IFACE, QString("Producing media info for FS: \"%1\"...").arg(m_currFileDriver->extension()), info);
-		if(!m_currFileDriver->sendMediaInfo(*this))
+		if(!m_currFileDriver->sendMediaInfo(*this)) {
 			Log(FAC_IFACE, QString("Media info listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
-		else
+			m_queuedError = ErrReadError;
+		}
+		else {
 			Log(FAC_IFACE, QString("Media info listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);
+			m_queuedError = ErrOK;
+		}
 	}
 } // buildDirectoryOrMediaList
 

@@ -371,7 +371,6 @@ void MainWindow::onDataAvailable()
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
 
-
 			default:
 				// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
 				if(-1 not_eq crIndex)
@@ -695,7 +694,7 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 	int ix = 0;
 	// select the image name in the directory file list!
 	foreach(QFileInfo finfo, m_filteredInfoList) {
-		if(finfo.fileName() == imagePath) {
+		if(!finfo.fileName().compare(imagePath, Qt::CaseInsensitive)) {
 			ui->dirList->setFocus();
 			ui->dirList->selectionModel()->setCurrentIndex(m_dirListItemModel->index(ix ,0), QItemSelectionModel::Rows bitor QItemSelectionModel::SelectCurrent);
 			break;
