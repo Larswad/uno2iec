@@ -92,7 +92,7 @@ void loop()
 static void waitForPeer()
 {
 	char tempBuffer[80];
-	byte deviceNumber, atnPin, clockPin, dataPin, resetPin;
+	unsigned deviceNumber, atnPin, clockPin, dataPin, resetPin;
 
 	// initialize the digital pin as an output.
 	pinMode(ledPort, OUTPUT);
@@ -116,7 +116,7 @@ static void waitForPeer()
 
 	// Now read whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
-		sscanf(tempBuffer, "%hhu|%hhu|%hhu|%hhu|%hhu", &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
+		sscanf(tempBuffer, "%u|%u|%u|%u|%u", &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
 		// we got the config from the HOST.
 		iec.setDeviceNumber(deviceNumber);
 		iec.setPins(atnPin, clockPin, dataPin, resetPin);
@@ -124,8 +124,8 @@ static void waitForPeer()
 	registerFacilities();
 
 	// We're in business.
-	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %hhu.", deviceNumber);
+	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u.", deviceNumber);
 	Log(Success, 'M', tempBuffer);
-	sprintf(tempBuffer, "IEC pins: ATN:%hhu CLK:%hhu DATA:%hhu RST:%hhu", atnPin, clockPin, dataPin, resetPin);
+	sprintf(tempBuffer, "IEC pins: ATN:%u CLK:%u DATA:%u RST:%u", atnPin, clockPin, dataPin, resetPin);
 	Log(Information, 'M', tempBuffer);
 } // waitForPeer
