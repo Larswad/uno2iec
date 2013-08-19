@@ -1,6 +1,7 @@
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
 // TODO: Finalize Native FS routines.
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
+// TODO: Display the error channel status on the UI!
 // TODO: T64 / D64 formats should read out entire disk into memory for caching (network performance).
 
 #include <QString>
@@ -22,9 +23,15 @@
 using namespace Logging;
 
 namespace {
+
 #define CBM_BACK_ARROW 95
-const QColor CCS64_BG_COLOR(64,64,224);
-const QColor CCS64_FG_COLOR(160,160,255);
+
+// These definitions are in a header, just not to clutter down this file with too muchconstant definitions.
+#include "dirlistthemingconsts.hpp"
+
+EmulatorPaletteMap emulatorPalettes;
+CbmMachineThemeMap machineThemes;
+
 
 const QString OkString = "OK>";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
@@ -38,6 +45,10 @@ QStringList LOG_LEVELS = (QStringList()
 													<< QObject::tr("warning")
 													<< QObject::tr("info   ")
 													<< QObject::tr("success"));
+
+const QString s_initialText("\n    **** COMMODORE 64 BASIC V2 ****\n\n"
+													" 64K RAM SYSTEM 38911 BASIC BYTES FREE\n\n"
+													"READY.\n");
 
 const uint DEFAULT_BAUDRATE = BAUD115200;
 
@@ -117,6 +128,21 @@ MainWindow::MainWindow(QWidget *parent) :
 	else
 		on_resetArduino_clicked();
 #endif
+	emulatorPalettes["vice"] = viceColors;
+	emulatorPalettes["ccs64"] = ccs64Colors;
+	emulatorPalettes["frodo"] = frodoColors;
+	emulatorPalettes["c64s"] = c64sColors;
+	emulatorPalettes["c64hq"] = c64hqColors;
+	emulatorPalettes["godot"] = godotColors;
+	emulatorPalettes["pc64"] = pc64Colors;
+	emulatorPalettes["default"] = defaultColors;
+	emulatorPalettes["vic20"] = vic20Colors;
+
+	machineThemes["VIC 20"] = &Vic20Theme;
+	machineThemes["C 64"] = &C64Theme;
+	machineThemes["C 128"] = &C128Theme;
+
+	setupActionGroups();
 
 	Log("MAIN", "Application Initialized.", success);
 	m_isInitialized = true;
@@ -125,7 +151,59 @@ MainWindow::MainWindow(QWidget *parent) :
 	// register ourselves to listen for all CBM events from the Arduino so that we can reflect this on UI controls.
 	m_iface.setMountNotifyListener(this);
 	m_iface.setImageFilters(m_appSettings.imageFilters, m_appSettings.showDirectories);
+	// This will also reset the device!
+	updateDirListColors();
 } // ctor
+
+
+void MainWindow::setupActionGroups()
+{
+	QActionGroup* dirListColorGroup = new QActionGroup(this);
+	dirListColorGroup->addAction(ui->actionC64hq);
+	dirListColorGroup->addAction(ui->actionCcs64);
+	dirListColorGroup->addAction(ui->actionDefault);
+	dirListColorGroup->addAction(ui->actionC64s);
+	dirListColorGroup->addAction(ui->actionPc64);
+	dirListColorGroup->addAction(ui->actionVice);
+	dirListColorGroup->addAction(ui->actionInternal);
+	dirListColorGroup->addAction(ui->actionFrodo);
+	dirListColorGroup->addAction(ui->actionVic20);
+
+	connect(dirListColorGroup, SIGNAL(triggered(QAction*)), this, SLOT(onDirListColorSelected(QAction*)));
+	selectActionByName(ui->menuEmulator_Palette->actions(), m_appSettings.emulatorPalette);
+
+	QActionGroup* cbmMachineGroup = new QActionGroup(this);
+	cbmMachineGroup->addAction(ui->actionCommodore_64);
+	cbmMachineGroup->addAction(ui->actionC128);
+	cbmMachineGroup->addAction(ui->actionVic_20);
+	connect(cbmMachineGroup, SIGNAL(triggered(QAction*)), this, SLOT(onCbmMachineSelected(QAction*)));
+	selectActionByName(ui->menuMachine->actions(), m_appSettings.cbmMachine);
+} // setupActionGroup
+
+
+void MainWindow::selectActionByName(const QList<QAction*>& actions, const QString& name) const
+{
+	foreach(QAction* action, actions) {
+		if(!action->text().compare(name, Qt::CaseInsensitive)) {
+			action->setChecked(true);
+			return;
+		}
+	}
+} // selectActionByName
+
+
+void MainWindow::onDirListColorSelected(QAction* pAction)
+{
+	m_appSettings.emulatorPalette = pAction->text();
+	updateDirListColors();
+} // dirListColorSelected
+
+
+void MainWindow::onCbmMachineSelected(QAction* pAction)
+{
+	m_appSettings.cbmMachine = pAction->text();
+	updateDirListColors();
+} // cbmMachineSelected
 
 
 void MainWindow::enumerateComPorts()
@@ -246,6 +324,10 @@ void MainWindow::readSettings()
 	m_appSettings.imageFilters = settings.value("imageFilters", "*.D64,*.T64,*.M2I,*.PRG,*.P00,*.SID").toString();
 	m_appSettings.showDirectories = settings.value("showDirectories", false).toBool();
 	m_appSettings.programVersion = settings.value("lastProgramVersion", "unset").toString();
+
+	m_appSettings.emulatorPalette = settings.value("emulatorPalette", "ccs64").toString();
+	m_appSettings.cbmMachine = settings.value("cbmMachine", "C 64").toString();
+
 	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
 	restoreState(settings.value("mainWindowState").toByteArray());
 } // readSettings
@@ -270,6 +352,9 @@ void MainWindow::writeSettings() const
 //	settings.setValue("srqInPin", QString::number(m_appSettings.srqInPin));
 	settings.setValue("imageFilters", m_appSettings.imageFilters);
 	settings.setValue("showDirectories", m_appSettings.showDirectories);
+
+	settings.setValue("emulatorPalette", m_appSettings.emulatorPalette);
+	settings.setValue("cbmMachine", m_appSettings.cbmMachine);
 } // writeSettings
 
 
@@ -338,7 +423,7 @@ void MainWindow::onDataAvailable()
 				}
 				break;
 
-			case 'R': // read single byte from current file system mode, note that this command needs no termination, it needs to be short.
+			case 'R': // read byte(s) from current file system mode, note that this command needs no termination, it needs to be short.
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processReadFileRequest();
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
@@ -352,8 +437,8 @@ void MainWindow::onDataAvailable()
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
 
-			case 'L':
-				// line request: Just remove the BYTE from queue and do business.
+			case 'L': // directory/media info Line request:
+				// Just remove the BYTE from queue and do business.
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processLineRequest();
 				break;
@@ -363,7 +448,7 @@ void MainWindow::onDataAvailable()
 				m_iface.processCloseCommand();
 				break;
 
-			case 'E': // Ask for error string from error code
+			case 'E': // Ask for translation of error string from error code
 				if(cmdString.size() < 1)
 					hasDataToProcess = false;
 				m_iface.processErrorStringRequest(static_cast<IOErrorMessage>(m_pendingBuffer.at(1)));
@@ -620,6 +705,14 @@ void MainWindow::on_reloadImageDir_clicked()
 } // on_reloadImageDir_clicked
 
 
+void MainWindow::on_dirList_doubleClicked(const QModelIndex &index)
+{
+	Q_UNUSED(index);
+	ui->mountSelected->animateClick(250);
+//	on_mountSelected_clicked();
+} // on_dirList_doubleClicked
+
+
 void MainWindow::on_mountSelected_clicked()
 {
 	QModelIndexList selected = ui->dirList->selectionModel()->selectedRows(0);
@@ -672,24 +765,34 @@ void MainWindow::directoryChanged(const QString& newPath)
 
 void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSystem)
 {
+	QColor bgColor, fgColor;
+	getBgAndFgColors(bgColor, fgColor);
+
 	ui->nowMounted->setText(imagePath);
 	ui->imageDirList->clear();
 	m_imageDirListing.clear();
 	if(pFileSystem->sendListing(*this)) {
 		foreach(QString line, m_imageDirListing) {
-			if(line.contains('\x12')) {
-				line.replace('\x12', ' ');
-				QListWidgetItem* a = new QListWidgetItem(line);
-				ui->imageDirList->addItem(a);
-				a->setTextColor(CCS64_BG_COLOR);
-				a->setBackgroundColor(CCS64_FG_COLOR);
+			QStringList lineInverses = line.split('\x12', QString::SkipEmptyParts);
+			bool rvs = false;
+			foreach(QString linePart, lineInverses) {
+				if(rvs) {
+					ui->imageDirList->setTextColor(bgColor);
+					ui->imageDirList->setTextBackgroundColor(fgColor);
+				}
+				else {
+					ui->imageDirList->setTextColor(fgColor);
+					ui->imageDirList->setTextBackgroundColor(bgColor);
+				}
+				ui->imageDirList->insertPlainText(linePart);
+				rvs ^= true;
 			}
-			else
-				ui->imageDirList->addItem(line);
+			ui->imageDirList->insertPlainText("\n");
 		}
 		m_imageDirListing.clear();
 	}
 	ui->unmountCurrent->setEnabled(true);
+//	ui->imageDirList->setFocus();
 
 	int ix = 0;
 	// select the image name in the directory file list!
@@ -745,4 +848,71 @@ void MainWindow::fileClosed(const QString& lastFileName)
 	ui->progressInfoText->setText("READY.");
 	ui->loadProgress->setEnabled(false);
 	ui->loadProgress->setValue(0);
+}
+
+void MainWindow::deviceReset()
+{
+	QColor bgColor, fgColor;
+	getBgAndFgColors(bgColor, fgColor);
+	ui->imageDirList->setTextColor(fgColor);
+	ui->imageDirList->setTextBackgroundColor(bgColor);
+	CbmMachineTheme* pMachine;
+	const QRgb* pEmulatorPalette;
+	getMachineAndPaletteTheme(pMachine, pEmulatorPalette);
+	ui->imageDirList->setText(pMachine ? pMachine->bootText : C64Theme.bootText);
+	QTextCursor cursor = ui->imageDirList->textCursor();
+	cursor.movePosition(QTextCursor::End);
+	ui->imageDirList->setTextCursor(cursor);
+	ui->imageDirList->setFocus();
 } // fileClosed
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Handling of directory list theming.
+//////////////////////////////////////////////////////////////////////////////
+void MainWindow::getBgAndFgColors(QColor& bgColor, QColor& fgColor)
+{
+	bgColor = DEFAULT_CCS64_BG_COLOR;
+	fgColor = DEFAULT_CCS64_FG_COLOR;
+
+	CbmMachineTheme* pMachine;
+	const QRgb* pEmulatorPalette;
+	getMachineAndPaletteTheme(pMachine, pEmulatorPalette);
+
+	if(0 not_eq pMachine and 0 not_eq pEmulatorPalette) {
+		fgColor = QColor(pEmulatorPalette[pMachine->fgColorIndex]);
+		bgColor = QColor(pEmulatorPalette[pMachine->bgColorIndex]);
+	}
+} // getBgAndFgColors
+
+
+void MainWindow::getMachineAndPaletteTheme(CbmMachineTheme*& pMachine, const QRgb*& pEmulatorPalette)
+{
+	pMachine = 0;
+	pEmulatorPalette = 0;
+	EmulatorPaletteMap::iterator itEmulatorPalette = emulatorPalettes.find(m_appSettings.emulatorPalette);
+	CbmMachineThemeMap::iterator itMachineTheme = machineThemes.find(m_appSettings.cbmMachine);
+	if(itEmulatorPalette not_eq emulatorPalettes.end())
+		pEmulatorPalette = *itEmulatorPalette;
+	if(itMachineTheme not_eq machineThemes.end())
+		pMachine = *itMachineTheme;
+} // getMachineAndPaletteTheme
+
+
+void MainWindow::updateDirListColors()
+{
+	CbmMachineTheme* pMachine;
+	const QRgb* pEmulatorPalette;
+	getMachineAndPaletteTheme(pMachine, pEmulatorPalette);
+
+	QColor bgColor, fgColor;
+	getBgAndFgColors(bgColor, fgColor);
+	QString sheet = QString("background-color: rgb(%1, %2, %3);\ncolor: rgb(%4, %5, %6);\n"
+													"font: %7;\n").arg(
+				QString::number(bgColor.red()), QString::number(bgColor.green()), QString::number(bgColor.blue()),
+				QString::number(fgColor.red()), QString::number(fgColor.green()), QString::number(fgColor.blue()),
+				pMachine->font);
+	ui->imageDirList->setStyleSheet(sheet);
+	ui->imageDirList->setCursorWidth(pMachine->cursorWidth);
+	deviceReset();
+} // updateDirListColors

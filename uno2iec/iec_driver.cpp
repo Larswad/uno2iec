@@ -315,7 +315,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 	byte i = 0;
 
 	if(not readATN()) {
-		// Attention line is active, go to listener mode and get message
+		// Attention line is active, go to listener mode and get message. Being fast with the next two lines here is CRITICAL!
 		writeDATA(true);
 		writeCLOCK(false);
 #ifdef CONSOLE_DEBUG
@@ -343,8 +343,10 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 			//Log(Information, FAC_IEC, "CODE");
 			cmd.code = c;
 
-			if((c bitand 0xF0) == ATN_CODE_DATA) {
-				// A heapload of data might come now, client handles this
+			// If the command is DATA and it is not to expect just a small command on the command channel, then
+			// we're into something more heavy. Otherwise read it all out right here until UNLISTEN is received.
+			if((c bitand 0xF0) == ATN_CODE_DATA and (c bitand 0xF) not_eq CMD_CHANNEL) {
+				// A heapload of data might come now, too big for this context, the caller handles this, we're done here.
 				//Log(Information, FAC_IEC, "LDATA");
 				ret = ATN_CMD_LISTEN;
 			}
@@ -352,17 +354,18 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 #ifdef CONSOLE_DEBUG
 				//Log(Information, FAC_IEC, "CMD");
 #endif
-				// Some other command. Record the cmd string until UNLISTEN is send
+				// Some other command. Record the cmd string until UNLISTEN is sent
 				for(;;) {
 					c = (ATNCommand)receiveByte();
 					if(m_state bitand errorFlag)
 						return ATN_ERROR;
 
-					if((m_state bitand atnFlag) and (c == ATN_CODE_UNLISTEN))
+					if((m_state bitand atnFlag) and (ATN_CODE_UNLISTEN == c))
 						break;
 
 					if(i >= ATN_CMD_MAX_LENGTH) {
 						// Buffer is going to overflow, this is an error condition
+						// TODO: here we should propagate the error type being overflow so that reading error channel can give right code out.
 						return ATN_ERROR;
 					}
 					cmd.str[i++] = c;
@@ -375,7 +378,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 #ifdef CONSOLE_DEBUG
 			//Log(Information, FAC_IEC, "TALK");
 #endif
-			// First byte is cmd code
+			// First byte is cmd code, that we CAN at least expect. All else depends on ATN.
 			c = (ATNCommand)receiveByte();
 			if(m_state bitand errorFlag)
 				return ATN_ERROR;
@@ -389,6 +392,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 					if(i >= ATN_CMD_MAX_LENGTH) {
 						// Buffer is going to overflow, this is an error condition
+						// TODO: here we should propagate the error type being overflow so that reading error channel can give right code out.
 						return ATN_ERROR;
 					}
 					cmd.str[i++] = c;
@@ -420,12 +424,12 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 		}
 	}
 	else {
-		// No ATN, release lines
+		// No ATN, keep lines in a released state.
 		writeDATA(false);
 		writeCLOCK(false);
 	}
 
-	// some delay is required before more ATN business
+	// some delay is required before more ATN business can take place.
 	delayMicroseconds(TIMING_ATN_DELAY);
 
 	cmd.strlen = i;

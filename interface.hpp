@@ -41,6 +41,7 @@ public:
 		virtual void bytesRead(uint numBytes) = 0;
 		virtual void bytesWritten(uint numBytes) = 0;
 		virtual void fileClosed(const QString& lastFileName) = 0;
+		virtual void deviceReset() = 0;
 	};
 
 

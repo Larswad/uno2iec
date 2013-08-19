@@ -14,14 +14,43 @@ public:
 //
 // Error messages
 //
+// For detailed descriptions see: http://www.scribd.com/doc/40438/The-Commodore-1541-Disk-Drive-Users-Guide
+
 typedef enum {
-	ErrOK,
-	ErrReadError,
+	ErrOK = 0,
+	ErrFilesScratched,	// Files scratched response, not an error condition.
+	ErrBlockHeaderNotFound = 20,
+	ErrSyncCharNotFound,
+	ErrDataBlockNotFound,
+	ErrChecksumInData,
+	ErrByteDecoding,
+	ErrWriteVerify,
 	ErrWriteProtectOn,
+	ErrChecksumInHeader,
+	ErrDataExtendsNextBlock,
+	ErrDiskIdMismatch,
 	ErrSyntaxError,
+	ErrInvalidCommand,
+	ErrLongLine,
+	ErrInvalidFilename,
+	ErrNoFileGiven,		// The file name was left out of a command or the DOS does not recognize it as such.
+										// Typically, a colon(:) has been left out of the command
+	ErrCommandNotFound = 39,	// This error may result if thecommand sent to command channel (secondary address 15) is unrecognizedby the DOS.
+	ErrRecordNotPresent = 50,
+	ErrOverflowInRecord,
+	ErrFileTooLarge,
+	ErrFileOpenForWrite = 60,
+	ErrFileNotOpen,
 	ErrFileNotFound,
 	ErrFileExists,
-	ErrIntro,
+	ErrFileTypeMismatch,
+	ErrNoBlock,
+	ErrIllegalTrackOrSector,
+	ErrIllegalSystemTrackOrSector,
+	ErrNoChannelAvailable = 70,
+	ErrDirectoryError,
+	ErrDiskFullOrDirectoryFull,
+	ErrIntro,					// power up message or write attempt with DOS mismatch
 	ErrDriveNotReady,	// typically in this emulation could also mean: not supported on this file system.
 	ErrSerialComm,		// something went sideways with serial communication to the file server.
 	ErrCount

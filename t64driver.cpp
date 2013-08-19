@@ -23,6 +23,9 @@
 
 using namespace Logging;
 
+// Data capacity of block. This is not really true, there are no "Blocks" in T64, it is only for presenting directory like a floppy.
+#define T64_BLOCK_DATA 256
+
 // Signature section
 #define T64_SIGNATURE_OFFSET 0
 
@@ -39,6 +42,7 @@ using namespace Logging;
 
 namespace {
 const QString strTapeEnd("TAPE END.");
+const QString strPrg("PRG");
 }
 
 
@@ -259,10 +263,7 @@ bool T64::fopen(const QString& fileName)
 
 		m_fileOffset = OFFSET_PRE1;
 
-		m_fileLength = ((ushort)dir.endAddressLo
-										bitor ((ushort)dir.endAddressHi << 8))
-				- ((ushort)dir.startAddressLo
-					 bitor ((ushort)dir.startAddressHi << 8));
+		m_fileLength = calcFileLength(dir);
 
 		hostSeek(dir.fileOffset);
 
@@ -280,6 +281,15 @@ QString T64::openedFileName() const
 {
 	return m_lastOpenedFileName;
 } // openedFileName
+
+
+ushort T64::calcFileLength(DirEntry dir)
+{
+	return ((ushort)dir.endAddressLo
+				bitor ((ushort)dir.endAddressHi << 8))
+				- ((ushort)dir.startAddressLo
+				bitor ((ushort)dir.startAddressHi << 8));
+} // calcFileLength
 
 
 ushort T64::openedFileSize() const
@@ -315,8 +325,11 @@ bool T64::sendListing(ISendLine& cb)
 	while(getDirEntry(dir)) {
 		// Determine if dir entry is valid:
 		if(0 not_eq dir.c64sFileType and 0 not_eq dir.d64FileType) {
+			ushort fileBlocks = (calcFileLength(dir) + T64_BLOCK_DATA - 1) / T64_BLOCK_DATA;
 			// Send filename, which is padded with spaces, line number is just zero.
-			cb.send(0, QString("  \"%1\"").arg(QString::fromLocal8Bit(reinterpret_cast<char*>(dir.fileName), sizeof(dir.fileName))));
+			QString line = QString("  \"%1\" %2").arg(QString::fromLocal8Bit(reinterpret_cast<char*>(dir.fileName), sizeof(dir.fileName)), strPrg);
+
+			cb.send(fileBlocks, line.mid((int)log10(fileBlocks)));
 		}
 	}
 	// Write line with TAPE_END

@@ -20,14 +20,39 @@ const QString FAC_IFACE("IFACE");
 
 const QStringList s_IOErrorMessages = QStringList()
 		<< "00,OK"
-		<< "21,READ ERROR"
+		<< "20,READ ERROR"		// Block header not found
+		<< "21,READ ERROR"		// no sync character
+		<< "22,READ ERROR"		// data block not present
+		<< "23,READ ERROR"		// checksum error in data block
+		<< "24,READ ERROR"		// byte decoding error
+		<< "25,WRITE ERROR"		// write-verify error
 		<< "26,WRITE PROTECT ON"
-		<< "33,SYNTAX ERROR"
+		<< "27,READ ERROR"		// checksum error in header
+		<< "28,WRITE ERROR"		// long data block
+		<< "29,DISK ID MISMATCH"
+		<< "30,SYNTAX ERROR"	// general syntax Forexample, two file names may appear on the left side of the COPY command.
+		<< "31,SYNTAX ERROR"	// The DOS does not recognize thecommand. The command must start in the first position.
+		<< "32,SYNTAX ERROR"	// The command sent is longer than 58 characters.
+		<< "33,SYNTAX ERROR"	// Patterm matching is invalidly used in the OPEN or SAVE command.
+		<< "34,SYNTAX ERROR"	// The file name was left out of acommand or the DOS does not recognize it as such.
+		<< "39,SYNTAX ERROR"	// This error may result if thecommand sent to command channel (secondary address 15) is unrecognizedby the DOS.
+		<< "50,RECORD NOT PRESENT"
+		<< "51,OVERFLOW IN RECORD"
+		<< "52,FILE TOO LARGE"
+		<< "60,WRITE FILE OPEN"
+		<< "61,FILE NOT OPEN"
 		<< "62,FILE NOT FOUND"
 		<< "63,FILE EXISTS"
+		<< "64,FILE TYPE MISMATCH"
+		<< "65,NO BLOCK"
+		<< "66,ILLEGAL TRACK AND SECTOR"
+		<< "67,ILLEGAL SYSTEM T OR S"
+		<< "70,NO CHANNEL"
+		<< "71,DIRECTORY ERROR"
+		<< "72,DISK FULL"
 		<< "73,UNO2IEC DOS V0.1"
 		<< "74,DRIVE NOT READY"
-		<< "75,RPI SERIAL ERR.";
+		<< "98,RPI SERIAL ERR.";	// Specific error to this emulated device, serial communication has gone out of sync.
 const QString s_unknownMessage = "99, UNKNOWN ERROR";
 const QString s_errorEnding = ",00,00";
 
@@ -37,7 +62,7 @@ const QString s_errorEnding = ",00,00";
 Interface::Interface(QextSerialPort& port)
 	: m_currFileDriver(0), m_port(port), m_queuedError(ErrOK), m_openState(O_NOTHING), m_pListener(0)
 {
-	// Build the list of implemented file systems.
+	// Build the list of implemented / supported file systems.
 	m_fsList.append(&m_native);
 	m_fsList.append(&m_d64);
 	m_fsList.append(&m_t64);
@@ -61,6 +86,8 @@ void Interface::reset()
 	m_lastCmdString.clear();
 	foreach(FileDriverBase* fs, m_fsList)
 		fs->closeHostFile(); // TODO: Better with a reset or init method on all file systems.
+	if(0 not_eq m_pListener)
+		m_pListener->deviceReset();
 } // reset
 
 
@@ -112,7 +139,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 			m_pListener->imageUnmounted();
 		Log(FAC_IFACE, "Going back to NativeFS and sending media info.", success);
 	}
-	else if((CBM_EXCLAMATION == cmd.at(0).toLatin1()) and (CBM_EXCLAMATION == cmd.at(1))) {
+	else if(cmd.size() == 2 and CBM_EXCLAMATION == cmd.at(0).toLatin1() and CBM_EXCLAMATION == cmd.at(1)) {
 		// to get the media info for any OTHER media, the '!!' should be used on the CBM side.
 		// whatever file system we have active, check if it supports media info.
 		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
@@ -128,9 +155,9 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 //		m_queuedError = ErrDriveNotReady;
 //		m_currFileDriver = 0;
 //	}
-	else if(cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
+	else if(!cmd.isEmpty() and cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
 		m_openState = O_DIR;
-	else if(CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
+	else if(!cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
 		// Exit current file format or cd..
 		if(m_currFileDriver == &m_native) {
 			m_currFileDriver->setCurrentDirectory("..");
@@ -148,7 +175,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 	}
 	else {
 		// It was not any special command, remove eventual CBM dos prefix
-		if(removeFilePrefix(cmd)) {
+		if(!cmd.isEmpty() and removeFilePrefix(cmd)) {
 			// @ detected, this means save with replace:
 			m_openState = O_SAVE_REPLACE;
 		}
@@ -156,7 +183,7 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 			// open file depending on interface state
 			if(m_currFileDriver == &m_native) {
 				// Exchange 0xFF with tilde to allow shortened long filenames
-				// HMM: This is DOS mumble jumble, we're on a linux FS...will not work.
+				// HMM: This is DOS "8.3" mumble jumble, we're on a linux/ntfs or something FS...will not work.
 //				cmd.replace(QChar(0xFF), "~");
 
 				// Try if cd works, then try open as file and if none of these ok...then give up
@@ -165,6 +192,8 @@ void Interface::openFile(const QString& cmdString, bool localImageSelection)
 					if(0 not_eq m_pListener) // notify UI listener of change.
 						m_pListener->directoryChanged(QDir::currentPath());
 					m_openState = O_DIR;
+					if(0 not_eq m_pListener)
+						m_pListener->imageMounted(cmd, m_currFileDriver);
 				}
 				else if(m_native.openHostFile(cmd)) {
 					// File opened, investigate filetype
@@ -251,11 +280,10 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 			// command channel command
 			// (note: if any previous openfile command has given us an error, the 'current' file system to use is not defined and
 			// therefore the command will fail, we don't even have the native fs to use for the open command).
-			if(0 not_eq m_currFileDriver) {
-				//m_queuedError = m_currFileDriver->cmdChannel(cmd);
-			}
-			else
+			if(0 == m_currFileDriver)
 				m_queuedError = ErrDriveNotReady;
+//			else
+				//m_queuedError = m_currFileDriver->cmdChannel(cmd);
 			if(!localImageSelectionMode) {
 				// Response: ><code><CR>
 				// The code return is according to the values of the IOErrorMessage enum.
@@ -294,6 +322,8 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 		}
 		else if(WRITEPRG_CHANNEL == chan) {
 			// TODO: Implement open file for writing on given file system.
+		}
+		else { // some other channel.
 		}
 	}
 } // processOpenCommand
@@ -363,15 +393,20 @@ void Interface::processReadFileRequest(void)
 
 	m_port.write(data.data(), data.size());
 	m_port.flush();
+	if(0 not_eq m_pListener)
+		m_pListener->bytesRead(data.size());
 } // processReadFileRequest
 
 
 void Interface::processWriteFileRequest(uchar theByte)
 {
 	m_currFileDriver->putc(theByte);
+	if(0 not_eq m_pListener)
+		m_pListener->bytesWritten(1);
 } // processWriteFileRequest
 
 
+// For a specific error code, we are supposed to return the corresponding error string.
 void Interface::processErrorStringRequest(IOErrorMessage code)
 {
 	// the return message begins with ':' for sync.
@@ -407,7 +442,7 @@ void Interface::buildDirectoryOrMediaList()
 	if(O_DIR == m_openState) {
 		Log(FAC_IFACE, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extension()), info);
 		if(!m_currFileDriver->sendListing(*this)) {
-			m_queuedError = ErrReadError;
+			m_queuedError = ErrDirectoryError;
 			Log(FAC_IFACE, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
 		}
 		else {
@@ -419,7 +454,7 @@ void Interface::buildDirectoryOrMediaList()
 		Log(FAC_IFACE, QString("Producing media info for FS: \"%1\"...").arg(m_currFileDriver->extension()), info);
 		if(!m_currFileDriver->sendMediaInfo(*this)) {
 			Log(FAC_IFACE, QString("Media info listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())), warning);
-			m_queuedError = ErrReadError;
+			m_queuedError = ErrDirectoryError;
 		}
 		else {
 			Log(FAC_IFACE, QString("Media info listing ok (%1 lines). Ready waiting for line requests from arduino.").arg(m_dirListing.count()), success);

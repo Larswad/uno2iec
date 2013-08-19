@@ -263,10 +263,10 @@ byte Interface::handler(void)
 		// A command is recieved, make cmd string null terminated
 		cmd.str[cmd.strlen] = '\0';
 #ifdef CONSOLE_DEBUG
-//		{
-//			sprintf(serCmdIOBuf, "ATNCMD code:%d cmd: %s (len: %d) retATN: %d", cmd.code, cmd.str, cmd.strlen, retATN);
-//			Log(Information, FAC_IFACE, serCmdIOBuf);
-//		}
+		{
+			sprintf(serCmdIOBuf, "ATN code:%d cmd: %s (len: %d) retATN: %d", cmd.code, cmd.str, cmd.strlen, retATN);
+			Log(Information, FAC_IFACE, serCmdIOBuf);
+		}
 #endif
 
 		// lower nibble is the channel.
@@ -275,29 +275,40 @@ byte Interface::handler(void)
 		// check upper nibble, the command itself.
 		switch(cmd.code bitand 0xF0) {
 			case IEC::ATN_CODE_OPEN:
-				// Open either file or prg for reading or writing. Issue comm
-				// Note: The host response handling is done LATER, since we will get a TALK or LISTEN after this.
-				// Also, simply issuing the request we are more responsive to the CBM here.
+				// Open either file or prg for reading, writing or single line command on the command channel.
+				// In any case we just issue an 'OPEN' to the host and let it process.
+				// Note: Some of the host response handling is done LATER, since we will get a TALK or LISTEN after this.
+				// Also, simply issuing the request to the host and not waiting for any response here makes us more
+				// responsive to the CBM here, when the DATA with TALK or LISTEN comes in the next sequence.
 				handleATNCmdCodeOpen(cmd);
 			break;
 
 			case IEC::ATN_CODE_DATA:  // data channel opened
 				if(retATN == IEC::ATN_CMD_TALK) {
-					 // when the CMD channel is read, we first need to issue the host request. The data channel is opened directly.
-					if(CMD_CHANNEL == chan)
+					 // when the CMD channel is read (status), we first need to issue the host request. The data channel is opened directly.
+					if(IEC::CMD_CHANNEL == chan)
 						handleATNCmdCodeOpen(cmd);
 					handleATNCmdCodeDataTalk(chan);
 				}
 				else if(retATN == IEC::ATN_CMD_LISTEN)
 					handleATNCmdCodeDataListen();
+				else if(retATN == IEC::ATN_CMD)
+					handleATNCmdCodeOpen(cmd);
 				break;
 
 			case IEC::ATN_CODE_CLOSE:
 				// handle close with PI.
 				handleATNCmdClose();
 				break;
-		}
-	}
+
+//			case IEC::ATN_CODE_LISTEN:
+//			case IEC::ATN_CODE_TALK:
+//			case IEC::ATN_CODE_UNLISTEN:
+//			case IEC::ATN_CODE_UNTALK:
+//				break;
+		} // switch
+	} // IEC not idle
+
 	return retATN;
 } // handler
 
@@ -344,7 +355,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 			else
 				Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
-		if(CMD_CHANNEL == chan) {
+		if(IEC::CMD_CHANNEL == chan) {
 			m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
 			// Send status message
 			sendStatus();
@@ -414,7 +425,6 @@ void Interface::handleATNCmdCodeDataListen()
 				m_queuedError = ErrWriteProtectOn;
 			else
 				m_queuedError = ErrOK;
-
 		}
 
 		// TODO: saveFile to host.

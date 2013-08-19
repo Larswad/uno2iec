@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>561</width>
+    <width>582</width>
     <height>505</height>
    </rect>
   </property>
@@ -263,16 +263,7 @@
             </widget>
            </item>
            <item>
-            <widget class="QListWidget" name="imageDirList">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
+            <widget class="QTextEdit" name="imageDirList">
              <property name="font">
               <font>
                <family>Pet Me 64</family>
@@ -281,16 +272,24 @@
              </property>
              <property name="styleSheet">
               <string notr="true">background-color: rgb(64, 64, 224);
-color: rgb(160, 160, 255);</string>
+color: rgb(160, 160, 0xFF);
+</string>
              </property>
-             <property name="frameShape">
-              <enum>QFrame::Box</enum>
+             <property name="lineWrapMode">
+              <enum>QTextEdit::NoWrap</enum>
              </property>
-             <property name="frameShadow">
-              <enum>QFrame::Sunken</enum>
+             <property name="html">
+              <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Pet Me 64'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
-             <property name="selectionMode">
-              <enum>QAbstractItemView::NoSelection</enum>
+             <property name="overwriteMode">
+              <bool>true</bool>
+             </property>
+             <property name="cursorWidth">
+              <number>16</number>
              </property>
             </widget>
            </item>
@@ -363,29 +362,36 @@ color: rgb(160, 160, 255);</string>
            <property name="text">
             <string>Mounted now:</string>
            </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="nowMounted">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>80</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::StyledPanel</enum>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
+          <layout class="QVBoxLayout" name="verticalLayout_7">
+           <item>
+            <widget class="QLabel" name="nowMounted">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="text">
+              <string>None, Local FS</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QPushButton" name="unmountCurrent">
@@ -421,22 +427,6 @@ color: rgb(160, 160, 255);</string>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QPushButton" name="resetMachine">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="statusTip">
-         <string>By rumour, only very first C64's would be reset if the RESET line was grounded.</string>
-        </property>
-        <property name="text">
-         <string>Try IEC Reset CBM</string>
-        </property>
-       </widget>
-      </item>
-      <item>
        <widget class="QPushButton" name="resetArduino">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
@@ -468,7 +458,7 @@ color: rgb(160, 160, 255);</string>
          <bool>false</bool>
         </property>
         <property name="text">
-         <string>Loaded:</string>
+         <string/>
         </property>
        </widget>
       </item>
@@ -535,7 +525,7 @@ color: rgb(160, 160, 255);</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>561</width>
+     <width>582</width>
      <height>19</height>
     </rect>
    </property>
@@ -543,7 +533,40 @@ color: rgb(160, 160, 255);</string>
     <property name="title">
      <string>Main</string>
     </property>
+    <widget class="QMenu" name="menuDirectory_Listing_Colors">
+     <property name="title">
+      <string>Directory Listing Theme</string>
+     </property>
+     <widget class="QMenu" name="menuMachine">
+      <property name="title">
+       <string>Machine</string>
+      </property>
+      <addaction name="actionVic_20"/>
+      <addaction name="actionCommodore_64"/>
+      <addaction name="actionC128"/>
+     </widget>
+     <widget class="QMenu" name="menuEmulator_Palette">
+      <property name="title">
+       <string>Emulator Palette</string>
+      </property>
+      <addaction name="actionInternal"/>
+      <addaction name="actionDefault"/>
+      <addaction name="actionC64hq"/>
+      <addaction name="actionC64s"/>
+      <addaction name="actionCcs64"/>
+      <addaction name="actionFrodo"/>
+      <addaction name="actionGodot"/>
+      <addaction name="actionVice"/>
+      <addaction name="actionPc64"/>
+      <addaction name="actionVic20"/>
+     </widget>
+     <addaction name="menuMachine"/>
+     <addaction name="menuEmulator_Palette"/>
+    </widget>
     <addaction name="actionSettings"/>
+    <addaction name="menuDirectory_Listing_Colors"/>
+    <addaction name="actionDisk_Write_Protected"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -756,6 +779,124 @@ color: rgb(160, 160, 255);</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionDisk_Write_Protected">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Disk Write Protected</string>
+   </property>
+   <property name="toolTip">
+    <string>Prevents writing files on disk image or native file system.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+W</string>
+   </property>
+  </action>
+  <action name="actionFrodo">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>frodo</string>
+   </property>
+  </action>
+  <action name="actionVic_20">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>VIC 20</string>
+   </property>
+  </action>
+  <action name="actionCommodore_64">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C 64</string>
+   </property>
+  </action>
+  <action name="actionC128">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C 128</string>
+   </property>
+  </action>
+  <action name="actionVice">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>vice</string>
+   </property>
+  </action>
+  <action name="actionCcs64">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>ccs64</string>
+   </property>
+  </action>
+  <action name="actionPc64">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>pc64</string>
+   </property>
+  </action>
+  <action name="actionC64hq">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>c64hq</string>
+   </property>
+  </action>
+  <action name="actionC64s">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>c64s</string>
+   </property>
+  </action>
+  <action name="actionDefault">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>default</string>
+   </property>
+  </action>
+  <action name="actionInternal">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>internal</string>
+   </property>
+  </action>
+  <action name="actionGodot">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>godot</string>
+   </property>
+  </action>
+  <action name="actionVic20">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>vic20</string>
    </property>
   </action>
  </widget>

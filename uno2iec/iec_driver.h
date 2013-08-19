@@ -61,6 +61,13 @@ public:
 		ATN_CODE_UNTALK = 0x5F
 	};
 
+	// Special channels.
+	enum IECChannels {
+		READPRG_CHANNEL = 0,
+		WRITEPRG_CHANNEL = 1,
+		CMD_CHANNEL = 15
+	};
+
 	// ATN command struct maximum command length:
 	enum {
 		ATN_CMD_MAX_LENGTH = 40

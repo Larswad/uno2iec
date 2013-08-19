@@ -63,7 +63,8 @@ HEADERS  += mainwindow.hpp \
 		x00fs.hpp \
 		version.h \
 		aboutdialog.hpp \
-    settingsdialog.hpp
+    settingsdialog.hpp \
+    dirlistthemingconsts.hpp
 
 FORMS    += mainwindow.ui \
 		aboutdialog.ui \

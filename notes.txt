@@ -145,3 +145,54 @@ NOTE:
 The FILE NOT FOUND ERROR is used to message both the original meaning, but
 it is also used to inform if there is an error with the host communication or filesystem.
 Try a LOAD"<<",8 to try going into initial state.
+
+
+1541 original commands implemented / to implement (X means implemented and working).
+------------------------------------------------------------------------------------
+	UI- / UI+:	Switch to VIC20 / VIC64 speed
+	NEW:name,id	(abbreviated N:name,id) If id is left out directory is just cleared.
+	COPY:newfile=oldfile (abbreviated C:newfile=oldfile) If oldfile is several comma separated names they are concatenated.
+	RENAME:newfile=oldfile (abbreviated R:newfile=oldfile)
+	SCRATCH:filename (abbreviated S:filename) If oldfile is several comma separated names they are concatenated.
+	INITIALIZE (abbreviated I) Initialize drive (reset states)
+	VALIDATE (abbreviated V) Reorganize drive, like defragment
+	PRINT#file#, "BLOCK-READ:" channel; drive; track; block (abbreviated PRINT#file#, "B-R:" channel; drive; track; block
+	PRINT#file#, "BLOCK-WRITE:" channel; drive; track; block (abbreviated PRINT#file, "B-W:" channel; drive; track; block)
+	PRINT#file#, "BLOCK-ALLOCATE:" drive; track; block
+	PRINT#file#, "BLOCK-FREE:" drive; track; block (abbreviated PRINT#file#, "B-F:" drive; track; block
+	PRINT#file#, "B-P:" channel; position		To set buffer pointer
+	PRINT#file#, "P" CHR$(channel#) CHR$(rec#lo) CHR$(rec#hi)CHR$(position) Set position in REL files
+	PRINT#file#, "U1:" channel; drive; track; block (abbreviated PRINT#file#, "UA:" channel; drive; track; block) USER1 command
+	PRINT#file#, "U2:" channel; drive; track; block (abbreviated PRINT#file#, "UB:" channel; drive; track; block USER2 command
+	PRINT#file#, "M-R" CHR$(low byte of address) CHR$(high byte) memory read
+	PRINT#file#, "M-W" CHR$(low address byte) CHR$(high address byte)CHR$(#-of-characters) byte data	memory write
+	PRINT#file#, "M-E" CHR$(low address byte) CHR$(high byte) memory execute
+	PRINT#file#,"M-W:" CHR$(119) CHR$(0) CHR$(2) CHR$(address+32)CHR$(address+64) change device number
+
+X	LOAD PROGRAM	WILDCARD support working?
+	SAVE PROGRAM	Must handle save with replace, @0:filename
+
+sdi2ec support:
+---------------------------------------------
+
+Changing directories (CMD syntax):
+	OPEN1,8,15,"CD/SOMEDIR/":CLOSE1 - change to SOMEDIR (relative)
+	OPEN1,8,15,"CD//":CLOSE1 - change to root directory
+	OPEN1,8,15,"CD//SOMEDIR/":CLOSE1 - change to SOMEDIR (in root)
+	OPEN1,8,15,"CD:←":CLOSE1 - go to parent directory
+
+Using M2Is or D64s:
+
+OPEN1,8,15,"CD//SOMEDIR/:SOMEGAME.M2I":CLOSE1 - change to/mount SOMEGAME.M2I
+OPEN1,8,15,"CD//SOMEDIR/:SOMEGAME.D64":CLOSE1 - change to/mount SOMEGAME.D64
+OPEN1,8,15,"CD:←":CLOSE1 - leave M2I/D64
+
+Loading files:
+
+	LOAD"//SOMEDIR/:SOMEFILE" - load SOMEFILE in SOMEDIR (filename gets separated from path using colon)
+	Change device address
+
+Change device address:
+
+	OPEN1,current address,15,"U0>"+CHR$(new address):CLOSE1 - change sd2iec device number to new address
+	OPEN1,device address,15,"XW":close1 - this will save settings to eeprom (required if you want to set new device address as default)

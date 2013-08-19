@@ -240,41 +240,40 @@ bool D64::getDirEntry(DirEntry& dir)
 	uchar* pEntry = reinterpret_cast<uchar*>(&dir);
 
 	// Check if correct status
-	if((m_status bitand IMAGE_OK) and (m_status bitand DIR_OPEN)
-		 and !(m_status bitand DIR_EOF)) {
+	if(not ((m_status bitand IMAGE_OK) and (m_status bitand DIR_OPEN)
+					and not(m_status bitand DIR_EOF)))
+		return false;
 
-		// OK, copy current dir to target
-		for(i = 0; i < 30; i++) {
-			pEntry[i] = hostReadByte();
-			m_currentOffset++;
-		}
-
-		// Have we crossed a block boundry?
-		if(0 == m_currentOffset) {
-			// We need to go to a new block, end of directory chain?
-			if(m_currentLinkTrack not_eq 0) {
-				// Seek the next block:
-				seekBlock(m_currentLinkTrack, m_currentLinkSector);
-			}
-			else
-				m_status or_eq DIR_EOF;
-
-		}
-		else {
-			// No boundry crossing, skip past two initial bytes of next dir
-			i = hostReadByte();
-			j = hostReadByte();
-			m_currentOffset += 2;
-
-			if(0 == i and 0xFF == j) {
-				// No more dirs!
-				m_status or_eq DIR_EOF;
-			}
-		}
-
-		return true;
+	// OK, copy current dir to target
+	for(i = 0; i < sizeof(DirEntry); i++) {
+		pEntry[i] = hostReadByte();
+		m_currentOffset++;
 	}
-	return false;
+
+	// Have we crossed a block boundry?
+	if(0 == m_currentOffset) {
+		// We need to go to a new block, end of directory chain?
+		if(m_currentLinkTrack not_eq 0) {
+			// Seek the next block:
+			seekBlock(m_currentLinkTrack, m_currentLinkSector);
+		}
+		else
+			m_status or_eq DIR_EOF;
+
+	}
+	else {
+		// No boundry crossing, skip past two initial bytes of next dir
+		i = hostReadByte();
+		j = hostReadByte();
+		m_currentOffset += 2;
+
+		if(0 == i and 0xFF == j) {
+			// No more dirs!
+			m_status or_eq DIR_EOF;
+		}
+	}
+
+	return true;
 } // getDirEntry
 
 
@@ -440,14 +439,12 @@ bool D64::sendListing(ISendLine& cb)
 		if(dir.m_track not_eq 0) {
 			// A direntry always takes 32 bytes total = 27 chars
 			// Send filename until A0 or 16 chars
-			QString name(16, QChar(' '));
+			QString name(17, QChar(' '));
 			uchar i;
-			for(i = 0; i < name.length(); ++i) {
+			for(i = 0; i < sizeof(dir.m_name); ++i) {
 				uchar c = dir.m_name[i];
-				if(0xA0 == c) {
+				if(0xA0 == c)
 					break;  // Filename is no longer
-				}
-
 				name[i] = c;
 			}
 			// Ending name with dbl quotes
@@ -455,8 +452,8 @@ bool D64::sendListing(ISendLine& cb)
 
 			// Write filetype
 			uchar fileType = dir.m_type bitand TYPE_MASK;
-			if(fileType > 5)
-				fileType = 5;
+			if(fileType > NumD64FileTypes)
+				fileType = NumD64FileTypes; // Limit to Unknown type (???) when out of range.
 
 			// Prepare buffer
 			line = QString("   \"%1 %2%3%4").arg(name) // %s  %s%c%c

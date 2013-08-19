@@ -42,6 +42,7 @@ public:
 		PRG         = 2,
 		USR         = 3,
 		REL         = 4,
+		NumD64FileTypes,
 		TYPE_MASK   = 0x07,
 		FILE_LOCKED = 0x40,
 		FILE_CLOSED = 0x80

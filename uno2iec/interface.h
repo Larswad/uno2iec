@@ -44,8 +44,6 @@ enum OpenState {
 // The base pointer of basic.
 const word C64_BASIC_START = 0x0801;
 
-#define CMD_CHANNEL 15
-
 class Interface
 {
 public:

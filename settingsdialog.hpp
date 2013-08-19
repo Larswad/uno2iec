@@ -23,6 +23,8 @@ struct AppSettings {
 	QString imageFilters;
 	bool showDirectories;
 	QString programVersion;
+	QString cbmMachine;
+	QString emulatorPalette;
 };
 
 

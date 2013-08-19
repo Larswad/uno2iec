@@ -22,8 +22,15 @@ class MainWindow : public QMainWindow, public Logging::ILogTransport, public Int
 	Q_OBJECT
 
 	typedef QMap<QString, QFileInfo> QFileInfoMap;
-
 public:
+	struct CbmMachineTheme {
+		QString bootText;
+		QString font;
+		uchar fgColorIndex;
+		uchar bgColorIndex;
+		uchar cursorWidth;
+	};
+
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
@@ -40,19 +47,21 @@ public:
 	void bytesRead(uint numBytes);
 	void bytesWritten(uint numBytes);
 	void fileClosed(const QString &lastFileName);
+	void deviceReset();
 
 	// ISendLine interface implementation.
 	void send(short lineNo, const QString &text);
 
-public slots:
-		void onDataAvailable();
+	// ILogTransport implementation.
+	void appendTime(const QString& dateTime);
+	void appendLevelAndFacility(Logging::LogLevelE level, const QString& levelFacility);
+	void appendMessage(const QString& msg);
 
-		// ILogTransport implementation.
-		void appendTime(const QString& dateTime);
-		void appendLevelAndFacility(Logging::LogLevelE level, const QString& levelFacility);
-		void appendMessage(const QString& msg);
 
 private slots:
+		void onDirListColorSelected(QAction *pAction);
+		void onCbmMachineSelected(QAction *pAction);
+		void onDataAvailable();
 		void on_clearLog_clicked();
 		void on_pauseLog_toggled(bool checked);
 		void on_saveLog_clicked();
@@ -68,6 +77,7 @@ private slots:
 		void on_unmountCurrent_clicked();
 		void on_actionSettings_triggered();
 		void on_reloadImageDir_clicked();
+		void on_dirList_doubleClicked(const QModelIndex &index);
 
 private:
 	void enumerateComPorts();
@@ -77,6 +87,12 @@ private:
 	void boldifyItem(QStandardItem *pItem);
 	void readSettings();
 	void writeSettings() const;
+
+	void setupActionGroups();
+	void selectActionByName(const QList<QAction *>& actions, const QString& name) const;
+	void updateDirListColors();
+	void getBgAndFgColors(QColor &bgColor, QColor &fgColor);
+	void getMachineAndPaletteTheme(CbmMachineTheme *&pMachine, const QRgb *&pEmulatorPalette);
 
 	Ui::MainWindow *ui;
 	QextSerialPort m_port;

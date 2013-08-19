@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 void addEmbeddedFonts()
 {
 	QStringList list;
-	list << "fonts/PetMe64.ttf" /* << "xxx.ttf"*/;
+	list << "fonts/PetMe64.ttf" << "fonts/PetMe2X.ttf";
 	int fontID(-1);
 	bool fontWarningShown(false);
 	for (QStringList::const_iterator constIterator = list.constBegin(); constIterator != list.constEnd(); ++constIterator) {

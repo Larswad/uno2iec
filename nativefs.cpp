@@ -6,7 +6,8 @@
 using namespace Logging;
 
 namespace {
-const QString strDir(" <DIR>");
+const QString strDir("DIR");
+const QString strPrg("PRG");
 }
 
 NativeFS::NativeFS()
@@ -147,10 +148,16 @@ bool NativeFS::sendListing(ISendLine& cb)
 		list.removeFirst();
 		line = "   \"";
 		line.append(entry.fileName().toUpper());
+		line.append("\" ");
+		int spaceFill = 16 - entry.fileName().length();
+		if(spaceFill > 0) {
+			QString spaceAdd(spaceFill, ' ');
+			line += spaceAdd;
+		}
 		if(entry.isDir())
-			line.append(strDir + '"');
+			line.append(strDir);
 		else
-			line.append('"');
+			line.append(strPrg);
 
 		ushort fileSize = entry.size() / 1024;
 		// Send initial spaces (offset) according to file size

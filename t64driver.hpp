@@ -126,6 +126,7 @@ private:
 	bool hostSeek(qint32 pos, bool relative = false);
 
 	bool getDirEntry(DirEntry& dir);
+	ushort calcFileLength(DirEntry dir);
 	bool seekFirstDir(void);
 	void seekToTapeName(void);
 };
