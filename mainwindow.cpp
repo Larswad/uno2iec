@@ -219,6 +219,12 @@ void MainWindow::enumerateComPorts()
 #elif defined(Q_OS_LINUX)
 	static QextPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
 	m_ports.insert(0, unixPort);
+#elif defined(Q_OS_MAC)
+    QDir dev("/dev","tty.usbmodem*",QDir::Name,QDir::Files|QDir::Readable|QDir::Writable|QDir::System);
+    foreach (const QFileInfo entry, dev.entryInfoList()) {
+        static QextPortInfo unixPort = { entry.absoluteFilePath(), entry.fileName(), entry.fileName(), "", 0, 0 };
+        m_ports.insert(0, unixPort);
+    }
 #endif
 } // enumerateComPorts
 
