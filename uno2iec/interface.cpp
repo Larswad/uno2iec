@@ -463,8 +463,8 @@ void Interface::handleATNCmdClose()
 		// get the length of the name as one byte.
 		byte len = serCmdIOBuf[1];
 		byte actual = Serial.readBytes(serCmdIOBuf, len);
-#ifdef USE_LED_DISPLAY
 		if(len == actual) {
+#ifdef USE_LED_DISPLAY
 			serCmdIOBuf[len] = '\0';
 			if('n' == resp)
 				strcpy((char*)scrollBuffer, " SAVED: ");
