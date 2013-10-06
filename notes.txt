@@ -176,8 +176,8 @@ sdi2ec support:
 ---------------------------------------------
 
 Changing directories (CMD syntax):
-	OPEN1,8,15,"CD/SOMEDIR/":CLOSE1 - change to SOMEDIR (relative)
-	OPEN1,8,15,"CD//":CLOSE1 - change to root directory
+	OPEN1,8,15,"CD/SOMEDIR/":CLOSE1 - change to SOMEDIR (relative, in uno2iec relative to current directory)
+	OPEN1,8,15,"CD//":CLOSE1 - change to root directory (In Uno2iec this root means: base path)
 	OPEN1,8,15,"CD//SOMEDIR/":CLOSE1 - change to SOMEDIR (in root)
 	OPEN1,8,15,"CD:←":CLOSE1 - go to parent directory
 
