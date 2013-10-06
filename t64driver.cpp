@@ -1,22 +1,3 @@
-//
-// Title        : MMC2IEC - T64DRIVER
-// Author       : Lars Pontoppidan
-// Version      : 0.6
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-// DESCRIPTION:
-// This module works on top of the FAT driver, providing access to files in an
-// T64 tape image.
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
-
 #include <string.h>
 #include "t64driver.hpp"
 #include "logger.hpp"
@@ -224,7 +205,7 @@ FileDriverBase::FSStatus T64::status(void) const
 bool T64::fopen(const QString& fileName)
 {
 	DirEntry dir;
-	bool found = false;
+	bool found = false; // be pessimistic
 	uchar len;
 
 	len = fileName.length();
@@ -262,7 +243,6 @@ bool T64::fopen(const QString& fileName)
 		m_fileStartAddress[1] = dir.startAddressHi;
 
 		m_fileOffset = OFFSET_PRE1;
-
 		m_fileLength = calcFileLength(dir);
 
 		hostSeek(dir.fileOffset);
@@ -277,7 +257,7 @@ bool T64::fopen(const QString& fileName)
 } // fopen
 
 
-QString T64::openedFileName() const
+const QString T64::openedFileName() const
 {
 	return m_lastOpenedFileName;
 } // openedFileName
@@ -342,7 +322,7 @@ bool T64::sendListing(ISendLine& cb)
 bool T64::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
-	Log("T64", "sendMediaInfo.", info);
+	Log("T64", info, "sendMediaInfo.");
 	cb.send(0, QString("T64 FS -> %1").arg(m_hostFile.fileName()));
 	cb.send(1, QString("FILE SIZE: %1").arg(QString::number(m_hostFile.size())));
 	cb.send(2, QString("%1 FILE(S) IN IMAGE.").arg(QString::number(m_dirEntries)));

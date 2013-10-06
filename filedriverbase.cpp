@@ -35,10 +35,10 @@ bool FileDriverBase::sendMediaInfo(ISendLine& /*cb*/)
 } // sendMediaInfo
 
 
-IOErrorMessage FileDriverBase::cmdChannel(const QString& cmd)
+CBM::IOErrorMessage FileDriverBase::cmdChannel(const QString& cmd)
 {
 	Q_UNUSED(cmd);
-	return ErrWriteProtectOn;
+	return CBM::ErrWriteProtectOn;
 } // cmdChannel
 
 
@@ -49,11 +49,12 @@ bool FileDriverBase::fopen(const QString& fileName)
 } // fopen
 
 
-bool FileDriverBase::newFile(const QString& fileName)
+CBM::IOErrorMessage FileDriverBase::fopenWrite(const QString &fileName, bool replaceMode)
 {
 	Q_UNUSED(fileName);
-	return false;
-} // fopen
+	Q_UNUSED(replaceMode);
+	return CBM::ErrNotImplemented;
+} // fopenWrite
 
 
 // returns a character to the open file. If not overridden, returns always true. If implemented returns false on failure.
@@ -74,4 +75,11 @@ bool FileDriverBase::setCurrentDirectory(const QString& dir)
 {
 	Q_UNUSED(dir);
 	return false;
-}
+} // setCurrentDirectory
+
+
+bool FileDriverBase::deleteFile(const QString& fileName)
+{
+	Q_UNUSED(fileName);
+	return false;
+} // deleteFile

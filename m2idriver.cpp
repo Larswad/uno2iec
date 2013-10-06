@@ -295,7 +295,7 @@ uchar M2I::newDisk(char* diskName)
 	// Now this is the open m2i
 	memcpy(m2i_filename, dosName, 13);
 */
-	return ErrOK;
+	return CBM::ErrOK;
 } // newDisk
 
 
@@ -304,7 +304,7 @@ uchar M2I::newDisk(char* diskName)
 uchar M2I::cmd(char* cmd)
 {
 	Q_UNUSED(cmd);
-	uchar ret = ErrOK;
+	uchar ret = CBM::ErrOK;
 	/*
 	// Get command letter and argument
 	char cmdLetter;
@@ -367,9 +367,10 @@ bool M2I::fopen(const QString& fileName)
 
 // The new function ensures filename exists and is empty.
 //
-uchar M2I::newFile(char* fileName)
+CBM::IOErrorMessage M2I::fopenWrite(const QString& fileName, bool replaceMode)
 {
 	Q_UNUSED(fileName);
+	Q_UNUSED(replaceMode);
 	/*
 	char dirName[16];
 	char dosName[12];
@@ -389,12 +390,13 @@ uchar M2I::newFile(char* fileName)
 		// File does not exist, create it
 		createFile(fileName);
 	}
+	return 0 not_eq (m_status bitand FILE_OPEN);
 */
-	return(m_status bitand FILE_OPEN);
-} // newFile
+	return CBM::ErrNotImplemented;
+} // fopenWrite
 
 
-QString M2I::openedFileName() const
+const QString M2I::openedFileName() const
 {
 	// TODO: implement!
 	return QString();

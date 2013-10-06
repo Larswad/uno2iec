@@ -41,29 +41,35 @@ bool NativeFS::fopen(const QString& fileName)
 {
 	closeHostFile();
 	m_hostFile.setFileName(fileName);
-	bool isOpen = m_hostFile.open(QIODevice::ReadOnly);
-	m_status = isOpen ? FILE_OPEN : NOT_READY;
+	bool success = m_hostFile.open(QIODevice::ReadOnly);
+	m_status = success ? FILE_OPEN : NOT_READY;
 
-	return isOpen;
+	return success;
 } // fopen
 
 
-bool NativeFS::newFile(const QString& fileName)
+CBM::IOErrorMessage NativeFS::fopenWrite(const QString &fileName, bool replaceMode)
 {
-	Q_UNUSED(fileName);
-	// TODO: Implement.
-	return false;
-} // newFile
+	closeHostFile();
+	m_hostFile.setFileName(fileName);
+	if(m_hostFile.exists() and !replaceMode)
+		return CBM::ErrFileExists;
+	bool success = m_hostFile.open(QIODevice::WriteOnly);
+	m_status = success ? FILE_OPEN : NOT_READY;
 
-
-/* TODO: Move this to PI NativeFS and recode, create new file.
-byte fat_newfile(char *filename)
-{
-	// Remove and create file
-	fatRemove(filename);
-	return fatFcreate(filename);
-} // fat_newfile
-*/
+	// We don't need to write a header or anything special here since the .PRG
+	// format is exactly that what the CBM writes.
+	CBM::IOErrorMessage retCode;
+	if(success)
+		retCode = CBM::ErrOK;
+	else {
+		if(m_hostFile.error() == QFileDevice::PermissionsError or m_hostFile.error() == QFileDevice::OpenError)
+			retCode = CBM::ErrWriteProtectOn;
+		else
+			retCode = CBM::ErrFileNotOpen;
+	}
+	return retCode;
+} // fopenWrite
 
 
 char NativeFS::getc()
@@ -77,7 +83,7 @@ char NativeFS::getc()
 } // getc
 
 
-QString NativeFS::openedFileName() const
+const QString NativeFS::openedFileName() const
 {
 	return m_hostFile.fileName();
 } // openedFileName
@@ -142,7 +148,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 	QFileInfoList list(dir.entryInfoList(filters, QDir::NoDot bitor QDir::Files
 		bitor (m_listDirectories ? QDir::AllDirs : QDir::Files), QDir::Name bitor QDir::DirsFirst));
 
-	Log("NATIVEFS", QString("Listing %1 entrie(s) to CBM.").arg(QString::number(list.count())), info);
+	Log("NATIVEFS", info, QString("Listing %1 entrie(s) to CBM.").arg(QString::number(list.count())));
 	while(!list.isEmpty()) {
 		QFileInfo entry = list.first();
 		list.removeFirst();
@@ -175,7 +181,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 bool NativeFS::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
-	Log("NATIVEFS", "sendMediaInfo.", info);
+	Log("NATIVEFS", info, "sendMediaInfo.");
 	cb.send(0, QString("NATIVE FS ACTIVE -> XXX.")); // TODO: File system type instead of xxx.
 	cb.send(1, QString("CURRENT DIR: %1").arg(QDir::currentPath().toUpper()));
 	cb.send(2, "HELLO FROM ARDUINO UNO!");
@@ -194,19 +200,21 @@ bool NativeFS::setCurrentDirectory(const QString& dir)
 {
 	bool wasSuccess = QDir::setCurrent(dir);
 	if(wasSuccess)
-		Log("NATIVEFS", QString("Changing current directory to: %1").arg(QDir::currentPath()), success);
+		Log("NATIVEFS", success, QString("Changing current directory to: %1").arg(QDir::currentPath()));
 	else
-		Log("NATIVEFS", QString("Failed changing current directory to: %1 (this may be just OK)").arg(dir), warning);
+		Log("NATIVEFS", warning, QString("Failed changing current directory to: %1 (this may be just OK)").arg(dir));
 	return wasSuccess;
 } // setCurrentDirectory
 
 
 // Command to the command channel.
-IOErrorMessage NativeFS::cmdChannel(const QString& cmd)
+CBM::IOErrorMessage NativeFS::cmdChannel(const QString& cmd)
 {
 	Q_UNUSED(cmd);
-	return ErrDriveNotReady;
+	return CBM::ErrDriveNotReady;
 } // cmdChannel
+
+
 // Fat parsing command channel
 //
 /* TODO: Move this to PI, Native file system command.

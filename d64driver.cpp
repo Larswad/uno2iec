@@ -392,7 +392,7 @@ bool D64::fopen(const QString& fileName)
 } // fopen
 
 
-QString D64::openedFileName() const
+const QString D64::openedFileName() const
 {
 	return m_lastName;
 } // openedFileName
@@ -480,7 +480,7 @@ bool D64::sendListing(ISendLine& cb)
 bool D64::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
-	Log("D64", "sendMediaInfo.", info);
+	Log("D64", info, "sendMediaInfo.");
 	cb.send(0, QString("D64 FS -> %1").arg(m_hostFile.fileName().toUpper()));
 	cb.send(1, QString("FILE SIZE: %1").arg(QString::number(m_hostFile.size())));
 	seekFirstDir();
@@ -502,6 +502,14 @@ D64::DirEntry::DirEntry()
 D64::DirEntry::~DirEntry()
 {
 } // dtor
+
+
+bool D64::newDisk(const QString& name, const QString& id)
+{
+	Q_UNUSED(name);
+	Q_UNUSED(id);
+	return false;
+} // newDisk
 
 
 QString D64::DirEntry::name() const

@@ -3,34 +3,6 @@
 
 #include "filedriverbase.hpp"
 
-//
-// Title        : D64DRIVER
-// Author       : Lars Pontoppidan
-// Date         : Jan. 2007
-// Version      : 0.5
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-// CREDITS:
-// --------
-// This D64DRIVER module is inspired from code in Jan Derogee's 1541-III project
-// for PIC: http://jderogee.tripod.com/
-// This code is a complete reimplementation though.
-//
-// DESCRIPTION:
-// This module works on top of the FAT driver, providing access to files in an
-// D64 disk image.
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
-
-// d64 driver api
-//
 
 class D64 : public FileDriverBase
 {
@@ -66,7 +38,7 @@ public:
 	// Open a file in the image by filename: Returns true if successful
 	bool fopen(const QString& fileName);
 	// return the name of the last opened file (may not be same as fopen in case it resulted in something else, like when using wildcards).
-	QString openedFileName() const;
+	const QString openedFileName() const;
 	// return the file size of the last opened file.
 	ushort openedFileSize() const;
 	// Get character from open file:
@@ -119,6 +91,9 @@ public:
 		uchar m_blocksLo;     // 16-bit file size in blocks, multiply by
 		uchar m_blocksHi;     // D64_BLOCK_DATA to get bytes
 	}; // total of 30 bytes
+
+	// special commands.
+	static bool newDisk(const QString &name, const QString &id);
 
 private:
 

@@ -3,25 +3,6 @@
 
 #include "filedriverbase.hpp"
 
-//
-// Title        : MMC2IEC - T64DRIVER
-// Author       : Lars Pontoppidan
-// Version      : 0.6
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-// DESCRIPTION:
-// This module works on top of the FAT driver, providing access to files in an
-// T64 tape image.
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
-
 
 class T64 : public FileDriverBase
 {
@@ -61,7 +42,7 @@ public:
 
 	// Open a file by filename: Returns true if successfull
 	bool fopen(const QString &fileName);
-	QString openedFileName() const;
+	const QString openedFileName() const;
 	ushort openedFileSize() const;
 	//
 	// Get character from open file:

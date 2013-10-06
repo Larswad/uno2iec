@@ -3,58 +3,13 @@
 
 #include <QString>
 #include <QFile>
+#include "uno2iec/cbmdefines.h"
 
 class ISendLine
 {
 public:
 	virtual void send(short lineNo, const QString& text) = 0;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Error messages
-//
-// For detailed descriptions see: http://www.scribd.com/doc/40438/The-Commodore-1541-Disk-Drive-Users-Guide
-
-typedef enum {
-	ErrOK = 0,
-	ErrFilesScratched,	// Files scratched response, not an error condition.
-	ErrBlockHeaderNotFound = 20,
-	ErrSyncCharNotFound,
-	ErrDataBlockNotFound,
-	ErrChecksumInData,
-	ErrByteDecoding,
-	ErrWriteVerify,
-	ErrWriteProtectOn,
-	ErrChecksumInHeader,
-	ErrDataExtendsNextBlock,
-	ErrDiskIdMismatch,
-	ErrSyntaxError,
-	ErrInvalidCommand,
-	ErrLongLine,
-	ErrInvalidFilename,
-	ErrNoFileGiven,		// The file name was left out of a command or the DOS does not recognize it as such.
-										// Typically, a colon(:) has been left out of the command
-	ErrCommandNotFound = 39,	// This error may result if thecommand sent to command channel (secondary address 15) is unrecognizedby the DOS.
-	ErrRecordNotPresent = 50,
-	ErrOverflowInRecord,
-	ErrFileTooLarge,
-	ErrFileOpenForWrite = 60,
-	ErrFileNotOpen,
-	ErrFileNotFound,
-	ErrFileExists,
-	ErrFileTypeMismatch,
-	ErrNoBlock,
-	ErrIllegalTrackOrSector,
-	ErrIllegalSystemTrackOrSector,
-	ErrNoChannelAvailable = 70,
-	ErrDirectoryError,
-	ErrDiskFullOrDirectoryFull,
-	ErrIntro,					// power up message or write attempt with DOS mismatch
-	ErrDriveNotReady,	// typically in this emulation could also mean: not supported on this file system.
-	ErrSerialComm,		// something went sideways with serial communication to the file server.
-	ErrCount
-} IOErrorMessage;
 
 
 class FileDriverBase
@@ -63,11 +18,11 @@ public:
 	enum FSStatus
 	{
 		NOT_READY = 0,  // driver not ready (host file not read or accepted).
-		IMAGE_OK   = (1 << 0),  // The open file in fat driver is accepted as a valid image (of the specific file system type).
-		FILE_OPEN = (1 << 1),  // A file is open right now
-		FILE_EOF  = (1 << 2),  // The open file is ended
-		DIR_OPEN  = (1 << 3),  // A directory entry is active
-		DIR_EOF   = (1 << 4)  // Last directory entry has been retrieved
+		IMAGE_OK   = (1 << 0),	// The open file in fat driver is accepted as a valid image (of the specific file system type).
+		FILE_OPEN = (1 << 1),	// A file is open right now
+		FILE_EOF  = (1 << 2),	// The open file is ended
+		DIR_OPEN  = (1 << 3),	// A directory entry is active
+		DIR_EOF   = (1 << 4)	// Last directory entry has been retrieved
 	};
 
 	FileDriverBase();
@@ -88,16 +43,18 @@ public:
 	// Send information about file system (whether it is OK, sizes etc.).
 	virtual bool sendMediaInfo(ISendLine &);
 	// Command to the command channel. When not supported (overridden we just say write protect error).
-	virtual IOErrorMessage cmdChannel(const QString& cmd);
+	virtual CBM::IOErrorMessage cmdChannel(const QString& cmd);
 
 	// Open a file in the image/file system by filename: Returns true if successful (false if not supported or error).
 	virtual bool fopen(const QString& fileName);
+	// Open a file in the image/file system by filename for writing: Returns true if successful (false if not supported, error or file already exists).
+	virtual CBM::IOErrorMessage fopenWrite(const QString& fileName, bool replaceMode = false);
 	// return the name of the last opened file (may not be same as fopen in case it resulted in something else, like when using wildcards).
-	virtual QString openedFileName() const = 0;
+	virtual const QString openedFileName() const = 0;
 	// return the file size of the last opened file.
 	virtual ushort openedFileSize() const = 0;
-	// Create a file in the image/file system by filename: Returns true if successful (false if not supported or error).
-	virtual bool newFile(const QString& fileName);
+	// Delete a file in the image/file system by filename: True if successful, false if not supported or error.
+	virtual bool deleteFile(const QString& fileName);
 	// returns a character from the open file. Should always be supported in order to make implementation make any sense.
 	virtual char getc() = 0;
 	// returns true if end of file reached. Should always be supported in order to make implementation make any sense.

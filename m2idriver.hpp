@@ -3,16 +3,6 @@
 
 #include "filedriverbase.hpp"
 
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
-
-// API
 
 class M2I : public FileDriverBase
 {
@@ -33,9 +23,9 @@ public:
 	uchar cmd(char *s);
 
 	bool fopen(const QString& fileName);
+	CBM::IOErrorMessage fopenWrite(const QString& fileName, bool replaceMode = false);
 
-	QString openedFileName() const;
-
+	const QString openedFileName() const;
 	ushort openedFileSize() const;
 
 	char getc(void);
@@ -51,7 +41,6 @@ public:
 	// new disk, creates empty M2I file with diskname and opens it
 	uchar newDisk(char* diskName);
 
-	uchar newFile(char* fileName);
 
 	bool remove(char* fileName);
 	bool rename(char *oldName, char *newName);

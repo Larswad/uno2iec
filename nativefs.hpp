@@ -39,14 +39,16 @@ public:
 
 	bool newFile(const QString& fileName);
 	bool fopen(const QString& fileName);
-	QString openedFileName() const;
+	CBM::IOErrorMessage fopenWrite(const QString &fileName, bool replaceMode = false);
+
+	const QString openedFileName() const;
 	ushort openedFileSize() const;
 	char getc();
 	bool isEOF() const;
 	bool putc(char c);
 	bool close();
 	// Command to the command channel.
-	IOErrorMessage cmdChannel(const QString& cmd);
+	CBM::IOErrorMessage cmdChannel(const QString& cmd);
 
 	FSStatus status() const;
 	bool setCurrentDirectory(const QString& dir);
