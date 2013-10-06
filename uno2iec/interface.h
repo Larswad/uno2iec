@@ -6,18 +6,7 @@
 #include <max7219.h>
 #endif
 
-typedef enum {
-	ErrOK,
-	ErrReadError,
-	ErrWriteProtectOn,
-	ErrSyntaxError,
-	ErrFileNotFound,
-	ErrFileExists,
-	ErrIntro,
-	ErrDriveNotReady,
-	ErrSerialComm,		// something went sideways with serial communication to the file server.
-	ErrCount
-} IOErrorMessage;
+#include "cbmdefines.h"
 
 /*
 enum  {
@@ -64,7 +53,7 @@ private:
 	void sendListing(/*PFUNC_SEND_LISTING sender*/);
 	void sendStatus(void);
 	bool removeFilePrefix(void);
-	void sendLineCallback(byte len, char* text);
+	void sendLine(byte len, char* text);
 
 	// handler helpers.
 	void handleATNCmdCodeOpen(IEC::ATNCmd &cmd);

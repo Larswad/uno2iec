@@ -36,13 +36,17 @@
 #include "log.h"
 #endif
 
+using namespace CBM;
 
 namespace {
 
 // atn command buffer struct
 IEC::ATNCmd cmd;
-char serCmdIOBuf[160];
+char serCmdIOBuf[MAX_BYTES_PER_REQUEST];
+
+#ifdef USE_LED_DISPLAY
 byte scrollBuffer[30];
+#endif
 
 } // unnamed namespace
 
@@ -88,8 +92,8 @@ void Interface::sendStatus(void)
 } // sendStatus
 
 
-// send basic line callback
-void Interface::sendLineCallback(byte len, char* text)
+// send single basic line, including heading basic pointer and terminating zero.
+void Interface::sendLine(byte len, char* text)
 {
 	byte i;
 
@@ -111,7 +115,7 @@ void Interface::sendLineCallback(byte len, char* text)
 
 	// Finish line
 	m_iec.send(0);
-} // sendLineCallback
+} // sendLine
 
 
 void Interface::sendListing()
@@ -134,13 +138,13 @@ void Interface::sendListing()
 		if('L' == resp) { // PI will give us something else if we're at last line to send.
 			// get the length as one byte: This is kind of specific: For listings we allow 256 bytes length. Period.
 			byte len = serCmdIOBuf[1];
-			// TODO: Here we might need to read out the data in portions. The serCmdIOBuf might just be too small
-			// for long lines.
+			// WARNING: Here we might need to read out the data in portions. The serCmdIOBuf might just be too small
+			// for very long lines.
 			byte actual = Serial.readBytes(serCmdIOBuf, len);
 			if(len == actual) {
 				// send the bytes directly to CBM!
 				noInterrupts();
-				sendLineCallback(len, serCmdIOBuf);
+				sendLine(len, serCmdIOBuf);
 				interrupts();
 			}
 			else {
@@ -159,7 +163,7 @@ void Interface::sendListing()
 		}
 	} while('L' == resp); // keep looping for more lines as long as we got an 'L' indicating we haven't reached end.
 
-	// End program
+	// End program with two zeros after last line. Last zero goes out as EOI.
 	noInterrupts();
 	m_iec.send(0);
 	m_iec.sendEOI(0);
@@ -228,16 +232,22 @@ void Interface::sendFile()
 
 void Interface::saveFile()
 {
+	boolean done = false;
 	// Recieve bytes until a EOI is detected
 	do {
-		noInterrupts();
-		byte c = m_iec.receive();
-		interrupts();
-		// indicate to PI host that we want to write a byte.
-		Serial.write('W');
-		// and then we send the byte itself.
-		Serial.write(c);
-	} while(!(m_iec.state() bitand IEC::eoiFlag) and !(m_iec.state() bitand IEC::errorFlag));
+		byte bytesInBuffer = 2;
+		serCmdIOBuf[0] = 'W';
+		do {
+			noInterrupts();
+			serCmdIOBuf[bytesInBuffer++] = m_iec.receive();
+			interrupts();
+			done = (m_iec.state() bitand IEC::eoiFlag) or (m_iec.state() bitand IEC::errorFlag);
+		} while(bytesInBuffer < sizeof(serCmdIOBuf) and !done);
+		// indicate to media host that we want to write a buffer. Give the total length including the heading 'W'+length bytes.
+		serCmdIOBuf[1] = bytesInBuffer;
+		Serial.write((const uint8_t*)serCmdIOBuf, bytesInBuffer);
+		Serial.flush();
+	} while(!done);
 } // saveFile
 
 
@@ -286,7 +296,7 @@ byte Interface::handler(void)
 			case IEC::ATN_CODE_DATA:  // data channel opened
 				if(retATN == IEC::ATN_CMD_TALK) {
 					 // when the CMD channel is read (status), we first need to issue the host request. The data channel is opened directly.
-					if(IEC::CMD_CHANNEL == chan)
+					if(CMD_CHANNEL == chan)
 						handleATNCmdCodeOpen(cmd);
 					handleATNCmdCodeDataTalk(chan);
 				}
@@ -297,15 +307,22 @@ byte Interface::handler(void)
 				break;
 
 			case IEC::ATN_CODE_CLOSE:
-				// handle close with PI.
+				// handle close with host.
 				handleATNCmdClose();
 				break;
 
-//			case IEC::ATN_CODE_LISTEN:
-//			case IEC::ATN_CODE_TALK:
-//			case IEC::ATN_CODE_UNLISTEN:
-//			case IEC::ATN_CODE_UNTALK:
-//				break;
+			case IEC::ATN_CODE_LISTEN:
+				Log(Information, FAC_IFACE, "LISTEN");
+				break;
+			case IEC::ATN_CODE_TALK:
+				Log(Information, FAC_IFACE, "TALK");
+				break;
+			case IEC::ATN_CODE_UNLISTEN:
+				Log(Information, FAC_IFACE, "UNLISTEN");
+				break;
+			case IEC::ATN_CODE_UNTALK:
+				Log(Information, FAC_IFACE, "UNTALK");
+				break;
 		} // switch
 	} // IEC not idle
 
@@ -355,7 +372,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 			else
 				Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
-		if(IEC::CMD_CHANNEL == chan) {
+		if(CMD_CHANNEL == chan) {
 			m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
 			// Send status message
 			sendStatus();
@@ -373,8 +390,9 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 				break;
 
 			case O_FILE_ERR:
-				// TODO: interface with pi for error info.
-				sendListing(/*&send_file_err*/);
+				// FIXME: interface with pi for error info.
+				//sendListing(/*&send_file_err*/);
+				m_iec.sendFNF();
 				break;
 
 			case O_NOTHING:
@@ -400,38 +418,37 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 void Interface::handleATNCmdCodeDataListen()
 {
-	// We are about to save stuff
-	if(0 == 0 /*pff*/) {
-		// file format functions unavailable, save dummy
-		saveFile(/*&dummy_1*/);
-		m_queuedError = ErrDriveNotReady;
+	byte lengthOrResult;
+	boolean wasSuccess = false;
+
+	// process response into m_queuedError.
+	// Response: ><code in binary><CR>
+
+	serCmdIOBuf[0] = 0;
+	do {
+		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
+	} while(lengthOrResult not_eq 1 or serCmdIOBuf[0] not_eq '>');
+
+	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
+		// FIXME: Check what the drive does here when things go wrong. FNF is probably not right.
+		m_iec.sendFNF();
+		Log(Error, FAC_IFACE, "response not sync.");
 	}
 	else {
-		// Check conditions before saving
-		boolean writeSuccess = true;
-		if(m_openState not_eq O_SAVE_REPLACE) {
-			// Not a save with replace, if file exists its an error
-			if(m_queuedError not_eq ErrFileNotFound) {
-				m_queuedError = ErrFileExists;
-				writeSuccess = false;
+		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
+			if(2 == lengthOrResult) {
+				lengthOrResult = serCmdIOBuf[0];
+				wasSuccess = true;
 			}
-		}
-
-		if(writeSuccess) {
-			// No overwrite problem, try to create a file to save in:
-			//writeSuccess = ((PFUNC_UCHAR_CSTR)(pff->newfile))(oldCmdStr);
-			if(!writeSuccess)
-				// unable to save, just say write protect
-				m_queuedError = ErrWriteProtectOn;
 			else
-				m_queuedError = ErrOK;
+				Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
+		m_queuedError = wasSuccess ? lengthOrResult : ErrSerialComm;
 
-		// TODO: saveFile to host.
-		if(writeSuccess)
-			saveFile(/*(PFUNC_UCHAR_CHAR)(pff->putc)*/);
-		else
-			saveFile(/*&dummy_1*/);
+		if(ErrOK == m_queuedError)
+			saveFile();
+		else // FIXME: Check what the drive does here when saving goes wrong. FNF is probably not right.
+			m_iec.sendFNF();
 	}
 } // handleATNCmdCodeDataListen
 
@@ -442,16 +459,19 @@ void Interface::handleATNCmdClose()
 	Serial.print("C");
 	Serial.readBytes(serCmdIOBuf, 2);
 	byte resp = serCmdIOBuf[0];
-	if('N' == resp) { // N indicates we have a name.
+	if('N' == resp or 'n' == resp) { // N indicates we have a name.
 		// get the length of the name as one byte.
 		byte len = serCmdIOBuf[1];
 		byte actual = Serial.readBytes(serCmdIOBuf, len);
+#ifdef USE_LED_DISPLAY
 		if(len == actual) {
 			serCmdIOBuf[len] = '\0';
-			strcpy((char*)scrollBuffer, "   LOADED: ");
+			if('n' == resp)
+				strcpy((char*)scrollBuffer, " SAVED: ");
+			else
+				strcpy((char*)scrollBuffer, " LOADED: ");
 			strcat((char*)scrollBuffer, serCmdIOBuf);
 
-#ifdef USE_LED_DISPLAY
 			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);
 #endif

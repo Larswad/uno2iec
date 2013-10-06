@@ -26,9 +26,9 @@ class Logger : public QObject
 	typedef QList<ILogTransport*> LogTransportList;
 public:
 	explicit Logger(QObject *parent = 0);
-	void Log(const QString &facility, const QString &message, LogLevelE level);
-	bool AddTransport(ILogTransport* pTransport);
-	bool RemoveTransport(ILogTransport* pTransport);
+	void log(const QString &facility, const QString &message, LogLevelE level);
+	bool addTransport(ILogTransport* pTransport);
+	bool removeTransport(ILogTransport* pTransport);
 
 	static Logger& getLoggerInstance();
 signals:
@@ -39,8 +39,8 @@ private:
 	LogTransportList m_transports;
 };
 
-Logger& getLoggerInstance();
-void Log(const QString& facility, const QString& message, Logging::LogLevelE level);
+Logger& loggerInstance();
+void Log(const QString& facility, Logging::LogLevelE level, const QString& message);
 
 } // namespace Logger
 

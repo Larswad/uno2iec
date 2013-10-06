@@ -3,31 +3,8 @@
 
 #include <Arduino.h>
 #include "global_defines.h"
+#include "cbmdefines.h"
 
-//
-// Title        : MMC2IEC - IEC_driver module
-// Author       : Lars Wadefalk
-// Date         :
-// Version      : n/a
-// Target MCU   : AtMega328P at 16 MHz
-//
-// CREDITS:
-// This code is inspired from Jan Derogee's 1541-III project for PIC:
-// http://jderogee.tripod.com/
-// Although this code is a complete reimplementation.
-//
-// DESCRIPTION:
-// The IEC_driver module implements lowlevel IEC communication such as recieving
-// commands, sending and recieving bytes.
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
 
 class IEC
 {
@@ -59,13 +36,6 @@ public:
 		ATN_CODE_OPEN = 0xF0,
 		ATN_CODE_UNLISTEN = 0x3F,
 		ATN_CODE_UNTALK = 0x5F
-	};
-
-	// Special channels.
-	enum IECChannels {
-		READPRG_CHANNEL = 0,
-		WRITEPRG_CHANNEL = 1,
-		CMD_CHANNEL = 15
 	};
 
 	// ATN command struct maximum command length:

@@ -14,6 +14,17 @@ namespace Ui {
 class MainWindow;
 }
 
+
+struct CbmMachineTheme {
+	QString bootText;
+	QString font;
+	uchar fgColorIndex;
+	uchar bgColorIndex;
+	uchar cursorWidth;
+};
+
+typedef QMap<QString, const QRgb*> EmulatorPaletteMap;
+typedef QMap<QString, CbmMachineTheme*> CbmMachineThemeMap;
 typedef QMap<QChar, QString> FacilityMap;
 
 class MainWindow : public QMainWindow, public Logging::ILogTransport, public Interface::IFileOpsNotify,
@@ -23,13 +34,6 @@ class MainWindow : public QMainWindow, public Logging::ILogTransport, public Int
 
 	typedef QMap<QString, QFileInfo> QFileInfoMap;
 public:
-	struct CbmMachineTheme {
-		QString bootText;
-		QString font;
-		uchar fgColorIndex;
-		uchar bgColorIndex;
-		uchar cursorWidth;
-	};
 
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
@@ -47,6 +51,7 @@ public:
 	void bytesRead(uint numBytes);
 	void bytesWritten(uint numBytes);
 	void fileClosed(const QString &lastFileName);
+	bool isWriteProtected();
 	void deviceReset();
 
 	// ISendLine interface implementation.
@@ -107,6 +112,7 @@ private:
 	bool m_isInitialized;
 	QStringList m_imageDirListing;
 	AppSettings m_appSettings;
+	ushort m_totalRead;
 };
 
 #endif // MAINWINDOW_HPP

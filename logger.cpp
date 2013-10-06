@@ -3,17 +3,16 @@
 
 namespace Logging {
 
-Logger::Logger(QObject *parent) :
-	QObject(parent)
-{
-}
+Logger::Logger(QObject *parent) : QObject(parent)
+{}
 
-void Logger::Log(const QString& facility, const QString& message, LogLevelE level)
+
+void Logger::log(const QString& facility, const QString& message, LogLevelE level)
 {
 	QString dateTime(QDate::currentDate().toString("yyyy-MM-dd") +
 									 QTime::currentTime().toString(" hh:mm:ss:zzz"));
 
-		// The logging levels are: [E]RROR [W]ARNING [I]NFORMATION [S]UCCESS.
+	// The logging levels are: [E]RROR [W]ARNING [I]NFORMATION [S]UCCESS.
 	QString levelFacility(QString("EWIS")[level] + " " + facility);
 
 	foreach(ILogTransport* transport, m_transports) {
@@ -24,16 +23,17 @@ void Logger::Log(const QString& facility, const QString& message, LogLevelE leve
 } // Log
 
 
-bool Logger::AddTransport(ILogTransport* pTransport)
+bool Logger::addTransport(ILogTransport* pTransport)
 {
 	if(m_transports.contains(pTransport))
 		return false;
 
 	m_transports.append(pTransport);
 	return true;
-} // AddTransport
+} // addTransport
 
-bool Logger::RemoveTransport(ILogTransport* pTransport)
+
+bool Logger::removeTransport(ILogTransport* pTransport)
 {
 	int index = m_transports.indexOf(pTransport);
 	if(-1 == index)
@@ -41,17 +41,19 @@ bool Logger::RemoveTransport(ILogTransport* pTransport)
 
 	m_transports.removeAt(index);
 	return true;
-} // RemoveTransport
+} // removeTransport
 
-Logger& getLoggerInstance()
+
+Logger& loggerInstance()
 {
 	static Logger theInstance;
 	return theInstance;
-}
+} // loggerInstance
 
-void Log(const QString &facility, const QString &message, LogLevelE level)
+
+void Log(const QString &facility, LogLevelE level, const QString &message)
 {
-	getLoggerInstance().Log(facility, message, level);
+	loggerInstance().log(facility, message, level);
 } // Log
 
 } // namespace Logging

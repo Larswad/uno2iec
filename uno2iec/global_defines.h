@@ -13,7 +13,7 @@ typedef unsigned long ulong;
 // What it does is showing loading progress on the display and some nice scrolling of the filename and other
 // stuff on the display. The display hardware can be bought here at dx.com:
 // http://dx.com/p/max7219-dot-matrix-module-w-5-dupont-lines-184854
-//#define USE_LED_DISPLAY
+#define USE_LED_DISPLAY
 
 // The IEC bus pin configuration on the Arduino side (Deprecated: This will be defined from host side).
 #define DEFAULT_ATN_PIN 5

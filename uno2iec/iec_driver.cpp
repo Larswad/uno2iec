@@ -1,30 +1,7 @@
-//
-// Title        : MMC2IEC - IEC_driver module
-// Author       : Lars Pontoppidan
-// Version      : 0.7
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-// CREDITS:
-// This code is inspired from Jan Derogee's 1541-III project for PIC:
-// http://jderogee.tripod.com/
-// Although this code is a complete reimplementation.
-//
-// DESCRIPTION:
-// The IEC_driver module implements lowlevel IEC communication such as recieving
-// commands, sending and recieving bytes.
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
-
-
 #include "iec_driver.h"
 #include "log.h"
+
+using namespace CBM;
 
 /******************************************************************************
  *                                                                             *
@@ -129,7 +106,7 @@ byte IEC::timeoutWait(byte waitBit, boolean whileHigh)
 // Returns data recieved
 // Might set flags in iec_state
 //
-// TODO: m_iec might be better returning bool and returning read byte as reference in order to indicate any error.
+// FIXME: m_iec might be better returning bool and returning read byte as reference in order to indicate any error.
 byte IEC::receiveByte(void)
 {
 	m_state = noFlags;
@@ -218,7 +195,7 @@ boolean IEC::sendByte(byte data, boolean signalEOI)
 		return false;
 
 	if(signalEOI) {
-		// TODO: Make this like sd2iec and may not need a fixed delay here.
+		// FIXME: Make this like sd2iec and may not need a fixed delay here.
 
 		// Signal eoi by waiting 200 us
 		delayMicroseconds(TIMING_EOI_WAIT);
@@ -235,7 +212,7 @@ boolean IEC::sendByte(byte data, boolean signalEOI)
 
 	// Send bits
 	for(byte n = 0; n < 8; n++) {
-		// TODO: Here check whether data pin goes low, if so end (enter cleanup)!
+		// FIXME: Here check whether data pin goes low, if so end (enter cleanup)!
 
 		writeCLOCK(true);
 		// set data
@@ -251,7 +228,7 @@ boolean IEC::sendByte(byte data, boolean signalEOI)
 	writeCLOCK(true);
 	writeDATA(false);
 
-	// TODO: Maybe make the following ending more like sd2iec instead.
+	// FIXME: Maybe make the following ending more like sd2iec instead.
 
 	// Line stabilization delay
 	delayMicroseconds(TIMING_STABLE_WAIT);
@@ -365,7 +342,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 					if(i >= ATN_CMD_MAX_LENGTH) {
 						// Buffer is going to overflow, this is an error condition
-						// TODO: here we should propagate the error type being overflow so that reading error channel can give right code out.
+						// FIXME: here we should propagate the error type being overflow so that reading error channel can give right code out.
 						return ATN_ERROR;
 					}
 					cmd.str[i++] = c;
@@ -392,7 +369,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 					if(i >= ATN_CMD_MAX_LENGTH) {
 						// Buffer is going to overflow, this is an error condition
-						// TODO: here we should propagate the error type being overflow so that reading error channel can give right code out.
+						// FIXME: here we should propagate the error type being overflow so that reading error channel can give right code out.
 						return ATN_ERROR;
 					}
 					cmd.str[i++] = c;

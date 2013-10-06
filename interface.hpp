@@ -10,10 +10,6 @@
 #include "m2idriver.hpp"
 #include "nativefs.hpp"
 
-#define READPRG_CHANNEL 0
-#define WRITEPRG_CHANNEL 1
-#define CMD_CHANNEL 15
-
 typedef QList<FileDriverBase*> FileDriverList;
 
 enum OpenState {
@@ -41,14 +37,16 @@ public:
 		virtual void bytesRead(uint numBytes) = 0;
 		virtual void bytesWritten(uint numBytes) = 0;
 		virtual void fileClosed(const QString& lastFileName) = 0;
+		virtual bool isWriteProtected() = 0;
 		virtual void deviceReset() = 0;
 	};
 
-
 	Interface(QextSerialPort& port);
+
+	CBM::IOErrorMessage openFile(const QString &cmdString);
 	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
 	void processReadFileRequest();
-	void processWriteFileRequest(uchar theByte);
+	void processWriteFileRequest(const QByteArray &theBytes);
 	void reset();
 
 	// State specific: CBM requests a single directory line from us.
@@ -60,14 +58,19 @@ public:
 
 	void processGetOpenFileSize();
 	void processCloseCommand();
-	void processErrorStringRequest(IOErrorMessage code);
+	void processErrorStringRequest(CBM::IOErrorMessage code);
 	bool changeNativeFSDirectory(const QString &newDir);
 	void setMountNotifyListener(IFileOpsNotify *pListener);
 	void setImageFilters(const QString &filters, bool showDirs);
+	FileDriverBase* currentFileDriver()
+	{
+		return m_currFileDriver;
+	}
 
 private:
-	void openFile(const QString &cmdString, bool localImageSelection = false);
+	void moveToParentOrNativeFS();
 	bool removeFilePrefix(QString &cmd);
+	void sendOpenResponse(char code);
 
 	D64 m_d64;
 	T64 m_t64;
@@ -77,7 +80,7 @@ private:
 	FileDriverList m_fsList;
 	FileDriverBase* m_currFileDriver;
 	QextSerialPort& m_port;
-	IOErrorMessage m_queuedError;
+	CBM::IOErrorMessage m_queuedError;
 	OpenState m_openState;
 	QString m_lastCmdString;
 	QList<QByteArray> m_dirListing;

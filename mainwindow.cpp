@@ -24,9 +24,7 @@ using namespace Logging;
 
 namespace {
 
-#define CBM_BACK_ARROW 95
-
-// These definitions are in a header, just not to clutter down this file with too muchconstant definitions.
+// These definitions are in a header, just not to clutter down this file with too many constant definitions.
 #include "dirlistthemingconsts.hpp"
 
 EmulatorPaletteMap emulatorPalettes;
@@ -46,18 +44,16 @@ QStringList LOG_LEVELS = (QStringList()
 													<< QObject::tr("info   ")
 													<< QObject::tr("success"));
 
-const QString s_initialText("\n    **** COMMODORE 64 BASIC V2 ****\n\n"
-													" 64K RAM SYSTEM 38911 BASIC BYTES FREE\n\n"
-													"READY.\n");
-
 const uint DEFAULT_BAUDRATE = BAUD115200;
 
+// Default Device and Arduino PIN configuration.
 const uint DEFAULT_DEVICE_NUMBER = 8;
 const uint DEFAULT_RESET_PIN = 7;
 const uint DEFAULT_CLOCK_PIN = 4;
 const uint DEFAULT_DATA_PIN = 3;
 const uint DEFAULT_ATN_PIN = 5;
 //const uint DEFAULT_SRQIN_PIN = 2;
+
 
 const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 	"<hr>"
@@ -90,16 +86,19 @@ const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 
 
 MainWindow::MainWindow(QWidget *parent) :
-	QMainWindow(parent),
-	ui(new Ui::MainWindow), m_port(QextSerialPort::EventDriven, this)
-, m_isConnected(false), m_iface(m_port), m_isInitialized(false)
+	QMainWindow(parent)
+	, ui(new Ui::MainWindow)
+	, m_port(QextSerialPort::EventDriven, this)
+	, m_isConnected(false)
+	, m_iface(m_port)
+	, m_isInitialized(false)
 {
 	ui->setupUi(this);
 
 	m_dirListItemModel = new QStandardItemModel(0, IMAGE_LIST_HEADERS.count(), this);
 	Q_ASSERT(m_dirListItemModel);
 	ui->dirList->setModel(m_dirListItemModel);
-	getLoggerInstance().AddTransport(this);
+	loggerInstance().addTransport(this);
 
 	// Set up the port basic parameters, these won't change...promise.
 	m_port.setDataBits(DATA_8);
@@ -114,7 +113,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	usePortByFriendlyName(m_appSettings.portName);
 
 	m_port.open(QIODevice::ReadWrite);
-	Log("MAIN", QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())), success);
+	Log("MAIN", success, QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())));
 	// we want events from the port.
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 	ui->dockWidget->toggleViewAction()->setShortcut(QKeySequence("CTRL+L"));
@@ -144,7 +143,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	setupActionGroups();
 
-	Log("MAIN", "Application Initialized.", success);
+	Log("MAIN", success, "Application Initialized.");
 	m_isInitialized = true;
 	updateImageList();
 
@@ -219,6 +218,12 @@ void MainWindow::enumerateComPorts()
 #elif defined(Q_OS_LINUX)
 	static QextPortInfo unixPort = { "/dev/ttyACM0", "ttyACM0", "Arduino ACM0", "", 0, 0 };
 	m_ports.insert(0, unixPort);
+#elif defined(Q_OS_MAC)
+	QDir dev("/dev","tty.usbmodem*", QDir::Name,QDir::Files bitor QDir::Readable bitor QDir::Writable bitor QDir::System);
+	foreach(const QFileInfo entry, dev.entryInfoList()) {
+		static QextPortInfo unixPort = { entry.absoluteFilePath(), entry.fileName(), entry.fileName(), "", 0, 0 };
+		m_ports.insert(0, unixPort);
+	}
 #endif
 } // enumerateComPorts
 
@@ -278,7 +283,7 @@ void MainWindow::on_actionSettings_triggered()
 				m_port.close();
 			usePortByFriendlyName(m_appSettings.portName);
 			m_port.open(QIODevice::ReadWrite);
-			Log("MAIN", QString("Port name changed to %1").arg(m_port.portName()), info);
+			Log("MAIN", info, QString("Port name changed to %1").arg(m_port.portName()));
 		}
 	}
 } // on_actionSettings_triggered
@@ -328,6 +333,8 @@ void MainWindow::readSettings()
 	m_appSettings.emulatorPalette = settings.value("emulatorPalette", "ccs64").toString();
 	m_appSettings.cbmMachine = settings.value("cbmMachine", "C 64").toString();
 
+	ui->actionDisk_Write_Protected->setChecked(settings.value("diskWriteProtected", false).toBool());
+
 	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
 	restoreState(settings.value("mainWindowState").toByteArray());
 } // readSettings
@@ -355,6 +362,8 @@ void MainWindow::writeSettings() const
 
 	settings.setValue("emulatorPalette", m_appSettings.emulatorPalette);
 	settings.setValue("cbmMachine", m_appSettings.cbmMachine);
+
+	settings.setValue("diskWriteProtected", ui->actionDisk_Write_Protected->isChecked());
 } // writeSettings
 
 
@@ -365,11 +374,10 @@ void MainWindow::onDataAvailable()
 {
 //	bool wasEmpty = m_pendingBuffer.isEmpty();
 	m_pendingBuffer.append(m_port.readAll());
-
 	if(!m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
 			m_pendingBuffer.clear();
-			Log("MAIN", "Now connected to Arduino.", success);
+			Log("MAIN", success, "Now connected to Arduino.");
 			// give the client current date and time in the response string.
 			m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin) + '|' + QString::number(m_appSettings.clockPin)
 										+ '|' + QString::number(m_appSettings.dataPin) + '|' + QString::number(m_appSettings.resetPin) /*+ '|' + QString::number(m_appSettings.srqInPin)*/
@@ -430,11 +438,15 @@ void MainWindow::onDataAvailable()
 				break;
 
 			case 'W': // write single character to file in current file system mode.
-				if(cmdString.size() < 1)
+				if(m_pendingBuffer.size() > 1 and m_pendingBuffer.size() >= m_pendingBuffer.at(1)) {
+					ushort length = m_pendingBuffer.at(1);
+					m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
+					// discard processed bytes.
+					m_pendingBuffer.remove(0, length);
+					hasDataToProcess = !m_pendingBuffer.isEmpty();
+				}
+				else
 					hasDataToProcess = false;
-				m_iface.processWriteFileRequest(m_pendingBuffer.at(1));
-				m_pendingBuffer.remove(0, 2);
-				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
 
 			case 'L': // directory/media info Line request:
@@ -451,7 +463,7 @@ void MainWindow::onDataAvailable()
 			case 'E': // Ask for translation of error string from error code
 				if(cmdString.size() < 1)
 					hasDataToProcess = false;
-				m_iface.processErrorStringRequest(static_cast<IOErrorMessage>(m_pendingBuffer.at(1)));
+				m_iface.processErrorStringRequest(static_cast<CBM::IOErrorMessage>(m_pendingBuffer.at(1)));
 				m_pendingBuffer.remove(0, 2);
 				hasDataToProcess = !m_pendingBuffer.isEmpty();
 				break;
@@ -496,7 +508,7 @@ void MainWindow::processDebug(const QString& str)
 			break;
 	}
 
-	Log(QString("R:") + m_clientFacilities.value(str[2], "GENERAL"), str.mid(3), level);
+	Log(QString("R:") + m_clientFacilities.value(str[2], "GENERAL"), level, str.mid(3));
 } // processDebug
 
 
@@ -701,7 +713,7 @@ void MainWindow::on_imageFilter_textChanged(const QString& filter)
 void MainWindow::on_reloadImageDir_clicked()
 {
 	updateImageList();
-	Log("MAIN", "Program / Image directory reloaded.", info);
+	Log("MAIN", info, "Program / Image directory reloaded.");
 } // on_reloadImageDir_clicked
 
 
@@ -733,9 +745,6 @@ void MainWindow::on_browseSingle_clicked()
 void MainWindow::on_mountSingle_clicked()
 {
 	m_iface.processOpenCommand(QString("0|") + ui->singleImageName->text(), true);
-//	QFileInfo fileInfo(ui->singleImageName->text());
-//	fileInfo.path();
-//	fileInfo.baseName();
 } // on_mountSingle_clicked
 
 
@@ -752,6 +761,7 @@ void MainWindow::send(short lineNo, const QString& text)
 	// add it to the total dirlisting array.
 	m_imageDirListing.append(line);
 } // send
+
 
 //////////////////////////////////////////////////////////////////////////////
 // IMountNotifyListener interface implementation
@@ -821,18 +831,30 @@ void MainWindow::fileLoading(const QString& fileName, ushort fileSize)
 	ui->progressInfoText->setEnabled(true);
 	ui->loadProgress->setEnabled(true);
 	ui->loadProgress->setRange(0, fileSize);
+	m_totalRead = 0;
+	ui->loadProgress->setValue(m_totalRead);
+	QTextCursor cursor = ui->imageDirList->textCursor();
+	cursor.movePosition(QTextCursor::End);
+	cursor.deleteChar();
+	cursor.insertText(QString("LOAD\"%1\",%2\nSEARCHING FOR %1\nLOADING\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
+	ui->imageDirList->setTextCursor(cursor);
 } // fileLoading
 
 
 void MainWindow::fileSaving(const QString& fileName)
 {
 	ui->progressInfoText->setText(QString("SAVING: %1").arg(fileName));
+	QTextCursor cursor = ui->imageDirList->textCursor();
+	cursor.movePosition(QTextCursor::End);
+	cursor.deleteChar();
+	cursor.insertText(QString("SAVE\"%1\",%2\n\nSAVING %1\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 } // fileLoading
 
 
 void MainWindow::bytesRead(uint numBytes)
 {
-	ui->loadProgress->setValue(numBytes);
+	m_totalRead += numBytes;
+	ui->loadProgress->setValue(m_totalRead);
 } // bytesRead
 
 
@@ -848,7 +870,20 @@ void MainWindow::fileClosed(const QString& lastFileName)
 	ui->progressInfoText->setText("READY.");
 	ui->loadProgress->setEnabled(false);
 	ui->loadProgress->setValue(0);
+
+	QTextCursor cursor = ui->imageDirList->textCursor();
+	cursor.movePosition(QTextCursor::End);
+	cursor.deleteChar();
+	cursor.insertText("READY.\n");
+	ui->imageDirList->setTextCursor(cursor);
 }
+
+
+bool MainWindow::isWriteProtected()
+{
+	return ui->actionDisk_Write_Protected->isChecked();
+} // isWriteProtected
+
 
 void MainWindow::deviceReset()
 {

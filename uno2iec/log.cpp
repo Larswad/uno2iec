@@ -23,7 +23,7 @@ void Log(byte severity, char facility, char* msg)
 {
 	char strBuf[4];
 	sprintf(strBuf, "D%c%c", siwe[severity], facility);
-	// TODO: Queueing possible, polling of queue could be handled (called) from 'loop()'.
+	// NOTE: Queueing possible, polling of queue could be handled (called) from 'loop()'.
 	Serial.print(strBuf);
 	Serial.print(msg);
 	Serial.print("\r");
