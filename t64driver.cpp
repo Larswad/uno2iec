@@ -18,8 +18,8 @@ using namespace Logging;
 // Dir section
 #define T64_FIRST_DIR_OFFSET 0x40
 
-#define OFFSET_PRE1 0xFFFE            //
-#define OFFSET_PRE2 0xFFFF            //
+#define OFFSET_PRE1 0xFFFE            // "Magic" offsets used for keeping track of that the first bytes that should be returned
+#define OFFSET_PRE2 0xFFFF            // when reading from the file is the basic start address (which is actually stored in the header and not as the first bytes of the file).
 
 namespace {
 const QString strTapeEnd("TAPE END.");

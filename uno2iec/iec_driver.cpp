@@ -1,5 +1,5 @@
 #include "iec_driver.h"
-#include "log.h"
+//#include "log.h"
 
 using namespace CBM;
 
@@ -29,29 +29,16 @@ using namespace CBM;
 // using a 32 MB MMC card
 //
 
-/******************************************************************************
- *                                                                             *
- *                               IMPLEMENTATION                                *
- *                                                                             *
- *                               Local functions                               *
- *                                                                             *
- ******************************************************************************/
 
-// IEC signal macros:
+// The IEC bus pin configuration on the Arduino side
+// NOTE: Deprecated: Only startup values used in ctor, this will be defined from host side.
+#define DEFAULT_ATN_PIN 5
+#define DEFAULT_DATA_PIN 3
+#define DEFAULT_CLOCK_PIN 4
+#define DEFAULT_SRQIN_PIN 6
+#define DEFAULT_RESET_PIN 7
 
-// Releasing a signal is done by setting DDR input
-// Pull down is done by setting DDR output. (Port value is set low by init)
-//#define IEC_ATN_REL()    IEC_DDR and_eq compl IEC_BIT_ATN
-//#define IEC_ATN_PULL()   IEC_DDR or_eq IEC_BIT_ATN
-//#define IEC_CLOCK_REL()  IEC_DDR and_eq compl IEC_BIT_CLOCK
-//#define IEC_CLOCK_PULL() IEC_DDR or_eq IEC_BIT_CLOCK
-//#define IEC_DATA_REL()   IEC_DDR and_eq compl IEC_BIT_DATA
-//#define IEC_DATA_PULL()  IEC_DDR or_eq IEC_BIT_DATA
-
-//#define IEC_ATN    (IEC_PIN bitand IEC_BIT_ATN)
-//#define IEC_CLOCK  (IEC_PIN bitand IEC_BIT_CLOCK)
-//#define IEC_DATA   (IEC_PIN bitand IEC_BIT_DATA)
-
+// See timeoutWait below.
 #define TIMEOUT  65000
 
 IEC::IEC(byte deviceNumber) :
@@ -112,12 +99,8 @@ byte IEC::receiveByte(void)
 	m_state = noFlags;
 
 	// Wait for talker ready
-	if(timeoutWait(m_clockPin, false)) {
-#ifdef CONSOLE_DEBUG
-//		Log(Information, FAC_IEC, "T1");
-#endif
+	if(timeoutWait(m_clockPin, false))
 		return 0;
-	}
 
 	// Say we're ready
 	writeDATA(false);
@@ -139,12 +122,8 @@ byte IEC::receiveByte(void)
 		writeDATA(false);
 
 		// but still wait for clk
-		if(timeoutWait(m_clockPin, true)) {
-#ifdef CONSOLE_DEBUG
-//			Log(Information, FAC_IEC, "T2");
-#endif
+		if(timeoutWait(m_clockPin, true))
 			return 0;
-		}
 	}
 
 	// Sample ATN
@@ -155,19 +134,11 @@ byte IEC::receiveByte(void)
 	// Get the bits, sampling on clock rising edge:
 	for(n = 0; n < 8; n++) {
 		data >>= 1;
-		if(timeoutWait(m_clockPin, false)) {
-#ifdef CONSOLE_DEBUG
-//			Log(Information, FAC_IEC, "T3");
-#endif
+		if(timeoutWait(m_clockPin, false))
 			return 0;
-		}
 		data or_eq (readDATA() ? (1 << 7) : 0);
-		if(timeoutWait(m_clockPin, true)) {
-#ifdef CONSOLE_DEBUG
-//			Log(Information, FAC_IEC, "T4");
-#endif
+		if(timeoutWait(m_clockPin, true))
 			return 0;
-		}
 	}
 
 	// Signal we accepted data:
@@ -295,10 +266,6 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 		// Attention line is active, go to listener mode and get message. Being fast with the next two lines here is CRITICAL!
 		writeDATA(true);
 		writeCLOCK(false);
-#ifdef CONSOLE_DEBUG
-		//Log(Information, FAC_IEC, "ATT.ACTIVE");
-#endif
-
 		delayMicroseconds(TIMING_ATN_PREDELAY);
 
 		// Get first ATN byte, it is either LISTEN or TALK
@@ -308,16 +275,11 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 
 		if(c == (ATN_CODE_LISTEN bitor m_deviceNumber)) {
 			// Okay, we will listen.
-#ifdef CONSOLE_DEBUG
-			//Log(Information, FAC_IEC, "LISTEN");
-#endif
-
 			// Get the first cmd byte, the cmd code
 			c = (ATNCommand)receiveByte();
 			if (m_state bitand errorFlag)
 				return ATN_ERROR;
 
-			//Log(Information, FAC_IEC, "CODE");
 			cmd.code = c;
 
 			// If the command is DATA and it is not to expect just a small command on the command channel, then
@@ -328,9 +290,6 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 				ret = ATN_CMD_LISTEN;
 			}
 			else if(c not_eq ATN_CODE_UNLISTEN) {
-#ifdef CONSOLE_DEBUG
-				//Log(Information, FAC_IEC, "CMD");
-#endif
 				// Some other command. Record the cmd string until UNLISTEN is sent
 				for(;;) {
 					c = (ATNCommand)receiveByte();
@@ -352,9 +311,6 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 		}
 		else if (c == (ATN_CODE_TALK bitor m_deviceNumber)) {
 			// Okay, we will talk soon, record cmd string while ATN is active
-#ifdef CONSOLE_DEBUG
-			//Log(Information, FAC_IEC, "TALK");
-#endif
 			// First byte is cmd code, that we CAN at least expect. All else depends on ATN.
 			c = (ATNCommand)receiveByte();
 			if(m_state bitand errorFlag)

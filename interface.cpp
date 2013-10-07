@@ -285,7 +285,7 @@ void Interface::sendOpenResponse(char code)
 void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionMode)
 {
 	// Request: <channel>|<command string>
-	Log(FAC_IFACE, info, QString("Open Request, cmd: %1").arg(cmd));
+	Log(FAC_IFACE, info, QString("processOpenCommand, cmd: %1").arg(cmd));
 	QStringList params(cmd.split('|'));
 	if(params.count() < 2) // enough params?
 		m_queuedError = CBM::ErrSerialComm;
@@ -331,7 +331,7 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 				// The code return is according to the values of the IOErrorMessage enum.
 				sendOpenResponse((char)m_openState);
 				bool fail = m_openState == O_NOTHING or m_openState == O_FILE_ERR;
-				Log(FAC_IFACE, fail ? error : success, QString("OpenRead_Response code: %1").arg(QString::number(m_openState)));
+				Log(FAC_IFACE, fail ? error : success, QString("Open ReadPRG Response code: %1").arg(QString::number(m_openState)));
 
 				// notify UI of opened file name and size.
 				if(O_FILE == m_openState and 0 not_eq m_pListener)
@@ -340,7 +340,6 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 
 		}
 		else if(CBM::WRITEPRG_CHANNEL == chan) {
-			Log(FAC_IFACE, info, "processOpenWritePrgCommand");
 			// it was an open file for writing (save) command.
 			m_openState = O_NOTHING;
 			if(0 not_eq m_currFileDriver) {
@@ -354,8 +353,10 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 					m_queuedError = m_currFileDriver->fopenWrite(fileName, overWrite);
 					if(CBM::ErrOK not_eq m_queuedError)
 						m_openState = O_FILE_ERR;
-					else if(0 not_eq m_pListener)
+					else if(0 not_eq m_pListener) {
 						m_pListener->fileSaving(fileName);
+						m_openState = overWrite ? O_SAVE_REPLACE : O_SAVE;
+					}
 				}
 			}
 			else
@@ -363,7 +364,7 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 
 			// The code return is according to the values of the IOErrorMessage enum.
 			sendOpenResponse((char)m_queuedError);
-			Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("OpenWrite_Response code: %1").arg(QString::number(m_queuedError)));
+			Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("Open WritePRG Response code: %1").arg(QString::number(m_queuedError)));
 		}
 		else { // some other channel.
 			Log(FAC_IFACE, warning, QString("processOpenCommand: got open for channel: %1, not implemented.").arg(chan));
@@ -374,16 +375,15 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 
 void Interface::processCloseCommand()
 {
-	Log(FAC_IFACE, info, "processCloseCommand");
 	QString name = m_currFileDriver->openedFileName();
 	QByteArray data;
 	// TODO: return proper response here: small 'n' means last operation was a save operation.
-	data.append('N').append((char)name.length()).append(name);
+	data.append(m_openState == O_SAVE or m_openState == O_SAVE_REPLACE ? 'n' : 'N').append((char)name.length()).append(name);
 	m_port.write(data);
 	m_port.flush();
 	if(0 not_eq m_pListener) // notify UI listener of change.
 		m_pListener->fileClosed(name);
-	Log(FAC_IFACE, info, QString("Returning last opened file name: %1").arg(name));
+	Log(FAC_IFACE, info, QString("Close: Returning last opened file name: %1").arg(name));
 	m_currFileDriver->close();
 	// FIXME: Maybe this should not be set to ok here, it is up to the last processRead/Write operation to set that?
 	// That is depending on whether reading failed or writing failed (e.g. full disk).
@@ -399,7 +399,7 @@ void Interface::processGetOpenFileSize()
 	data.append('S').append(size >> 8).append(size bitand 0xff);
 	m_port.write(data.data(), data.size());
 	m_port.flush();
-	Log(FAC_IFACE, info, QString("Returning file size: %1").arg(QString::number(size)));
+	Log(FAC_IFACE, info, QString("GetOpenFileSize: Returning file size: %1").arg(QString::number(size)));
 } // processGetOpenedFileSize
 
 

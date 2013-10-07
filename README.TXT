@@ -147,7 +147,7 @@ Prefer passing variables by reference, when possible.
 
 Use camelCase!
 
-Blanks: Use them between operators, NOT between any parenthesis or NOT after any keyword.
+Blanks: Use them between operators, NOT before or after any parenthesis.
 Opening curly braces on same line for: while, do, for, if, namespace keywords. Not for classes, structs and typedefs.
 Two linefeeds between each method or function, make it clear when a new function starts.
 Use common sense for other linefeeds.
@@ -165,10 +165,6 @@ or_eq instead of |=
 xor instead of ^
 and compl instead of ~
 
-Try putting a comment at closing brace for function / method for the name, like:
-} // my_func
-Except for very short functions not expected to grow.
-This is to make code walkthrough easier.
 
 
 Single line if / while / for statements are allowed, like:
@@ -185,15 +181,17 @@ Prefer Qt classes over STL, because STL is good but Qt is better.
 
 Commenting: Please do as much as you can. Comment WHY something is done, not preferably WHAT unless it is sort of
 obscure. Do not comment the obvious.
-It is nice to add a single line comment at end of long scope to indicate what scope it is, like:
-} // my_function
+It is nice to add a single line comment at closing brace after end of long scope to indicate what scope it is, like:
+} // myFunction
+This is to make code browsing easier.
+
 
 Always Think about the DRY principle whenever writing code.
 You are welcome to use templates but use them with care, if you find a need comment what is going on.
 
-Patterns...well use them to power the code, but remember this is not an art contest.
+Patterns...well use them to power the code, but remember this is not an art contest. Keep Things Simple.
 
-Think about your platform when you code. Ardunio has little stack and memory, think optimization like in the old days.
+Think about your target platform when you code. Ardunio has little stack and memory, think optimization like in the old days.
 Desktop has lot of memory and computing power; but do think a little about efficient code anyway, it never hurts.
 
 If there are any questions or advice to change these recommended guidelines, please don't hesitate to contact me.

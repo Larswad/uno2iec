@@ -1,8 +1,14 @@
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
+// TODO: Finalize x00fs handling (P00, S00, R00)
 // TODO: Finalize Native FS routines.
+// TODO: Finalize ALL doscommands (pretty huge job!)
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
 // TODO: Display the error channel status on the UI!
-// TODO: T64 / D64 formats should read out entire disk into memory for caching (network performance).
+// TODO: T64 / D64 formats could/should read out entire disk into memory for caching (network performance).
+// TODO: T64 / D64 write support!
+// TODO: Finalize handling of write protected disk.
+// TODO: If arduino is reset with a physical button on the board and it tries to resync, the PC-host application should automatically resync without having to press the 'Reset Arduino' button, meaning listen to connect even in connected mode.
+
 
 #include <QString>
 #include <QFileDialog>
@@ -44,6 +50,7 @@ QStringList LOG_LEVELS = (QStringList()
 													<< QObject::tr("info   ")
 													<< QObject::tr("success"));
 
+const int CBM_BLOCK_CURSOR_WIDTH = 8 * 2;
 const uint DEFAULT_BAUDRATE = BAUD115200;
 
 // Default Device and Arduino PIN configuration.
@@ -183,7 +190,7 @@ void MainWindow::setupActionGroups()
 void MainWindow::selectActionByName(const QList<QAction*>& actions, const QString& name) const
 {
 	foreach(QAction* action, actions) {
-		if(!action->text().compare(name, Qt::CaseInsensitive)) {
+		if(not action->text().compare(name, Qt::CaseInsensitive)) {
 			action->setChecked(true);
 			return;
 		}
@@ -337,6 +344,11 @@ void MainWindow::readSettings()
 
 	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
 	restoreState(settings.value("mainWindowState").toByteArray());
+	QList<int> splits;
+	splits.append(settings.value("splitterpos1_size", 0).toInt());
+	splits.append(settings.value("splitterpos2_size", 0).toInt());
+	if(splits.at(0) and splits.at(1))
+		ui->splitter->setSizes(splits);
 } // readSettings
 
 
@@ -345,6 +357,11 @@ void MainWindow::writeSettings() const
 	QSettings settings;
 	settings.setValue("mainWindowGeometry", saveGeometry());
 	settings.setValue("mainWindowState", saveState());
+	QList<int> splits = ui->splitter->sizes();
+	if(splits.size() >= 2) {
+		settings.setValue("splitterpos1_size", splits.at(0));
+		settings.setValue("splitterpos2_size", splits.at(1));
+	}
 	settings.setValue("lastProgramVersion", m_appSettings.programVersion);
 
 	settings.setValue("imageDirectory", ui->imageDir->text());
@@ -367,14 +384,33 @@ void MainWindow::writeSettings() const
 } // writeSettings
 
 
+// Debugging helper for logging raw recieved serial bytes as HEX strings to file.
+void LogHexData(const QByteArray& bytes, const QString& header = QString("R#%1:"))
+{
+	QFile fh("received.txt");
+
+	if(not fh.open(QFile::Append bitor QFile::WriteOnly))
+		return;
+	QTextStream out(&fh);
+	out << header.arg(bytes.length());
+	QString ascii;
+	foreach(uchar byte, bytes)
+	{
+		out << QString("%1 ").arg((ushort)byte, 2, 16, QChar('0'));
+		ascii.append(QChar(byte).isPrint() ? byte : '.');
+	}
+	out <<  ascii << '\n';
+	fh.close();
+} // LogHexData
+
+
 ////////////////////////////////////////////////////////////////////////////
 // Dispatcher for when something has arrived on the serial port.
 ////////////////////////////////////////////////////////////////////////////
 void MainWindow::onDataAvailable()
 {
-//	bool wasEmpty = m_pendingBuffer.isEmpty();
 	m_pendingBuffer.append(m_port.readAll());
-	if(!m_isConnected) {
+	if(not m_isConnected) {
 		if(m_pendingBuffer.contains("CONNECT")) {
 			m_pendingBuffer.clear();
 			Log("MAIN", success, "Now connected to Arduino.");
@@ -392,6 +428,8 @@ void MainWindow::onDataAvailable()
 	}
 
 	bool hasDataToProcess = !m_pendingBuffer.isEmpty();
+//	if(hasDataToProcess)
+//		LogHexData(m_pendingBuffer);
 	while(hasDataToProcess) {
 		QString cmdString(m_pendingBuffer);
 		int crIndex =	cmdString.indexOf('\r');
@@ -438,15 +476,16 @@ void MainWindow::onDataAvailable()
 				break;
 
 			case 'W': // write single character to file in current file system mode.
-				if(m_pendingBuffer.size() > 1 and m_pendingBuffer.size() >= m_pendingBuffer.at(1)) {
-					ushort length = m_pendingBuffer.at(1);
-					m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
-					// discard processed bytes.
-					m_pendingBuffer.remove(0, length);
-					hasDataToProcess = !m_pendingBuffer.isEmpty();
+				hasDataToProcess = false; // assume we may need to wait for additional data.
+				if(m_pendingBuffer.size() > 1) {
+					uchar length = (uchar)m_pendingBuffer.at(1);
+					if(m_pendingBuffer.size() >= length) {
+						m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
+						// discard all processed (written) bytes from buffer.
+						m_pendingBuffer.remove(0, length);
+						hasDataToProcess = !m_pendingBuffer.isEmpty();
+					}
 				}
-				else
-					hasDataToProcess = false;
 				break;
 
 			case 'L': // directory/media info Line request:
@@ -455,7 +494,7 @@ void MainWindow::onDataAvailable()
 				m_iface.processLineRequest();
 				break;
 
-			case 'C': // close command
+			case 'C': // close FILE command
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processCloseCommand();
 				break;
@@ -473,13 +512,17 @@ void MainWindow::onDataAvailable()
 				if(-1 not_eq crIndex)
 					m_pendingBuffer.remove(0, crIndex + 1);
 				else // got something, might be in middle of something and with no CR, just get out.
-					hasDataToProcess = false;
+					m_pendingBuffer.remove(0, 1);
+//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
 				break;
 		}
 		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.
 		if(hasDataToProcess)
-			hasDataToProcess = !m_pendingBuffer.isEmpty();
+			hasDataToProcess = not m_pendingBuffer.isEmpty();
 	} // while(hasDataToProcess);
+
+//	if(not m_pendingBuffer.isEmpty())
+//		LogHexData(m_pendingBuffer, "U:#%1");
 } // onDataAvailable
 
 
@@ -548,9 +591,9 @@ void MainWindow::on_clearLog_clicked()
 void MainWindow::on_saveLog_clicked()
 {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Log"), QString(), tr("Text Files (*.log *.txt)"));
-	if(!fileName.isEmpty()) {
+	if(not fileName.isEmpty()) {
 		QFile file(fileName);
-		if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+		if(not file.open(QIODevice::WriteOnly | QIODevice::Text))
 			return;
 		QTextStream out(&file);
 		out << ui->log->toPlainText();
@@ -562,9 +605,9 @@ void MainWindow::on_saveLog_clicked()
 void MainWindow::on_saveHtml_clicked()
 {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Log as HTML"), QString(), tr("Html Files (*.html *.htm)"));
-	if(!fileName.isEmpty()) {
+	if(not fileName.isEmpty()) {
 		QFile file(fileName);
-		if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+		if(not file.open(QIODevice::WriteOnly | QIODevice::Text))
 			return;
 		QTextStream out(&file);
 		out << ui->log->toHtml();
@@ -624,7 +667,7 @@ void MainWindow::appendMessage(const QString& msg)
 void MainWindow::on_browseImageDir_clicked()
 {
 	QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG/SID images"), ui->imageDir->text());
-	if(!dirPath.isEmpty()) {
+	if(not dirPath.isEmpty()) {
 		ui->imageDir->setText(dirPath);
 		m_iface.changeNativeFSDirectory(dirPath);
 	}
@@ -634,7 +677,7 @@ void MainWindow::on_browseImageDir_clicked()
 
 void MainWindow::on_imageDir_editingFinished()
 {
-	if(!m_iface.changeNativeFSDirectory(ui->imageDir->text()))
+	if(not m_iface.changeNativeFSDirectory(ui->imageDir->text()))
 		ui->imageDir->setText(QDir::currentPath());
 	updateImageList();
 } // on_imageDir_editingFinished
@@ -642,7 +685,7 @@ void MainWindow::on_imageDir_editingFinished()
 
 void MainWindow::updateImageList(bool reloadDirectory)
 {
-	if(!m_isInitialized)
+	if(not m_isInitialized)
 		return;
 
 	QStringList filterList = m_appSettings.imageFilters.split(',', QString::SkipEmptyParts);
@@ -728,6 +771,8 @@ void MainWindow::on_dirList_doubleClicked(const QModelIndex &index)
 void MainWindow::on_mountSelected_clicked()
 {
 	QModelIndexList selected = ui->dirList->selectionModel()->selectedRows(0);
+	if(!selected.size())
+		return;
 	QString name = selected.first().data(Qt::DisplayRole).toString();
 
 	m_iface.processOpenCommand(QString("0|") + name, true);
@@ -737,7 +782,7 @@ void MainWindow::on_mountSelected_clicked()
 void MainWindow::on_browseSingle_clicked()
 {
 	QString file = QFileDialog::getOpenFileName(this, tr("Please choose image to mount."), ui->singleImageName->text(), tr("CBM Images (*.d64 *.t64 *.m2i);;All files (*)"));
-	if(!file.isEmpty())
+	if(not file.isEmpty())
 		ui->singleImageName->setText(file);
 } // on_browseSingle_clicked
 
@@ -807,7 +852,7 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 	int ix = 0;
 	// select the image name in the directory file list!
 	foreach(QFileInfo finfo, m_filteredInfoList) {
-		if(!finfo.fileName().compare(imagePath, Qt::CaseInsensitive)) {
+		if(not finfo.fileName().compare(imagePath, Qt::CaseInsensitive)) {
 			ui->dirList->setFocus();
 			ui->dirList->selectionModel()->setCurrentIndex(m_dirListItemModel->index(ix ,0), QItemSelectionModel::Rows bitor QItemSelectionModel::SelectCurrent);
 			break;
@@ -827,56 +872,67 @@ void MainWindow::imageUnmounted()
 
 void MainWindow::fileLoading(const QString& fileName, ushort fileSize)
 {
-	ui->progressInfoText->setText(QString("LOADING: %1").arg(fileName));
+	m_loadSaveName = fileName;
+	ui->progressInfoText->clear();
 	ui->progressInfoText->setEnabled(true);
 	ui->loadProgress->setEnabled(true);
 	ui->loadProgress->setRange(0, fileSize);
-	m_totalRead = 0;
-	ui->loadProgress->setValue(m_totalRead);
+	ui->loadProgress->show();
+	m_totalReadWritten = 0;
+	ui->loadProgress->setValue(m_totalReadWritten);
 	QTextCursor cursor = ui->imageDirList->textCursor();
 	cursor.movePosition(QTextCursor::End);
 	cursor.deleteChar();
 	cursor.insertText(QString("LOAD\"%1\",%2\nSEARCHING FOR %1\nLOADING\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 	ui->imageDirList->setTextCursor(cursor);
+	ui->imageDirList->setCursorWidth(0);
 } // fileLoading
 
 
 void MainWindow::fileSaving(const QString& fileName)
 {
-	ui->progressInfoText->setText(QString("SAVING: %1").arg(fileName));
+	m_loadSaveName = fileName;
+	ui->loadProgress->hide();
+	ui->progressInfoText->clear();
+	ui->progressInfoText->setEnabled(true);
 	QTextCursor cursor = ui->imageDirList->textCursor();
 	cursor.movePosition(QTextCursor::End);
 	cursor.deleteChar();
 	cursor.insertText(QString("SAVE\"%1\",%2\n\nSAVING %1\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
+	m_totalReadWritten = 0;
+	ui->imageDirList->setCursorWidth(0);
 } // fileLoading
 
 
 void MainWindow::bytesRead(uint numBytes)
 {
-	m_totalRead += numBytes;
-	ui->loadProgress->setValue(m_totalRead);
+	m_totalReadWritten += numBytes;
+	ui->loadProgress->setValue(m_totalReadWritten);
+	ui->progressInfoText->setText(QString("LOADING: %1 (%2 bytes)").arg(m_loadSaveName).arg(m_totalReadWritten));
 } // bytesRead
 
 
 void MainWindow::bytesWritten(uint numBytes)
 {
-	ui->loadProgress->setValue(numBytes);
+	m_totalReadWritten += numBytes;
+	ui->progressInfoText->setText(QString("SAVING: %1 (%2 bytes)").arg(m_loadSaveName).arg(m_totalReadWritten));
 } // bytesWritten
 
 
 void MainWindow::fileClosed(const QString& lastFileName)
 {
 	Q_UNUSED(lastFileName);
-	ui->progressInfoText->setText("READY.");
+	ui->progressInfoText->setText(QString("READY. (%1 %2 bytes)").arg(m_loadSaveName).arg(m_totalReadWritten));
 	ui->loadProgress->setEnabled(false);
 	ui->loadProgress->setValue(0);
-
+	ui->loadProgress->show();
 	QTextCursor cursor = ui->imageDirList->textCursor();
 	cursor.movePosition(QTextCursor::End);
 	cursor.deleteChar();
 	cursor.insertText("READY.\n");
 	ui->imageDirList->setTextCursor(cursor);
-}
+	ui->imageDirList->setCursorWidth(CBM_BLOCK_CURSOR_WIDTH);
+} // fileClosed
 
 
 bool MainWindow::isWriteProtected()
@@ -899,6 +955,7 @@ void MainWindow::deviceReset()
 	cursor.movePosition(QTextCursor::End);
 	ui->imageDirList->setTextCursor(cursor);
 	ui->imageDirList->setFocus();
+	ui->imageDirList->setCursorWidth(CBM_BLOCK_CURSOR_WIDTH);
 } // fileClosed
 
 

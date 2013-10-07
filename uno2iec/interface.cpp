@@ -32,9 +32,7 @@
 #include "global_defines.h"
 #include "interface.h"
 
-#ifdef CONSOLE_DEBUG
 #include "log.h"
-#endif
 
 using namespace CBM;
 
@@ -234,9 +232,9 @@ void Interface::saveFile()
 {
 	boolean done = false;
 	// Recieve bytes until a EOI is detected
+	serCmdIOBuf[0] = 'W';
 	do {
 		byte bytesInBuffer = 2;
-		serCmdIOBuf[0] = 'W';
 		do {
 			noInterrupts();
 			serCmdIOBuf[bytesInBuffer++] = m_iec.receive();
@@ -263,9 +261,7 @@ byte Interface::handler(void)
 	interrupts();
 
 	if(retATN == IEC::ATN_ERROR) {
-#ifdef CONSOLE_DEBUG
 		Log(Error, FAC_IFACE, "ATNCMD: IEC_ERROR!");
-#endif
 		reset();
 	}
 	// Did anything happen from the host side?
@@ -318,10 +314,10 @@ byte Interface::handler(void)
 				Log(Information, FAC_IFACE, "TALK");
 				break;
 			case IEC::ATN_CODE_UNLISTEN:
-				Log(Information, FAC_IFACE, "UNLISTEN");
+				//Log(Information, FAC_IFACE, "UNLISTEN");
 				break;
 			case IEC::ATN_CODE_UNTALK:
-				Log(Information, FAC_IFACE, "UNTALK");
+				//Log(Information, FAC_IFACE, "UNTALK");
 				break;
 		} // switch
 	} // IEC not idle

@@ -112,7 +112,8 @@ private:
 	bool m_isInitialized;
 	QStringList m_imageDirListing;
 	AppSettings m_appSettings;
-	ushort m_totalRead;
+	ushort m_totalReadWritten;
+	QString m_loadSaveName;
 };
 
 #endif // MAINWINDOW_HPP
