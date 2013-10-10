@@ -119,7 +119,8 @@
        <property name="styleSheet">
         <string notr="true">background-color: rgb(64, 64, 224);
 color: rgb(160, 160, 0xFF);
-border: 30px solid #00a0FF
+border: 30px solid #00a0FF;
+padding: -4px
 </string>
        </property>
        <property name="frameShape">
@@ -142,6 +143,9 @@ border: 30px solid #00a0FF
        </property>
        <property name="lineWrapMode">
         <enum>QTextEdit::WidgetWidth</enum>
+       </property>
+       <property name="lineWrapColumnOrWidth">
+        <number>648</number>
        </property>
        <property name="html">
         <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
@@ -543,7 +547,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>641</width>
-     <height>20</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMain">
@@ -561,6 +565,8 @@ p, li { white-space: pre-wrap; }
       <addaction name="actionVic_20"/>
       <addaction name="actionCommodore_64"/>
       <addaction name="actionC128"/>
+      <addaction name="actionC_128_80_Col"/>
+      <addaction name="actionPlus_4"/>
      </widget>
      <widget class="QMenu" name="menuEmulator_Palette">
       <property name="title">
@@ -576,6 +582,7 @@ p, li { white-space: pre-wrap; }
       <addaction name="actionVice"/>
       <addaction name="actionPc64"/>
       <addaction name="actionVic20"/>
+      <addaction name="actionPlus4"/>
      </widget>
      <addaction name="menuMachine"/>
      <addaction name="menuEmulator_Palette"/>
@@ -920,6 +927,30 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="text">
     <string>vic20</string>
+   </property>
+  </action>
+  <action name="actionC_128_80_Col">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C 128 (80 Col)</string>
+   </property>
+  </action>
+  <action name="actionPlus_4">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Plus 4</string>
+   </property>
+  </action>
+  <action name="actionPlus4">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>plus4</string>
    </property>
   </action>
  </widget>
