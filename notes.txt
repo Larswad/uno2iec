@@ -16,7 +16,7 @@ Disable it by adding a # character to the beginning. Save the file.
 
 
 Disable Bootup Info
-
+-------------------
 When the Raspberry Pi boots up, all the bootup information is sent to the serial port.
 Disabling this bootup information is optional and you may want to leave this enabled as it
 is sometimes useful to see what is happening at bootup. If you have a device connected (i.e.
@@ -110,7 +110,7 @@ If 'l' is returned, there was no more data
 CBM syntax:
 --------------------------------------------------
 LOAD"<<",8      Reset interface and communication state. Do this if there is problem with PC to arduino sync.
-								Read < as the petscii back-arrow.
+                                Read < as the petscii back-arrow.
 
 LOAD "!!",8
 Retreive information about the current used file system / image.
@@ -119,7 +119,7 @@ In Nativs FS mode: (the default mode)
 
 LOAD "*",8					Load the first file from the current disk image or the native fs.
 LOAD"$",8           Gets directory listing, equivalent to LOAD".",8
-										Loads the current directory, either inside an image or the native fs.
+                                        Loads the current directory, either inside an image or the native fs.
 LOAD"gamesdir",8    Enter the "gamesdir" directory, and get listing.
 LOAD"..",8          Up one directory and get directory listing.
 LOAD"tetris.prg",8  Loads the "tetris.prg" program file.
@@ -129,15 +129,15 @@ LOAD"tape.t64",8    Loads the tape.t64 tape image and enters T64 mode.
 LOAD "FILE.M2I",8		Move into a M2I "image" and load the list of contained native fs files.
 
 In D64 mode:
-	Load "$", "*"				wildcards, filenames works (almost) as espected on a 1541.
-	LOAD"<",8           (back-arrow). Escape D64 mode, and back to FAT mode.
-	SAVE"abc",8         Fools the CBM, but has no effect. Saves in D64 are
-											not implemented
+    Load "$", "*"				wildcards, filenames works (almost) as espected on a 1541.
+    LOAD"<",8           (back-arrow). Escape D64 mode, and back to FAT mode.
+    SAVE"abc",8         Fools the CBM, but has no effect. Saves in D64 are
+                                            not implemented
 
 In T64 mode:
-	Load "$", "*"				wildcards, filenames works as if it was a D64.
-	LOAD"<",8           (back-arrow). Escape T64 mode, and back to FAT mode.
-	SAVE"abc",8         Fools the CBM, but has no effect.
+    Load "$", "*"				wildcards, filenames works as if it was a D64.
+    LOAD"<",8           (back-arrow). Escape T64 mode, and back to FAT mode.
+    SAVE"abc",8         Fools the CBM, but has no effect.
 
 
 NOTE:
@@ -149,37 +149,37 @@ Try a LOAD"<<",8 to try going into initial state.
 
 1541 original commands implemented / to implement (X means implemented and working).
 ------------------------------------------------------------------------------------
-	UI- / UI+:	Switch to VIC20 / VIC64 speed
-	NEW:name,id	(abbreviated N:name,id) If id is left out directory is just cleared.
-	COPY:newfile=oldfile (abbreviated C:newfile=oldfile) If oldfile is several comma separated names they are concatenated.
-	RENAME:newfile=oldfile (abbreviated R:newfile=oldfile)
-	SCRATCH:filename (abbreviated S:filename) If oldfile is several comma separated names they are concatenated.
-	INITIALIZE (abbreviated I) Initialize drive (reset states)
-	VALIDATE (abbreviated V) Reorganize drive, like defragment
-	PRINT#file#, "BLOCK-READ:" channel; drive; track; block (abbreviated PRINT#file#, "B-R:" channel; drive; track; block
-	PRINT#file#, "BLOCK-WRITE:" channel; drive; track; block (abbreviated PRINT#file, "B-W:" channel; drive; track; block)
-	PRINT#file#, "BLOCK-ALLOCATE:" drive; track; block
-	PRINT#file#, "BLOCK-FREE:" drive; track; block (abbreviated PRINT#file#, "B-F:" drive; track; block
-	PRINT#file#, "B-P:" channel; position		To set buffer pointer
-	PRINT#file#, "P" CHR$(channel#) CHR$(rec#lo) CHR$(rec#hi)CHR$(position) Set position in REL files
-	PRINT#file#, "U1:" channel; drive; track; block (abbreviated PRINT#file#, "UA:" channel; drive; track; block) USER1 command
-	PRINT#file#, "U2:" channel; drive; track; block (abbreviated PRINT#file#, "UB:" channel; drive; track; block USER2 command
-	PRINT#file#, "M-R" CHR$(low byte of address) CHR$(high byte) memory read
-	PRINT#file#, "M-W" CHR$(low address byte) CHR$(high address byte)CHR$(#-of-characters) byte data	memory write
-	PRINT#file#, "M-E" CHR$(low address byte) CHR$(high byte) memory execute
-	PRINT#file#,"M-W:" CHR$(119) CHR$(0) CHR$(2) CHR$(address+32)CHR$(address+64) change device number
+    UI- / UI+:	Switch to VIC20 / VIC64 speed
+    NEW:name,id	(abbreviated N:name,id) If id is left out directory is just cleared.
+    COPY:newfile=oldfile (abbreviated C:newfile=oldfile) If oldfile is several comma separated names they are concatenated.
+    RENAME:newfile=oldfile (abbreviated R:newfile=oldfile)
+    SCRATCH:filename (abbreviated S:filename) If oldfile is several comma separated names they are concatenated.
+    INITIALIZE (abbreviated I) Initialize drive (reset states)
+    VALIDATE (abbreviated V) Reorganize drive, like defragment
+    PRINT#file#, "BLOCK-READ:" channel; drive; track; block (abbreviated PRINT#file#, "B-R:" channel; drive; track; block
+    PRINT#file#, "BLOCK-WRITE:" channel; drive; track; block (abbreviated PRINT#file, "B-W:" channel; drive; track; block)
+    PRINT#file#, "BLOCK-ALLOCATE:" drive; track; block
+    PRINT#file#, "BLOCK-FREE:" drive; track; block (abbreviated PRINT#file#, "B-F:" drive; track; block
+    PRINT#file#, "B-P:" channel; position		To set buffer pointer
+    PRINT#file#, "P" CHR$(channel#) CHR$(rec#lo) CHR$(rec#hi)CHR$(position) Set position in REL files
+    PRINT#file#, "U1:" channel; drive; track; block (abbreviated PRINT#file#, "UA:" channel; drive; track; block) USER1 command
+    PRINT#file#, "U2:" channel; drive; track; block (abbreviated PRINT#file#, "UB:" channel; drive; track; block USER2 command
+    PRINT#file#, "M-R" CHR$(low byte of address) CHR$(high byte) memory read
+    PRINT#file#, "M-W" CHR$(low address byte) CHR$(high address byte)CHR$(#-of-characters) byte data	memory write
+    PRINT#file#, "M-E" CHR$(low address byte) CHR$(high byte) memory execute
+    PRINT#file#,"M-W:" CHR$(119) CHR$(0) CHR$(2) CHR$(address+32)CHR$(address+64) change device number
 
 X	LOAD PROGRAM	WILDCARD support working?
-	SAVE PROGRAM	Must handle save with replace, @0:filename
+    SAVE PROGRAM	Must handle save with replace, @0:filename
 
 sdi2ec support:
 ---------------------------------------------
 
 Changing directories (CMD syntax):
-	OPEN1,8,15,"CD/SOMEDIR/":CLOSE1 - change to SOMEDIR (relative, in uno2iec relative to current directory)
-	OPEN1,8,15,"CD//":CLOSE1 - change to root directory (In Uno2iec this root means: base path)
-	OPEN1,8,15,"CD//SOMEDIR/":CLOSE1 - change to SOMEDIR (in root)
-	OPEN1,8,15,"CD:←":CLOSE1 - go to parent directory
+    OPEN1,8,15,"CD/SOMEDIR/":CLOSE1 - change to SOMEDIR (relative, in uno2iec relative to current directory)
+    OPEN1,8,15,"CD//":CLOSE1 - change to root directory (In Uno2iec this root means: base path)
+    OPEN1,8,15,"CD//SOMEDIR/":CLOSE1 - change to SOMEDIR (in root)
+    OPEN1,8,15,"CD:←":CLOSE1 - go to parent directory
 
 Using M2Is or D64s:
 
@@ -189,10 +189,71 @@ OPEN1,8,15,"CD:←":CLOSE1 - leave M2I/D64
 
 Loading files:
 
-	LOAD"//SOMEDIR/:SOMEFILE" - load SOMEFILE in SOMEDIR (filename gets separated from path using colon)
-	Change device address
+    LOAD"//SOMEDIR/:SOMEFILE" - load SOMEFILE in SOMEDIR (filename gets separated from path using colon)
+    Change device address
 
 Change device address:
 
-	OPEN1,current address,15,"U0>"+CHR$(new address):CLOSE1 - change sd2iec device number to new address
-	OPEN1,device address,15,"XW":close1 - this will save settings to eeprom (required if you want to set new device address as default)
+    OPEN1,current address,15,"U0>"+CHR$(new address):CLOSE1 - change sd2iec device number to new address
+    OPEN1,device address,15,"XW":close1 - this will save settings to eeprom (required if you want to set new device address as default)
+
+
+files of interest in sd2iec:
+----------------------------
+buffers.c/.h
+d64ops.c /.h
+m2iops.c / .h
+p00cache.c / .h
+
+dirent.h
+doscmd.c / .h
+errormsg.c / .h
+fileops.c / .h
+flags.h
+iec-bus.h
+iec.c / .h
+parser.c / .h
+
+fastloader.c / .h
+avr/
+    crc.h
+    crc7asm.h
+    fastloader-ii.S
+    arch-config.h
+    arch-timer.c / .h
+    atomic.h
+    avrcompat.h
+
+
+files of little interest in sd2ec:
+----------------------------------
+config.h
+eeprom.c /.h
+main.c
+led.c / .h
+timer.c / .h
+utils.c / .h
+wrapops.h
+
+files of NO interest in sd2iec:
+-------------------------------
+ata.h
+bus.h
+diskchange.c / .h
+diskio.c / .h
+display.c /.h
+ds1307-3231.c / .h
+pcf8583.c / .h
+rtc.c /.h
+rtc_lpcl7xx.h
+ieee.c / .h
+integer.h
+ff.c / .h
+i2c.h
+sdcard.c / .h
+softrtc.h
+system.h
+time.h
+uart.h
+ustring.h
+lpc17xx/*
