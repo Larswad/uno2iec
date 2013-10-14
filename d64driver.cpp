@@ -53,7 +53,7 @@ namespace {
 typedef struct {
 	uchar disk_name[16]; // disk name padded with A0
 	uchar disk_id[5];    // disk id and dos type
-} d64_diskinfo;
+} D64DiskInfo;
 
 // Sectors p. track table
 // sectors_track[3] is the number of sectors in track 4 (!)
@@ -354,7 +354,7 @@ bool D64::fopen(const QString& fileName)
 	while(!found and getDirEntry(m_currDirEntry)) {
 
 		// Acceptable filetype?
-		i = m_currDirEntry.m_type bitand TYPE_MASK;
+		i = m_currDirEntry.m_type bitand FILE_TYPE_MASK;
 		if(SEQ == i or PRG == i) {
 
 			// Compare filename respecting * and ? wildcards
@@ -451,7 +451,7 @@ bool D64::sendListing(ISendLine& cb)
 			name[i] = QChar('"');
 
 			// Write filetype
-			uchar fileType = dir.m_type bitand TYPE_MASK;
+			uchar fileType = dir.m_type bitand FILE_TYPE_MASK;
 			if(fileType > NumD64FileTypes)
 				fileType = NumD64FileTypes; // Limit to Unknown type (???) when out of range.
 
@@ -518,9 +518,9 @@ QString D64::DirEntry::name() const
 } // getName
 
 
-D64::D64FileType D64::DirEntry::type() const
+D64::FileType D64::DirEntry::type() const
 {
-	return static_cast<D64FileType>(m_type);
+	return static_cast<FileType>(m_type);
 } // type
 
 
@@ -546,3 +546,36 @@ uchar D64::DirEntry::sector() const
 {
 	return m_sector;
 } // getSector
+
+/**
+ * sectosPerTrack - number of sectors on given track
+ * @track: Track number
+ *
+ * Returns the number of sectors on the given track
+ * of a 1541/71/81 disk. Invalid track numbers will return invalid results.
+ */
+ushort D64::xxxsectorsPerTrack(uchar track)
+{
+//	switch(m_header.imageType bitand IMAGE_TYPE_MASK)
+//	{
+//		case D81:
+//			return 40;
+
+//		case DNP:
+//			return 256;
+
+//		case D41:
+//		case D71:
+//		default:
+//			if(track > 35)
+//				track -= 35;
+//			if(track < 18)
+//				return 21;
+//			if(track < 25)
+//				return 19;
+//			if(track < 31)
+//				return 18;
+//			return 17;
+//	}
+	return 0;
+} // sectorsPerTrack

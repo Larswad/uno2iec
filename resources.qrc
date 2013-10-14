@@ -17,4 +17,7 @@
         <file>icons/restart.png</file>
         <file>icons/save.png</file>
     </qresource>
+    <qresource prefix="/roms">
+        <file alias="rom_1541">other/dos1541</file>
+    </qresource>
 </RCC>

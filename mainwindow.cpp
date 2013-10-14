@@ -9,6 +9,10 @@
 // TODO: Finalize handling of write protected disk.
 // TODO: If arduino is reset with a physical button on the board and it tries to resync, the PC-host application should automatically resync without having to press the 'Reset Arduino' button, meaning listen to connect even in connected mode.
 // TODO: Rename openHostFile() and closeHostFile() to "mount"/"unmount" respectively on all file systems?
+// TODO: When loading directories or media list, the dirlist view doesn't reflect this status.
+// TODO: When a file/directory is attempted for loading or saving and this fails for some reason this isn't reflected on the dirlist view.
+// TODO: When executing the command channel this isn't reflected on the dirlist view.
+// TODO: Native/D64/T64: Show true blocks free. Will be nice with all the space available on a harddisk or network share!
 
 
 #include <QString>
@@ -547,7 +551,7 @@ void MainWindow::processDebug(const QString& str)
 		level = success;
 		break;
 	case 'I':
-		level = success;
+						level = info;
 		break;
 	case 'W':
 		level = warning;

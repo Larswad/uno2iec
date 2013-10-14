@@ -61,9 +61,11 @@ const QString s_errorEnding = ",00,00";
 
 } // anonymous
 
-
 Interface::Interface(QextSerialPort& port)
-	: m_currFileDriver(0), m_port(port), m_queuedError(CBM::ErrOK), m_openState(O_NOTHING), m_pListener(0)
+	: m_currFileDriver(0), m_port(port)
+	, m_queuedError(CBM::ErrOK)
+	,	m_openState(O_NOTHING)
+	, m_pListener(0)
 {
 	// Build the list of implemented / supported file systems.
 	m_fsList.append(&m_native);
@@ -71,7 +73,23 @@ Interface::Interface(QextSerialPort& port)
 	m_fsList.append(&m_t64);
 	m_fsList.append(&m_m2i);
 	reset();
+	QFile romFile(":/roms/rom_1541");
+	bool success = romFile.open(QIODevice::ReadOnly);
+	if(!success)
+		qDebug() << "couldn't open romfile: " << romFile.fileName();
+	else {
+		m_driveROM = romFile.readAll();
+		romFile.close();
+		m_driveRAM.fill(0, CBM1541_RAM_SIZE);
+		m_via1MEM.fill(0, CBM1541_VIA1_SIZE);
+		m_via2MEM.fill(0, CBM1541_VIA2_SIZE);
+	}
 } // ctor
+
+
+Interface::~Interface()
+{
+} // dtor
 
 
 void Interface::setImageFilters(const QString& filters, bool showDirs)
@@ -139,6 +157,45 @@ void Interface::moveToParentOrNativeFS()
 	}
 } // moveToParentOrNativeFS
 
+
+void Interface::readDriveMemory(ushort address, ushort length, QByteArray& bytes) const
+{
+	bytes.clear();
+	if(/*address >= CBM1541_RAM_OFFSET and */address < CBM1541_RAM_OFFSET + m_driveRAM.size())
+		bytes = m_driveRAM.mid(address, length);
+	else if(address >= CBM1541_VIA1_OFFSET and address < CBM1541_VIA1_OFFSET + m_via1MEM.size())
+		bytes = m_via1MEM.mid(address - CBM1541_VIA1_OFFSET, length);
+	else if(address >= CBM1541_VIA2_OFFSET and address < CBM1541_VIA2_OFFSET + m_via2MEM.size())
+		bytes = m_via2MEM.mid(address - CBM1541_VIA2_OFFSET, length);
+	else if(address >= CBM1541_ROM_OFFSET and address < CBM1541_ROM_OFFSET + m_driveROM.size())
+		bytes = m_driveROM.mid(address - CBM1541_ROM_OFFSET, length);
+
+	// resize to be the expected length in case the read was done at memory borders.
+	// It will be garbage data out of course, but that's to expect.
+	if(bytes.size() < length)
+		bytes.resize(length);
+} // readDriveMemory
+
+
+void Interface::writeDriveMemory(ushort address, const QByteArray& bytes)
+{
+	// When doing resize (chop) after replace its because if address + array goes outside memory.
+	if(/*address >= CBM1541_RAM_OFFSET and */address < CBM1541_RAM_OFFSET + m_driveRAM.size()) {
+		m_driveRAM.replace(address, bytes.size(), bytes);
+		m_driveRAM.resize(CBM1541_RAM_SIZE);
+	}
+	else if(address >= CBM1541_VIA1_OFFSET and address <= CBM1541_VIA1_OFFSET + m_via1MEM.size()) {
+		m_via1MEM.replace(address - CBM1541_VIA1_OFFSET, bytes.size(), bytes);
+		qDebug() << "size before: " << m_via1MEM.size();
+		m_via1MEM.resize(CBM1541_VIA1_SIZE);
+		qDebug() << "size after: " << m_via1MEM.size();
+	}
+	else if(address >= CBM1541_VIA2_OFFSET and address <= CBM1541_VIA2_OFFSET + m_via2MEM.size()) {
+		m_via2MEM.replace(address - CBM1541_VIA2_OFFSET, bytes.size(), bytes);
+		m_via2MEM.resize(CBM1541_VIA2_SIZE);
+	}
+	// any other memory range is a no-op. Can't write to ROM, can't write to non-existent memory.
+} // writeDriveMemory
 
 // Parse LOAD command, open either file/directory/d64/t64
 //

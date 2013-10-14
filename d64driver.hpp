@@ -7,7 +7,7 @@
 class D64 : public FileDriverBase
 {
 public:
-	enum D64FileType
+	enum FileType
 	{
 		DEL         = 0,
 		SEQ         = 1,
@@ -15,9 +15,22 @@ public:
 		USR         = 3,
 		REL         = 4,
 		NumD64FileTypes,
-		TYPE_MASK   = 0x07,
+		FILE_TYPE_MASK   = 0x07,
 		FILE_LOCKED = 0x40,
 		FILE_CLOSED = 0x80
+	};
+
+	// Disk image types - values must match G-P partition type byte
+	enum ImageType
+	{
+		NONE = 0,
+		DNP = 1,
+		D41 = 2,
+		D71 = 3,
+		D81 = 4,
+		NumD64ImageTypes,
+		HAS_ERRORINFO = (1 << 7),
+		IMAGE_TYPE_MASK = 0x7f
 	};
 
 	// Host file system D64-image can be opened from constructor, if specified.
@@ -64,6 +77,23 @@ public:
 	// Send information about file system (whether it is OK, sizes etc.).
 	bool sendMediaInfo(ISendLine &cb);
 
+	class __attribute__((packed)) ImageHeader
+	{
+		public:
+		// Note: This is a POD class, may NOT contain any virtual methods or additional data than the DirType struct.
+
+		ImageHeader();
+		~ImageHeader();
+
+		// Offsets in a D64 directory entry, also needed for raw dirs
+		#define DIR_OFS_FILE_TYPE       2
+		#define DIR_OFS_TRACK           3
+		#define DIR_OFS_SECTOR          4
+		#define DIR_OFS_FILE_NAME       5
+		#define DIR_OFS_SIZE_LOW        0x1e
+		#define DIR_OFS_SIZE_HI         0x1f
+	};
+
 	class __attribute__((packed)) DirEntry
 	{
 		public:
@@ -72,7 +102,7 @@ public:
 		DirEntry();
 		~DirEntry();
 		QString name() const;
-		D64FileType type() const;
+		FileType type() const;
 		ushort sizeBytes() const;
 		ushort numBlocks() const;
 		uchar track() const;
@@ -104,6 +134,7 @@ private:
 		return static_cast<qint32>(m_hostFile.size());
 	}
 
+	ushort xxxsectorsPerTrack(uchar track);
 	void seekBlock(uchar track, uchar sector);
 	bool seekFirstDir(void);
 	bool getDirEntry(DirEntry& dir);

@@ -43,6 +43,7 @@ public:
 	};
 
 	Interface(QextSerialPort& port);
+	virtual ~Interface();
 
 	CBM::IOErrorMessage openFile(const QString &cmdString);
 	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
@@ -68,6 +69,9 @@ public:
 		return m_currFileDriver;
 	}
 
+	void readDriveMemory(ushort address, ushort length, QByteArray &bytes) const;
+	void writeDriveMemory(ushort address, const QByteArray &bytes);
+
 private:
 	void moveToParentOrNativeFS();
 	bool removeFilePrefix(QString &cmd);
@@ -86,6 +90,14 @@ private:
 	QString m_lastCmdString;
 	QList<QByteArray> m_dirListing;
 	IFileOpsNotify* m_pListener;
+	// The ROM file for the 1541 drive (16 KB).
+	QByteArray m_driveROM;
+	// The RAM memory for the 1541 drive.
+	QByteArray m_driveRAM;
+	// The VIA1 control area for the 1541 drive.
+	QByteArray m_via1MEM;
+	// The VIA2 control area for the 1541 drive.
+	QByteArray m_via2MEM;
 };
 
 #endif // INTERFACE_HPP
