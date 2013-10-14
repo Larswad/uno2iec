@@ -62,11 +62,11 @@ int main(int argc, char *argv[])
 // This works even if the font is not registered in system globally.
 void addEmbeddedFonts()
 {
-	QStringList list;
-	list << "fonts/PetMe64.ttf" << "fonts/PetMe2X.ttf" << "fonts/PetMe1282Y.ttf";
+	QStringList list({ "fonts/PetMe64.ttf" , "fonts/PetMe2X.ttf" , "fonts/PetMe1282Y.ttf" });
+	//list << "fonts/PetMe64.ttf" << "fonts/PetMe2X.ttf" << "fonts/PetMe1282Y.ttf";
 	int fontID(-1);
 	bool fontWarningShown(false);
-	for (QStringList::const_iterator constIterator = list.constBegin(); constIterator != list.constEnd(); ++constIterator) {
+	for (QStringList::const_iterator constIterator = list.constBegin(); constIterator not_eq list.constEnd(); ++constIterator) {
 		QFile res(":/fonts/" + *constIterator);
 		if (res.open(QIODevice::ReadOnly) == false) {
 			if (fontWarningShown == false) {
@@ -76,7 +76,7 @@ void addEmbeddedFonts()
 		}
 		else {
 			fontID = QFontDatabase::addApplicationFontFromData(res.readAll());
-			if (fontID == -1 && fontWarningShown == false) {
+			if (fontID == -1 and fontWarningShown == false) {
 				QMessageBox::warning(0, "Application", (QString)"Can't open the font " + QChar(0x00AB) + " " + *constIterator + " " + QChar(0x00BB) + ".");
 				fontWarningShown = true;
 			}
