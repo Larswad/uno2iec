@@ -197,6 +197,7 @@ void Interface::writeDriveMemory(ushort address, const QByteArray& bytes)
 	// any other memory range is a no-op. Can't write to ROM, can't write to non-existent memory.
 } // writeDriveMemory
 
+
 // Parse LOAD command, open either file/directory/d64/t64
 //
 CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
@@ -365,7 +366,7 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 					sendOpenResponse((char)m_queuedError);
 				}
 				else {
-					m_queuedError = DosCommand::executeCmd(cmd, *this);
+					m_queuedError = CBMDos::Command::execute(cmd, *this);
 				}
 				Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)));
 		}
