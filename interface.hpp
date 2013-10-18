@@ -49,7 +49,7 @@ public:
 	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
 	void processReadFileRequest();
 	void processWriteFileRequest(const QByteArray &theBytes);
-	void reset();
+	CBM::IOErrorMessage reset(bool informUnmount = false);
 
 	// State specific: CBM requests a single directory line from us.
 	void processLineRequest();

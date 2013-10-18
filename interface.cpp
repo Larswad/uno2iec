@@ -61,6 +61,7 @@ const QString s_errorEnding = ",00,00";
 
 } // anonymous
 
+
 Interface::Interface(QextSerialPort& port)
 	: m_currFileDriver(0), m_port(port)
 	, m_queuedError(CBM::ErrOK)
@@ -72,7 +73,7 @@ Interface::Interface(QextSerialPort& port)
 	m_fsList.append(&m_d64);
 	m_fsList.append(&m_t64);
 	m_fsList.append(&m_m2i);
-	reset();
+
 	QFile romFile(":/roms/rom_1541");
 	bool success = romFile.open(QIODevice::ReadOnly);
 	if(!success)
@@ -80,10 +81,8 @@ Interface::Interface(QextSerialPort& port)
 	else {
 		m_driveROM = romFile.readAll();
 		romFile.close();
-		m_driveRAM.fill(0, CBM1541_RAM_SIZE);
-		m_via1MEM.fill(0, CBM1541_VIA1_SIZE);
-		m_via2MEM.fill(0, CBM1541_VIA2_SIZE);
 	}
+	reset();
 } // ctor
 
 
@@ -98,10 +97,15 @@ void Interface::setImageFilters(const QString& filters, bool showDirs)
 } // setImageFilters
 
 
-void Interface::reset()
+CBM::IOErrorMessage Interface::reset(bool informUnmount)
 {
+	// restore RAM and via areas.
+	m_driveRAM.fill(0, CBM1541_RAM_SIZE);
+	m_via1MEM.fill(0, CBM1541_VIA1_SIZE);
+	m_via2MEM.fill(0, CBM1541_VIA2_SIZE);
+	if(informUnmount and m_currFileDriver != &m_native and 0 not_eq m_pListener)
+		m_pListener->imageUnmounted();
 	m_currFileDriver = &m_native;
-	m_queuedError	= CBM::ErrIntro;
 	m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	m_dirListing.empty();
 	m_lastCmdString.clear();
@@ -109,6 +113,9 @@ void Interface::reset()
 		fs->closeHostFile(); // TODO: Better with a reset or init method on all file systems.
 	if(0 not_eq m_pListener)
 		m_pListener->deviceReset();
+	m_queuedError = CBM::ErrIntro;
+
+	return m_queuedError;
 } // reset
 
 
@@ -214,10 +221,8 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 	}
 	// Check double back arrow first, it is a reset state.
 	if(cmd.size() == 2 and CBM_BACK_ARROW == cmd.at(0).toLatin1() and CBM_BACK_ARROW == cmd.at(1)) {
-		// move to reset state of interface.
-		reset();
-		if(0 not_eq m_pListener) // make sure UI does not assume any mounted media as well.
-			m_pListener->imageUnmounted();
+		// move to reset state of interface and make sure UI does not assume any mounted media as well.
+		reset(true);
 		Log(FAC_IFACE, success, "Going back to NativeFS and sending media info.");
 	}
 	else if(cmd.size() == 2 and CBM_EXCLAMATION == cmd.at(0).toLatin1() and CBM_EXCLAMATION == cmd.at(1)) {

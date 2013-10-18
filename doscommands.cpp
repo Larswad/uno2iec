@@ -38,9 +38,9 @@ RemoveDirectory rmDirCmd;
 
 CBM::IOErrorMessage InitDrive::process(const QString& params, Interface& iface)
 {
+	// Either ignore or check that no parameters are given here!
 	Q_UNUSED(params);
-	Q_UNUSED(iface);
-	return CBM::ErrNotImplemented;
+	return iface.reset();
 } // InitDrive
 
 
