@@ -13,4 +13,5 @@ release/
 debug/
 Makefile*
 *pro.user*
+qrc_resources.cpp
 
