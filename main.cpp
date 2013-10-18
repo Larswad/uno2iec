@@ -32,34 +32,34 @@ bool addEmbeddedFonts();
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+	QApplication a(argc, argv);
 
 #ifdef CONSOLE_DEBUG
-    // Say hi
-    qDebug() << endl << "Welcome." << endl;
+	// Say hi
+	qDebug() << endl << "Welcome." << endl;
 #endif
 
-    a.setOrganizationName(VER_COMPANYNAME_STR);
-    a.setOrganizationDomain(VER_COMPANYDOMAIN_STR);
-    a.setApplicationName(VER_PRODUCTNAME_STR);
+	a.setOrganizationName(VER_COMPANYNAME_STR);
+	a.setOrganizationDomain(VER_COMPANYDOMAIN_STR);
+	a.setApplicationName(VER_PRODUCTNAME_STR);
 
-    // Configure our "looks". Take the most preferred one, but take into accout what may exist on this platform.
-    foreach(QString style, QStyleFactory::keys())
-        qDebug() << "style: " << style;
+	// Configure our "looks". Take the most preferred one, but take into accout what may exist on this platform.
+	foreach(QString style, QStyleFactory::keys())
+		qDebug() << "style: " << style;
 
-    if(QStyleFactory::keys().contains("WindowsXP"))
-        a.setStyle(QStyleFactory::create("WindowsXP"));
-    else
-        a.setStyle(QStyleFactory::create("Fusion"));
+	if(QStyleFactory::keys().contains("WindowsXP"))
+		a.setStyle(QStyleFactory::create("WindowsXP"));
+	else
+		a.setStyle(QStyleFactory::create("Fusion"));
 
-    addEmbeddedFonts();
+	addEmbeddedFonts();
 
-    MainWindow w;
-    w.show();
-    // Before doing processing of main window we would show do the eventual modal version dialogue.
-    w.checkVersion();
+	MainWindow w;
+	w.show();
+	// Before doing processing of main window we would show do the eventual modal version dialogue.
+	w.checkVersion();
 
-    return a.exec();
+	return a.exec();
 } // main
 
 
@@ -67,26 +67,26 @@ int main(int argc, char *argv[])
 // This works even if the font is not registered in system globally.
 bool addEmbeddedFonts()
 {
-    QStringList list({ "PetMe64.ttf" , "PetMe2X.ttf" , "PetMe1282Y.ttf" });
-    int fontID(-1);
-    bool fontWarningShown(false), success(true);
+	QStringList list({ "PetMe64.ttf" , "PetMe2X.ttf" , "PetMe1282Y.ttf" });
+	int fontID(-1);
+	bool fontWarningShown(false), success(true);
 
-    foreach(const QString& strFont, list) {
-        QFile res(":/fonts/fonts/" + strFont);
-        if(!res.open(QIODevice::ReadOnly)) {
-            success = false;
-        }
-        else {
-            fontID = QFontDatabase::addApplicationFontFromData(res.readAll());
-            if(-1 == fontID)
-                success = false;
-        }
+	foreach(const QString& strFont, list) {
+		QFile res(":/fonts/fonts/" + strFont);
+		if(!res.open(QIODevice::ReadOnly)) {
+			success = false;
+		}
+		else {
+			fontID = QFontDatabase::addApplicationFontFromData(res.readAll());
+			if(-1 == fontID)
+				success = false;
+		}
 
-        // It is enough to display warning only once.
-        if(!success and !fontWarningShown) {
-            QMessageBox::warning(0, "Application", QString("Can't open the font %1 %2 %3.").arg(QChar(0x00AB)).arg(strFont).arg(QChar(0x00BB)));
-            fontWarningShown = true;
-        }
-    }
-    return success;
+		// It is enough to display warning only once.
+		if(!success and !fontWarningShown) {
+			QMessageBox::warning(0, "Application", QString("Can't open the font %1 %2 %3.").arg(QChar(0x00AB)).arg(strFont).arg(QChar(0x00BB)));
+			fontWarningShown = true;
+		}
+	}
+	return success;
 } // addEmbeddedFonts
