@@ -1,5 +1,5 @@
 //
-// Title        : rpi2iec - main
+// Title        : uno2iec - main
 // Author       : Lars Wadefalk
 // Date         : August 2013.
 //
@@ -14,16 +14,19 @@
 //
 
 
-#include "mainwindow.hpp"
 #include <QApplication>
 #include <QMessageBox>
 #include <QFontDatabase>
 #include <QStyleFactory>
-
 #ifdef CONSOLE_DEBUG
 #include <QDebug>
 #endif
 
+#include "version.h"
+#include "mainwindow.hpp"
+
+
+// forwards.
 bool addEmbeddedFonts();
 
 
@@ -36,6 +39,11 @@ int main(int argc, char *argv[])
     qDebug() << endl << "Welcome." << endl;
 #endif
 
+    a.setOrganizationName(VER_COMPANYNAME_STR);
+    a.setOrganizationDomain(VER_COMPANYDOMAIN_STR);
+    a.setApplicationName(VER_PRODUCTNAME_STR);
+
+    // Configure our "looks". Take the most preferred one, but take into accout what may exist on this platform.
     foreach(QString style, QStyleFactory::keys())
         qDebug() << "style: " << style;
 
@@ -44,14 +52,11 @@ int main(int argc, char *argv[])
     else
         a.setStyle(QStyleFactory::create("Fusion"));
 
-    a.setOrganizationName("MumboJumbo_Software"/*VER_COMPANYNAME_STR*/);
-    a.setOrganizationDomain("DOMAIN");
-    a.setApplicationName("Uno2IEC");
-
     addEmbeddedFonts();
 
     MainWindow w;
     w.show();
+    // Before doing processing of main window we would show do the eventual modal version dialogue.
     w.checkVersion();
 
     return a.exec();
