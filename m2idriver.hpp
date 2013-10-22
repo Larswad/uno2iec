@@ -7,9 +7,9 @@
 class M2I : public FileDriverBase
 {
 public:
-	const QString& extension() const
+	const QStringList& extension() const
 	{
-		static const QString ext("M2I");
+		static const QStringList ext({ "M2I" });
 		return ext;
 	} // extension
 

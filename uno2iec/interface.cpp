@@ -38,8 +38,7 @@ using namespace CBM;
 
 namespace {
 
-// atn command buffer struct
-IEC::ATNCmd cmd;
+// Buffer for incoming and outgoing serial bytes and other stuff.
 char serCmdIOBuf[MAX_BYTES_PER_REQUEST];
 
 #ifdef USE_LED_DISPLAY
@@ -54,8 +53,12 @@ Interface::Interface(IEC& iec)
 #ifdef USE_LED_DISPLAY
 	, m_pDisplay(0)
 #endif
-
+	// NOTE: Householding with RAM bytes: We use the middle of serial buffer for the ATNCmd buffer info.
+	// This is ok and won't be overwritten by actual serial data from the host, this is because when this ATNCmd data is in use
+	// only a few bytes of the actual serial data will be used in the buffer.
+	, m_cmd(*reinterpret_cast<IEC::ATNCmd*>(&serCmdIOBuf[sizeof(serCmdIOBuf) / 2]))
 {
+
 	reset();
 } // ctor
 
@@ -257,7 +260,7 @@ byte Interface::handler(void)
 		return IEC::ATN_RESET;
 	}
 	noInterrupts();
-	IEC::ATNCheck retATN = m_iec.checkATN(cmd);
+	IEC::ATNCheck retATN = m_iec.checkATN(m_cmd);
 	interrupts();
 
 	if(retATN == IEC::ATN_ERROR) {
@@ -267,39 +270,39 @@ byte Interface::handler(void)
 	// Did anything happen from the host side?
 	else if(retATN not_eq IEC::ATN_IDLE) {
 		// A command is recieved, make cmd string null terminated
-		cmd.str[cmd.strlen] = '\0';
+		m_cmd.str[m_cmd.strlen] = '\0';
 #ifdef CONSOLE_DEBUG
 		{
-			sprintf(serCmdIOBuf, "ATN code:%d cmd: %s (len: %d) retATN: %d", cmd.code, cmd.str, cmd.strlen, retATN);
+			sprintf(serCmdIOBuf, "ATN code:%d cmd: %s (len: %d) retATN: %d", m_cmd.code, m_cmd.str, m_cmd.strlen, retATN);
 			Log(Information, FAC_IFACE, serCmdIOBuf);
 		}
 #endif
 
 		// lower nibble is the channel.
-		byte chan = cmd.code bitand 0x0F;
+		byte chan = m_cmd.code bitand 0x0F;
 
 		// check upper nibble, the command itself.
-		switch(cmd.code bitand 0xF0) {
+		switch(m_cmd.code bitand 0xF0) {
 			case IEC::ATN_CODE_OPEN:
 				// Open either file or prg for reading, writing or single line command on the command channel.
 				// In any case we just issue an 'OPEN' to the host and let it process.
 				// Note: Some of the host response handling is done LATER, since we will get a TALK or LISTEN after this.
 				// Also, simply issuing the request to the host and not waiting for any response here makes us more
 				// responsive to the CBM here, when the DATA with TALK or LISTEN comes in the next sequence.
-				handleATNCmdCodeOpen(cmd);
+				handleATNCmdCodeOpen(m_cmd);
 			break;
 
 			case IEC::ATN_CODE_DATA:  // data channel opened
 				if(retATN == IEC::ATN_CMD_TALK) {
 					 // when the CMD channel is read (status), we first need to issue the host request. The data channel is opened directly.
 					if(CMD_CHANNEL == chan)
-						handleATNCmdCodeOpen(cmd);
+						handleATNCmdCodeOpen(m_cmd);
 					handleATNCmdCodeDataTalk(chan);
 				}
 				else if(retATN == IEC::ATN_CMD_LISTEN)
 					handleATNCmdCodeDataListen();
 				else if(retATN == IEC::ATN_CMD)
-					handleATNCmdCodeOpen(cmd);
+					handleATNCmdCodeOpen(m_cmd);
 				break;
 
 			case IEC::ATN_CODE_CLOSE:

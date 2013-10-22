@@ -69,6 +69,8 @@ private:
 
 	// send listing pointer in basic memory:
 	volatile word m_basicPtr;
+	// atn command buffer struct
+	IEC::ATNCmd& m_cmd;
 #ifdef USE_LED_DISPLAY
 	Max7219* m_pDisplay;
 #endif

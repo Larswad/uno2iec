@@ -14,7 +14,7 @@ namespace CBM {
 #define CBM1541_ROM_SIZE (1024 * 16)
 
 // Largest Serial byte buffer request from / to arduino.
-#define MAX_BYTES_PER_REQUEST 160
+#define MAX_BYTES_PER_REQUEST 256
 
 // Device OPEN channels.
 // Special channels.
@@ -57,8 +57,8 @@ typedef enum {
 	ErrLongLine,
 	ErrInvalidFilename,
 	ErrNoFileGiven,		// The file name was left out of a command or the DOS does not recognize it as such.
-										// Typically, a colon(:) has been left out of the command
-	ErrCommandNotFound = 39,	// This error may result if thecommand sent to command channel (secondary address 15) is unrecognizedby the DOS.
+										// Typically, a colon or equal character has been left out of the command
+	ErrCommandNotFound = 39,	// This error may result if the command sent to command channel (secondary address 15) is unrecognizedby the DOS.
 	ErrRecordNotPresent = 50,
 	ErrOverflowInRecord,
 	ErrFileTooLarge,

@@ -415,6 +415,30 @@ void LogHexData(const QByteArray& bytes, const QString& header = QString("R#%1:"
 } // LogHexData
 
 
+bool MainWindow::checkConnectRequest()
+{
+	if(!m_pendingBuffer.contains("connect"))
+		return false;
+	m_pendingBuffer.clear();
+	// Assume connected, maybe a real ack sequence is needed here from the client?
+	// Are we already connected? If so,
+	if(!m_isConnected) {
+		m_isConnected = true;
+		Log("MAIN", success, "Now connected to Arduino.");
+	}
+	else
+		Log("MAIN", warning, "Got reconnection attempt from Arduino for unknown reason. Accepting new connection.");
+
+	// give the client current date and time in the response string.
+	m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin) + '|' + QString::number(m_appSettings.clockPin)
+								+ '|' + QString::number(m_appSettings.dataPin) + '|' + QString::number(m_appSettings.resetPin) /*+ '|' + QString::number(m_appSettings.srqInPin)*/
+								+ '\r').toLatin1().data());
+	// client is supposed to send it's facilities each start.
+	m_clientFacilities.clear();
+	return true;
+} // checkConnectRequest
+
+
 ////////////////////////////////////////////////////////////////////////////
 // Dispatcher for when something has arrived on the serial port.
 ////////////////////////////////////////////////////////////////////////////
@@ -422,20 +446,8 @@ void MainWindow::onDataAvailable()
 {
 	m_pendingBuffer.append(m_port.readAll());
 	if(not m_isConnected) {
-		if(m_pendingBuffer.contains("CONNECT")) {
-			m_pendingBuffer.clear();
-			Log("MAIN", success, "Now connected to Arduino.");
-			// give the client current date and time in the response string.
-			m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin) + '|' + QString::number(m_appSettings.clockPin)
-										+ '|' + QString::number(m_appSettings.dataPin) + '|' + QString::number(m_appSettings.resetPin) /*+ '|' + QString::number(m_appSettings.srqInPin)*/
-										+ '\r').toLatin1().data());
-			// Assume connected, maybe a real ack sequence is needed here from the client?
-			m_isConnected = true;
-			// client is supposed to send it's facilities each start.
-			m_clientFacilities.clear();
-		}
-		else // not yet connected, and no connect string so don't accept anything else now.
-			return;
+		checkConnectRequest();
+		return;
 	}
 
 	bool hasDataToProcess = !m_pendingBuffer.isEmpty();
@@ -519,12 +531,16 @@ void MainWindow::onDataAvailable()
 			break;
 
 		default:
-			// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
-			if(-1 not_eq crIndex)
-				m_pendingBuffer.remove(0, crIndex + 1);
-			else // got something, might be in middle of something and with no CR, just get out.
-				m_pendingBuffer.remove(0, 1);
-			//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
+			// See if it is a reconnection attempt.
+			if(!checkConnectRequest()) {
+				// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
+				if(-1 not_eq crIndex) {
+						m_pendingBuffer.remove(0, crIndex + 1);
+				}
+				else // got something, might be in middle of something and with no CR, just get out.
+					m_pendingBuffer.remove(0, 1);
+				//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
+			}
 			break;
 		}
 		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.
@@ -837,7 +853,7 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 	ui->nowMounted->setText(imagePath);
 	ui->imageDirList->clear();
 	m_imageDirListing.clear();
-	if(pFileSystem->sendListing(*this)) {
+	if(pFileSystem->supportsListing() and pFileSystem->sendListing(*this)) {
 		foreach(QString line, m_imageDirListing) {
 			QStringList lineInverses = line.split('\x12', QString::SkipEmptyParts);
 			bool rvs = false;

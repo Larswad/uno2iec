@@ -57,6 +57,29 @@ CBM::IOErrorMessage FileDriverBase::fopenWrite(const QString &fileName, bool rep
 } // fopenWrite
 
 
+bool FileDriverBase::fileExists(const QString &filePath)
+{
+	Q_UNUSED(filePath);
+	return false;
+} // fileExists
+
+
+CBM::IOErrorMessage FileDriverBase::renameFile(const QString& oldName, const QString& newName)
+{
+	Q_UNUSED(oldName);
+	Q_UNUSED(newName);
+	return CBM::ErrNotImplemented;
+} // renameFile
+
+
+CBM::IOErrorMessage FileDriverBase::copyFiles(const QStringList& sourceNames, const QString &destName)
+{
+	Q_UNUSED(sourceNames);
+	Q_UNUSED(destName);
+	return CBM::ErrNotImplemented;
+} // copyFiles
+
+
 // returns a character to the open file. If not overridden, returns always true. If implemented returns false on failure.
 bool FileDriverBase::putc(char c)
 {

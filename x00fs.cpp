@@ -1,5 +1,8 @@
 #include <QFileInfo>
 #include "x00fs.hpp"
+#include "logger.hpp"
+
+using namespace Logging;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -25,14 +28,25 @@ bool x00FS::fopen(const QString& fileName)
 	bool success = NativeFS::fopen(fileName);
 	if(success) {
 		// Check that file can read at least header amount of bytes and that the header indicates it actually is a *00 file.
-		if(m_hostFile.read((char*)&m_header, sizeof(m_header) < sizeof(m_header)) or QString::compare(QString(m_header.x00Magic), X00MAGIC_STR)) {
+		if(m_hostFile.read((char*)&m_header, sizeof(m_header)) not_eq sizeof(m_header) or QString::compare(QString(m_header.x00Magic), X00MAGIC_STR)) {
+			Log("X00FS", warning, QString("Couldn't open file %1, it is not of P00/R00/S00 format.").arg(fileName));
 			success = false;
 			closeHostFile();
 		}
+		else
+			Log("X00FS", warning, QString("Opened x00 file %1, original CBM name is: %2.").arg(fileName, m_header.originalFileName));
 	}
 
 	return success;
 } // fopen
+
+
+bool x00FS::close()
+{
+	NativeFS::close();
+	// Note: Should not keep mounted here since we're done. Fall back to native FS.
+	return false;
+} // close
 
 
 CBM::IOErrorMessage x00FS::fopenWrite(const QString& fileName, bool replaceMode)

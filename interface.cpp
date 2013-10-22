@@ -104,7 +104,7 @@ CBM::IOErrorMessage Interface::reset(bool informUnmount)
 	m_driveRAM.fill(0, CBM1541_RAM_SIZE);
 	m_via1MEM.fill(0, CBM1541_VIA1_SIZE);
 	m_via2MEM.fill(0, CBM1541_VIA2_SIZE);
-	if(informUnmount and m_currFileDriver != &m_native and 0 not_eq m_pListener)
+	if(informUnmount and 0 not_eq m_pListener)
 		m_pListener->imageUnmounted();
 	m_currFileDriver = &m_native;
 	m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
@@ -231,35 +231,14 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 		// whatever file system we have active, check if it supports media info.
 		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	}
-	// TODO: This following code is commented out here because it is not applicable on a PC/PI host really, at least not like the
-	// MMC2IEC having an ejected/unreadable SD card.
-	// However, some kind of sane check of FS might be suitable anyway...hmmm.
-	// What if the selected folder for the file/image directory on the native fs is not a valid one?
-	// That could be the corresponding handling here. Anyhow, What the user needs to do is issue the double arrow reset,
-	// to get out of it and retry.
-//	else if(!sdCardOK or !(fatGetStatus() bitand FAT_STATUS_OK)) {
-//		// User tries to open stuff and there is a problem. Status is fail
-//		m_queuedError = ErrDriveNotReady;
-//		m_currFileDriver = 0;
-//	}
 	else if(!cmd.isEmpty() and cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
 		m_openState = O_DIR;
 	else if(!cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
 		moveToParentOrNativeFS();
 	}
 	else {
-		// It was not any special command, remove eventual CBM dos prefix
-//		if(!cmd.isEmpty() and removeFilePrefix(cmd)) {
-//			// @ detected, this means save with replace:
-//			m_openState = O_SAVE_REPLACE;
-//			return;
-//		}
-			// open file depending on interface state
+		// open file depending on interface state
 		if(m_currFileDriver == &m_native) {
-			// Exchange 0xFF with tilde to allow shortened long filenames
-			// HMM: This is DOS "8.3" mumble jumble, we're on a linux/ntfs or something FS...will not work.
-			//				cmd.replace(QChar(0xFF), "~");
-
 			// Try if cd works, then try open as file and if none of these ok...then give up
 			if(m_native.setCurrentDirectory(cmd)) {
 				Log(FAC_IFACE, success, QString("Changed to native FS directory: %1").arg(cmd));
@@ -272,17 +251,23 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 			else if(m_native.openHostFile(cmd)) {
 				// File opened, investigate filetype
 				FileDriverList::const_iterator i;
-				for(i = m_fsList.constBegin(); i < m_fsList.constEnd(); ++i) {
+				bool fsFound = false;
+				foreach(FileDriverBase* fs, m_fsList) {
 					// if extension matches last three characters in any file system, then we set that filesystem into use.
-					if(!(*i)->extension().isEmpty() and cmd.endsWith((*i)->extension(), Qt::CaseInsensitive)) {
-						m_currFileDriver = *i;
-						break;
+					foreach(const QString& ext, fs->extension()) {
+						if(!ext.isEmpty() and cmd.endsWith(ext, Qt::CaseInsensitive)) {
+							m_currFileDriver = fs;
+							fsFound = true;
+							break;
+						}
 					}
+					if(fsFound)
+						break;
 				}
 				// did we have a match?
-				if(i not_eq m_fsList.end()) {
+				if(fsFound) {
 					m_native.closeHostFile();
-					Log(FAC_IFACE, info, QString("Trying image mount using driver: %1").arg(m_currFileDriver->extension()));
+					Log(FAC_IFACE, info, QString("Trying image mount using driver: %1").arg(m_currFileDriver->extFriendly()));
 					// file extension matches, change interface state
 					// call new format's reset
 					if(m_currFileDriver->openHostFile(cmd)) {
@@ -293,14 +278,14 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 							// otherwise we're in directory mode now on this selected file system image.
 							m_openState = O_DIR;
 							// Notify UI listener if attached.
-							if(0 not_eq m_pListener)
-								m_pListener->imageMounted(cmd, m_currFileDriver);
 						}
+						if(0 not_eq m_pListener)
+							m_pListener->imageMounted(cmd, m_currFileDriver);
 						Log(FAC_IFACE, success, QString("Mount OK of image: %1").arg(m_currFileDriver->openedFileName()));
 					}
 					else {
 						// Error initializing driver, back to native file system.
-						Log(FAC_IFACE, error, QString("Error initializing driver for FS.ext: %1. Going back to Native FS.").arg(m_currFileDriver->extension()));
+						Log(FAC_IFACE, error, QString("Error initializing driver for FS.ext: %1. Going back to Native FS.").arg(m_currFileDriver->extFriendly()));
 						m_currFileDriver = &m_native;
 						m_openState = O_FILE_ERR;
 						retCode = CBM::ErrDriveNotReady;
@@ -319,7 +304,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 		}
 		else if(0 not_eq m_currFileDriver) {
 			// Call file format's own open command
-			Log(FAC_IFACE, info, QString("Trying open FS file: %1 on FS: %2").arg(cmd).arg(m_currFileDriver->extension()));
+			Log(FAC_IFACE, info, QString("Trying open FS file: %1 on FS: %2").arg(cmd).arg(m_currFileDriver->extFriendly()));
 			if(m_currFileDriver->fopen(cmd))
 				m_openState = O_FILE;
 			else {// File not found
@@ -448,7 +433,11 @@ void Interface::processCloseCommand()
 	if(0 not_eq m_pListener) // notify UI listener of change.
 		m_pListener->fileClosed(name);
 	Log(FAC_IFACE, info, QString("Close: Returning last opened file name: %1").arg(name));
-	m_currFileDriver->close();
+	if(!m_currFileDriver->close()) {
+		m_currFileDriver = &m_native;
+		if(0 not_eq m_pListener)
+			m_pListener->imageUnmounted();
+	}
 	// FIXME: Maybe this should not be set to ok here, it is up to the last processRead/Write operation to set that?
 	// That is depending on whether reading failed or writing failed (e.g. full disk).
 	m_queuedError = CBM::ErrOK;
@@ -494,7 +483,8 @@ void Interface::processReadFileRequest(void)
 	QByteArray data;
 	uchar count;
 	bool atEOF = false;
-	for(count = 0; count < MAX_BYTES_PER_REQUEST and not atEOF; ++count) {
+	// NOTE: -2 because we need two bytes for the protocol.
+	for(count = 0; count < MAX_BYTES_PER_REQUEST - 2 and not atEOF; ++count) {
 		data.append(m_currFileDriver->getc());
 		atEOF = m_currFileDriver->isEOF();
 	}
@@ -560,7 +550,7 @@ void Interface::buildDirectoryOrMediaList()
 {
 	m_dirListing.clear();
 	if(O_DIR == m_openState) {
-		Log(FAC_IFACE, info, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extension()));
+		Log(FAC_IFACE, info, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extFriendly()));
 		if(!m_currFileDriver->sendListing(*this)) {
 			m_queuedError = CBM::ErrDirectoryError;
 			Log(FAC_IFACE, warning, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())));
@@ -571,7 +561,7 @@ void Interface::buildDirectoryOrMediaList()
 		}
 	}
 	else if(O_INFO == m_openState) {
-		Log(FAC_IFACE, info, QString("Producing media info for FS: \"%1\"...").arg(m_currFileDriver->extension()));
+		Log(FAC_IFACE, info, QString("Producing media info for FS: \"%1\"...").arg(m_currFileDriver->extFriendly()));
 		if(!m_currFileDriver->sendMediaInfo(*this)) {
 			Log(FAC_IFACE, warning, QString("Media info listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())));
 			m_queuedError = CBM::ErrDirectoryError;

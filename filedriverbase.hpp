@@ -2,6 +2,7 @@
 #define FILEDRIVERBASE_HPP
 
 #include <QString>
+#include <QStringList>
 #include <QFile>
 #include "uno2iec/cbmdefines.h"
 
@@ -29,11 +30,14 @@ public:
 	virtual ~FileDriverBase();
 
 	// The three letter extension this file format represents (DOS style) Empty string returned means 'any' and is in default fs mode.
-	virtual const QString& extension() const = 0;
+	virtual const QStringList& extension() const = 0;
+	virtual const QString extFriendly()
+	{
+		return extension().join(QChar('|'));
+	}
 	// method below performs init of the driver with the given ATN command string.
 	virtual bool openHostFile(const QString& fileName) = 0;
 	virtual void closeHostFile() = 0;
-
 	// returns true if the file system supports directory listing (t64 for instance doesn't).
 	virtual bool supportsListing() const;
 	// Send realistic $ file basic listing, line by line (returning false means there was some error, but that there is a listing anyway).
@@ -53,7 +57,13 @@ public:
 	virtual const QString openedFileName() const = 0;
 	// return the file size of the last opened file.
 	virtual ushort openedFileSize() const = 0;
-	// Delete a file in the image/file system by filename: True if successful, false if not supported or error.
+	// check if a file exists with the given path/name on the file system.
+	virtual bool fileExists(const QString& filePath);
+	// Rename a file in the image/file system: Returns CBM status of success or failure.
+	virtual CBM::IOErrorMessage renameFile(const QString& oldName, const QString& newName);
+	// Copy one or more file(s) to one destination file. If several source files they are concatenated in specified order.
+	virtual CBM::IOErrorMessage copyFiles(const QStringList& sourceNames, const QString& destName);
+	// Delete a file in the image/file system: True if successful, false if not supported or error.
 	virtual bool deleteFile(const QString& fileName);
 	// returns a character from the open file. Should always be supported in order to make implementation make any sense.
 	virtual char getc() = 0;
@@ -63,6 +73,7 @@ public:
 	// write char to open file, returns false if failure
 	virtual bool putc(char c);
 	// closes the open file. Should always be supported in order to make implementation make any sense.
+	// If returning false here it indicates the filesystem is ready and should move back to native file system.
 	virtual bool close() = 0;
 
 	// Current status of operation.

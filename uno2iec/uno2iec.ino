@@ -16,7 +16,7 @@ static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 // Pin 13 has a LED connected on most Arduino boards.
 const byte ledPort = 13;
 const byte numBlinks = 4;
-const char connectionString[] = "CONNECT\r";
+const char connectionString[] = "connect\r";
 const char okString[] = "OK>";
 
 

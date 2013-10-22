@@ -23,14 +23,25 @@ public:
 	virtual ~x00FS() {}
 
 	// TODO: The extension returned should be a QStringList since we support more than one extension here.
-	const QString& extension() const
+	const QStringList& extension() const
 	{
-		static const QString ext("P00");
+		static const QStringList ext( { "P00", "R00", "S00" } );
 		return ext;
 	} // extension
 
+	bool supportsListing() const
+	{
+		return false;
+	}
+
+	bool supportsMediaInfo() const
+	{
+		return false;
+	}
+
 	void closeHostFile();
 	bool fopen(const QString& fileName);
+	bool close();
 	CBM::IOErrorMessage fopenWrite(const QString& fileName, bool replaceMode);
 	// TODO: SHOULD we override the NativsFS sendListing to CBM here, listing only the originalFileName as output?
 

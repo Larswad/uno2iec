@@ -10,9 +10,9 @@ public:
 	virtual ~NativeFS()
 	{}
 
-	const QString& extension() const
+	const QStringList& extension() const
 	{
-		static const QString ext;
+		static const QStringList ext;
 		return ext;
 	} // extension
 
@@ -43,6 +43,9 @@ public:
 
 	const QString openedFileName() const;
 	ushort openedFileSize() const;
+	bool fileExists(const QString &filePath);
+	CBM::IOErrorMessage renameFile(const QString& oldName, const QString& newName);
+	bool deleteFile(const QString& fileName);
 	char getc();
 	bool isEOF() const;
 	bool putc(char c);

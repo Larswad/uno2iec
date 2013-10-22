@@ -89,8 +89,11 @@ public:
 	// Find and execute the given command.
 	static CBM::IOErrorMessage execute(const QString& cmdString, Interface& iface)
 	{
-		QString params;
-		Command* dosCmd = find(cmdString, params);
+		QString params, stripped(cmdString);
+		// Strip of trailing whitespace (in fact, CR for e.g. OPEN 1,8,15,"I:" which generates a CR.
+		while(stripped.endsWith(QChar('\r')) or stripped.endsWith(QChar(' ')))
+					stripped.chop(1);
+		Command* dosCmd = find(stripped, params);
 		if(0 not_eq dosCmd)
 			return dosCmd->process(params, iface);
 
@@ -99,7 +102,12 @@ public:
 
 
 protected:
+	// Helpers
 	virtual void attachMe() {}
+	static bool isIllegalCBMName(const QString& name)
+	{
+		return name.indexOf(QRegExp("m[=\"*?,]"));
+	}
 
 private:
 	static CommandList s_attached;

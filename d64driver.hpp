@@ -37,9 +37,9 @@ public:
 	D64(const QString& fileName = QString());
 	virtual ~D64();
 
-	const QString& extension() const
+	const QStringList& extension() const
 	{
-		static const QString ext("D64");
+		static const QStringList ext({ "D64" });
 		return ext;
 	} // extension
 

@@ -31,7 +31,7 @@ T64::T64(const QString& fileName)
 	:  FileDriverBase(), m_hostFile(fileName), m_dirEntries(0), m_dirEntry(0),
 		m_fileOffset(0), m_fileLength(0)
 {
-	if(!fileName.isEmpty())
+	if(not fileName.isEmpty())
 		openHostFile(fileName);
 } // dtor
 
@@ -77,7 +77,7 @@ bool T64::openHostFile(const QString& fileName)
 
 void T64::closeHostFile()
 {
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	// Reset status
 	m_status = NOT_READY;
@@ -117,7 +117,7 @@ void T64::seekToTapeName(void)
 
 bool T64::isEOF(void) const
 {
-	return !(m_status bitand IMAGE_OK) or !(m_status bitand FILE_OPEN)
+	return not (m_status bitand IMAGE_OK) or not (m_status bitand FILE_OPEN)
 			or (m_status bitand FILE_EOF);
 } // isEOF
 
@@ -129,7 +129,7 @@ char T64::getc(void)
 	uchar ret = 0;
 
 	// Check status
-	if(!isEOF()) {
+	if(not isEOF()) {
 
 		// Either give the first two address bytes, or load from file
 		if(m_fileOffset == OFFSET_PRE1) {
@@ -215,7 +215,7 @@ bool T64::fopen(const QString& fileName)
 
 	seekFirstDir();
 
-	while(!found and getDirEntry(dir)) {
+	while(not found and getDirEntry(dir)) {
 		// Acceptable filetype?
 		if(0 not_eq dir.c64sFileType and 0 not_eq dir.d64FileType) {
 			// Compare filename respecting * and ? wildcards

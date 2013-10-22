@@ -63,7 +63,6 @@ public:
 		void appendLevelAndFacility(Logging::LogLevelE level, const QString& levelFacility);
 		void appendMessage(const QString& msg);
 
-
 private slots:
 				void onDirListColorSelected(QAction *pAction);
 				void onCbmMachineSelected(QAction *pAction);
@@ -86,6 +85,7 @@ private slots:
 				void on_dirList_doubleClicked(const QModelIndex &index);
 
 private:
+		bool checkConnectRequest();
 		void enumerateComPorts();
 		void usePortByFriendlyName(const QString &friendlyName);
 		void processDebug(const QString &str);

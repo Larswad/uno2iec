@@ -31,7 +31,7 @@ bool NativeFS::openHostFile(const QString& fileName)
 
 void NativeFS::closeHostFile()
 {
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	m_status = NOT_READY;
 } // closeHostFile
@@ -52,7 +52,7 @@ CBM::IOErrorMessage NativeFS::fopenWrite(const QString &fileName, bool replaceMo
 {
 	closeHostFile();
 	m_hostFile.setFileName(fileName);
-	if(m_hostFile.exists() and !replaceMode)
+	if(m_hostFile.exists() and not replaceMode)
 		return CBM::ErrFileExists;
 	bool success = m_hostFile.open(QIODevice::WriteOnly);
 	m_status = success ? FILE_OPEN : NOT_READY;
@@ -93,6 +93,24 @@ ushort NativeFS::openedFileSize() const
 {
 	return m_hostFile.size();
 } // openedFileSize
+
+
+bool NativeFS::fileExists(const QString &filePath)
+{
+	return QFile::exists(filePath);
+} // fileExists
+
+
+CBM::IOErrorMessage NativeFS::renameFile(const QString &oldName, const QString &newName)
+{
+	return QFile::rename(oldName, newName) ? CBM::ErrOK : CBM::ErrFileNotFound;
+} // renameFile
+
+
+bool NativeFS::deleteFile(const QString &fileName)
+{
+	return QFile::remove(fileName);
+} // deleteFile
 
 
 bool NativeFS::isEOF() const
@@ -149,7 +167,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 		bitor (m_listDirectories ? QDir::AllDirs : QDir::Files), QDir::Name bitor QDir::DirsFirst));
 
 	Log("NATIVEFS", info, QString("Listing %1 entrie(s) to CBM.").arg(QString::number(list.count())));
-	while(!list.isEmpty()) {
+	while(not list.isEmpty()) {
 		QFileInfo entry = list.first();
 		list.removeFirst();
 		line = "   \"";

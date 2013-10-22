@@ -80,17 +80,69 @@ CBM::IOErrorMessage Scratch::process(const QString &params, Interface &iface)
 
 CBM::IOErrorMessage RenameFile::process(const QString& params, Interface& iface)
 {
-	Q_UNUSED(params);
-	Q_UNUSED(iface);
-	return CBM::ErrNotImplemented;
+	const QStringList names(params.split(QChar('=')));
+
+	// old name and new name must be present, no more no less.
+	if(2 not_eq names.count())
+			return CBM::ErrSyntaxError;
+
+	const QString oldName(names[0]);
+	const QString newName(names[1]);
+
+	// None of the names may be empty.
+	if(oldName.isEmpty() or newName.isEmpty())
+		return CBM::ErrNoFileGiven;
+
+	// Check for any illegal characters. This is VERY platform specific for the native file systems, and only the real
+	// rename will tell if this succeeds or not. But we may precheck in same way as sd2iec.
+	if(isIllegalCBMName(newName))
+		return CBM::ErrSyntaxError;
+
+	// The new file must NOT already exist.
+	if(iface.currentFileDriver()->fileExists(newName))
+		return CBM::ErrFileExists;
+	// Check if old file exists.
+	if(!iface.currentFileDriver()->fileExists(oldName))
+		return CBM::ErrFileNotFound;
+
+	// NOTE: Need to check here whether the file is renamed across paths or not?
+
+	Log(FACDOS, info, QString("About to rename file: %1 to %2").arg(oldName, newName));
+
+	// Let the current file system decide whether it goes well by doing the rename operation.
+	return iface.currentFileDriver()->renameFile(oldName, newName);
 } // RenameFile
 
 
 CBM::IOErrorMessage CopyFiles::process(const QString& params, Interface& iface)
 {
-	Q_UNUSED(params);
-	Q_UNUSED(iface);
-	return CBM::ErrNotImplemented;
+	const QStringList paramList(params.split(QChar('=')));
+	// destination name and source name(s) parameters must be present, no more no less.
+	if(2 not_eq paramList.count())
+			return CBM::ErrSyntaxError;
+	const QString destName(paramList[0]);
+	// destination name must not be empty it they must have legal characters.
+	if(destName.isEmpty())
+		return CBM::ErrNoFileGiven;
+	if(isIllegalCBMName(destName))
+		return CBM::ErrSyntaxError;
+
+	// check availability and validity of source file name(s).
+	const QStringList sourceList(paramList[1].split(QChar(',')));
+	foreach(const QString& srcName, sourceList) {
+		if(srcName.isEmpty())
+			return CBM::ErrNoFileGiven;
+		if(isIllegalCBMName(srcName))
+			return CBM::ErrSyntaxError;
+	}
+	// The destination file must NOT already exist.
+	if(iface.currentFileDriver()->fileExists(destName))
+		return CBM::ErrFileExists;
+
+	Log(FACDOS, info, QString("About to copy file(s): %1 to %2").arg(paramList[1], destName));
+
+	// It is up to the specific file system to do the copy and rest of validation for what file type(s) are possible to concatenate.
+	return iface.currentFileDriver()->copyFiles(sourceList, destName);
 } // CopyFiles
 
 

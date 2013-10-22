@@ -177,7 +177,7 @@ void D64::seekBlock(uchar track, uchar sector)
 
 bool D64::isEOF(void) const
 {
-	return !(m_status bitand IMAGE_OK) or !(m_status bitand FILE_OPEN)
+	return not(m_status bitand IMAGE_OK) or not(m_status bitand FILE_OPEN)
 			or (m_status bitand FILE_EOF);
 } // isEOF
 

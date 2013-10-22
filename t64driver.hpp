@@ -11,9 +11,9 @@ public:
 	T64(const QString& fileName = QString());
 	virtual ~T64();
 
-	const QString& extension() const
+	const QStringList& extension() const
 	{
-		static const QString ext("T64");
+		static const QStringList ext({ "T64" });
 		return ext;
 	} // extension
 

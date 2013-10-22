@@ -25,7 +25,6 @@
 
 #include <string.h>
 #include <QTextStream>
-#include <QStringList>
 #include "m2idriver.hpp"
 
 
