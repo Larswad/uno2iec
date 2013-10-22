@@ -52,7 +52,7 @@ public:
 
 	FSStatus status() const;
 	bool setCurrentDirectory(const QString& dir);
-private:
+protected:
 	// File to open, either as for checking its existance before trying another FS, or for reading .PRG native files.
 	QFile m_hostFile;
 

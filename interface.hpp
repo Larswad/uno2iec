@@ -8,6 +8,7 @@
 #include "d64driver.hpp"
 #include "t64driver.hpp"
 #include "m2idriver.hpp"
+#include "x00fs.hpp"
 #include "nativefs.hpp"
 
 typedef QList<FileDriverBase*> FileDriverList;
@@ -80,6 +81,8 @@ private:
 	D64 m_d64;
 	T64 m_t64;
 	M2I m_m2i;
+	x00FS m_x00fs;
+
 	NativeFS m_native; // In fact, this is .PRG
 
 	FileDriverList m_fsList;

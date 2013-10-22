@@ -20,7 +20,7 @@ public:
 	bool sendListing(ISendLine& cb);
 
 	// command channel command
-	uchar cmd(char *s);
+	uchar cmd(char* s);
 
 	bool fopen(const QString& fileName);
 	CBM::IOErrorMessage fopenWrite(const QString& fileName, bool replaceMode = false);
@@ -43,19 +43,30 @@ public:
 
 
 	bool remove(char* fileName);
-	bool rename(char *oldName, char *newName);
+	bool rename(char* oldName, char* newName);
 
 private:
 	bool readFirstLine(QString* dest = 0);
-	uchar parseLine(QString *dosName, QString *cbmName);
-	bool createFile(char *fileName);
+	uchar parseLine(QString* dosName, QString *cbmName);
+	bool createFile(char* fileName);
+	bool seekFile(QString* dosName, QString& dirName, const QString& seekName, bool doOpen);
 
-	bool seekFile(QString *dosName, QString &dirName, const QString &seekName,
-								bool doOpen);
+
+	struct FileEntry {
+		enum Type {
+			TypePrg,
+			TypeDel,
+			TypeErased
+		};
+		QString nativeName; // 12 chars (8.3 format)
+		QString cbmName;		// 16 chars
+	};
+	typedef QList<FileEntry> EntryList;
+	QString m_diskTitle; // 16 chars
+	EntryList m_entries;
 
 	// The real host file system M2I file:
 	QFile m_hostFile;
-
 };
 
 #endif

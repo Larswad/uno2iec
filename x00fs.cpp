@@ -1,49 +1,60 @@
+#include <QFileInfo>
 #include "x00fs.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// P00 file format implementation
-//
-/* TODO: Move as P00 format to PI, recode.
-bool P00_reset(char *s)
+// X00 (P00,S00,R00) file format implementation
+// Reusing most of native format, only overrides opening to handle the file header.
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+ const QString X00MAGIC_STR("C64File");
+}
+
+
+void x00FS::closeHostFile()
 {
-	byte i;
+	NativeFS::closeHostFile();
+	// Leave no junk in header when closing file (will be done before open as well.)
+	memset(&m_header, 1, sizeof(m_header));
+} // closeHostFile
 
-	// Check filetype, and skip past 26 bytes
-	// Actually, compare here for string 'C64File' not only 'C64'.
-	if((fatFgetc() == 'C') and (fatFgetc() == '6') and (fatFgetc() == '4')) {
 
-		for(i = 0; i < 23; i++)
-			fatFgetc();
-
-		if(!fatFeof())
-			// All is ok
-			return true;
+bool x00FS::fopen(const QString& fileName)
+{
+	bool success = NativeFS::fopen(fileName);
+	if(success) {
+		// Check that file can read at least header amount of bytes and that the header indicates it actually is a *00 file.
+		if(m_hostFile.read((char*)&m_header, sizeof(m_header) < sizeof(m_header)) or QString::compare(QString(m_header.x00Magic), X00MAGIC_STR)) {
+			success = false;
+			closeHostFile();
+		}
 	}
 
-	return false;
-} // P00_reset
-*/
+	return success;
+} // fopen
 
-/* TODO: Move as P00 format to PI, recode.
-bool close_to_fat(void)
+
+CBM::IOErrorMessage x00FS::fopenWrite(const QString& fileName, bool replaceMode)
 {
-	// Close and back to fat
-	m_interfaceState = IS_NATIVE;
-	fatFclose();
-	return true;
-} // close_to_fat
-*/
+	CBM::IOErrorMessage retCode = NativeFS::fopenWrite(fileName, replaceMode);
+	if(CBM::ErrOK == retCode) {
+		// We must write the header before anything else.
+		strcpy((char*)m_header.x00Magic, X00MAGIC_STR.toLocal8Bit().data());
+		// Use the given filename stripped of path and trimmed down in size for original CBM file name.
+		QFileInfo fi(fileName);
+		QString originalName(fi.baseName());
+		originalName.truncate(sizeof(m_header.originalFileName));
+		strcpy((char*)m_header.originalFileName, originalName.toLocal8Bit().data());
+
+		// write header.
+		m_hostFile.write((char*)&m_header, sizeof(m_header));
+		// We are now standing at position ready for actual file content to be written.
+	}
+	return retCode;
+} // fopenWrite
 
 
 x00FS::x00FS()
 {
 } // ctor
-
-
-bool x00FS::putc(char c)
-{
-	Q_UNUSED(c);
-	// not supported, as of now.
-	return false;
-}

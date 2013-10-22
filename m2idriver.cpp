@@ -1,11 +1,3 @@
-//
-// Title        : M2IDRIVER
-// Author       : Lars Pontoppidan
-// Date         : May. 2007
-// Version      : 0.1
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-//
 // DESCRIPTION:
 // This module implements support for the file format with extension .m2i
 // With an .m2i file, it is possible to mimic an unlimited size diskette with
@@ -32,6 +24,8 @@
 //
 
 #include <string.h>
+#include <QTextStream>
+#include <QStringList>
 #include "m2idriver.hpp"
 
 
@@ -44,6 +38,7 @@ const QString strDEL("DEL");
 const QString strID(" M2I");
 const QString strDotPRG(".PRG\0");
 const QString strDotM2I(".M2I\0");
+const int TITLE_SIZE = 16;
 }
 
 
@@ -58,8 +53,37 @@ bool M2I::openHostFile(const QString& fileName)
 	if(!m_hostFile.open(QIODevice::ReadOnly))
 		return false;
 
+	QTextStream in(&m_hostFile);
+	bool isFirst = true;
+	bool success = true;
+	while(not in.atEnd() and success) {
+		QString line(in.readLine());
+		if(not line.endsWith("\r\n"))
+			 success = false;
+		else {
+			line = line.trimmed();
+			if(isFirst) {
+				isFirst = false;
+				if(line.length() > TITLE_SIZE)
+					success = false;
+				else
+					m_diskTitle = line;
+			}
+			else {
+				QStringList params(line.split(QChar(':')));
+				if(3 == params.size()) {
+					// TODO: Parse and check the header parameters here!
+					FileEntry fe;
+				}
+				else
+					success = false;
+			}
+		}
+	}
+	m_hostFile.close();
+
 	// We accept m2i file if first line is OK:
-	return readFirstLine();
+	return success;
 } // openHostFile
 
 

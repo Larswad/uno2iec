@@ -51,7 +51,8 @@ SOURCES += main.cpp\
     x00fs.cpp \
     aboutdialog.cpp \
     settingsdialog.cpp \
-    doscommands.cpp
+    doscommands.cpp \
+    x64driver.cpp
 
 HEADERS += mainwindow.hpp \
     t64driver.hpp \
@@ -67,7 +68,8 @@ HEADERS += mainwindow.hpp \
     settingsdialog.hpp \
     dirlistthemingconsts.hpp \
     doscommands.hpp \
-    uno2iec/cbmdefines.h
+    uno2iec/cbmdefines.h \
+    x64driver.hpp
 
 FORMS += mainwindow.ui \
     aboutdialog.ui \

@@ -73,6 +73,7 @@ Interface::Interface(QextSerialPort& port)
 	m_fsList.append(&m_d64);
 	m_fsList.append(&m_t64);
 	m_fsList.append(&m_m2i);
+	m_fsList.append(&m_x00fs);
 
 	QFile romFile(":/roms/rom_1541");
 	bool success = romFile.open(QIODevice::ReadOnly);

@@ -1,5 +1,7 @@
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
 // TODO: Finalize x00fs handling (P00, S00, R00)
+// TODO: Support x64 format.
+// TODO: Support ZIP archives. Use "osdab" library for zip handling: https://code.google.com/p/osdab/downloads/detail?name=OSDaB-Zip-20130623.tar.bz2&can=2&q=
 // TODO: Finalize Native FS routines.
 // TODO: Finalize ALL doscommands (pretty huge job!)
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
@@ -13,7 +15,6 @@
 // TODO: When a file/directory is attempted for loading or saving and this fails for some reason this isn't reflected on the dirlist view.
 // TODO: When executing the command channel this isn't reflected on the dirlist view.
 // TODO: Native/D64/T64: Show true blocks free. Will be nice with all the space available on a harddisk or network share!
-
 
 #include <QString>
 #include <QFileDialog>
