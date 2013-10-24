@@ -46,12 +46,12 @@ int main(int argc, char *argv[])
 	// Configure our "looks". Take the most preferred one, but take into accout what may exist on this platform.
 	foreach(QString style, QStyleFactory::keys())
 		qDebug() << "style: " << style;
-
-	if(QStyleFactory::keys().contains("WindowsXP"))
-		a.setStyle(QStyleFactory::create("WindowsXP"));
-	else
-		a.setStyle(QStyleFactory::create("Fusion"));
-
+	QStringList preferredStyles({ "WindowsXP", "Fusion", "CleanLooks", "Windows"});
+	foreach(const QString& style, preferredStyles)
+		if(QStyleFactory::keys().contains(style)) {
+			a.setStyle(QStyleFactory::create(style));
+			break;
+		}
 	addEmbeddedFonts();
 
 	MainWindow w;
