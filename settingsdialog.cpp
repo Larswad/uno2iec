@@ -9,13 +9,13 @@ SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings &settings, Q
 	foreach(QextPortInfo info, ports)
 		ui->comPort->addItem(info.friendName);
 
-	ui->comPort->setCurrentText(m_settings.portName);
-	ui->baudRate->setCurrentText(QString::number(m_settings.baudRate));
-	ui->deviceNumber->setCurrentText(QString::number(m_settings.deviceNumber));
-	ui->atnPin->setCurrentText(QString::number(m_settings.atnPin));
-	ui->dataPin->setCurrentText(QString::number(m_settings.dataPin));
-	ui->clockPin->setCurrentText(QString::number(m_settings.clockPin));
-	ui->resetPin->setCurrentText(QString::number(m_settings.resetPin));
+	ui->comPort->setCurrentIndex(ui->comPort->findText(m_settings.portName));
+	ui->baudRate->setCurrentIndex(ui->baudRate->findText(QString::number(m_settings.baudRate)));
+	ui->deviceNumber->setCurrentIndex(ui->deviceNumber->findText(QString::number(m_settings.deviceNumber)));
+	ui->atnPin->setCurrentIndex(ui->atnPin->findText(QString::number(m_settings.atnPin)));
+	ui->dataPin->setCurrentIndex(ui->dataPin->findText(QString::number(m_settings.dataPin)));
+	ui->clockPin->setCurrentIndex(ui->clockPin->findText(QString::number(m_settings.clockPin)));
+	ui->resetPin->setCurrentIndex(ui->resetPin->findText(QString::number(m_settings.resetPin)));
 	ui->imageFilters->setText(m_settings.imageFilters);
 	ui->showDirs->setChecked(m_settings.showDirectories);
 } // ctor
