@@ -63,7 +63,7 @@ CBM::IOErrorMessage NativeFS::fopenWrite(const QString &fileName, bool replaceMo
 	if(success)
 		retCode = CBM::ErrOK;
 	else {
-		if(m_hostFile.error() == QFileDevice::PermissionsError or m_hostFile.error() == QFileDevice::OpenError)
+		if(m_hostFile.error() == QFile::PermissionsError or m_hostFile.error() == QFile::OpenError)
 			retCode = CBM::ErrWriteProtectOn;
 		else
 			retCode = CBM::ErrFileNotOpen;
