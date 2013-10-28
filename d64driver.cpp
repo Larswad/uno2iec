@@ -1,30 +1,3 @@
-//
-// Title        : D64DRIVER
-// Author       : Lars Pontoppidan
-// Date         : Jan. 2007
-// Version      : 0.5
-// Target MCU   : AtMega32(L) at 8 MHz
-//
-// CREDITS:
-// --------
-// This D64DRIVER module is inspired from code in Jan Derogee's 1541-III project
-// for PIC: http://jderogee.tripod.com/
-// This code is a complete reimplementation though.
-//
-// DESCRIPTION:
-// This module works on top of the native file system, providing access to files
-// in a D64 disk image.
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
-
-//#include <string.h>
 #include "d64driver.hpp"
 #include "logger.hpp"
 
@@ -381,7 +354,7 @@ bool D64::fopen(const QString& fileName)
 
 	if(found) {
 		// File found. Jump to block and set correct state
-		seekBlock(m_currDirEntry.m_track, m_currDirEntry.m_sector);
+		seekBlock(m_currDirEntry.track(), m_currDirEntry.sector());
 		m_status = (FSStatus)(IMAGE_OK bitor FILE_OPEN);
 		m_lastName = fileName;
 	}
@@ -548,7 +521,7 @@ uchar D64::DirEntry::sector() const
 } // getSector
 
 /**
- * sectosPerTrack - number of sectors on given track
+ * sectorsPerTrack - number of sectors on given track
  * @track: Track number
  *
  * Returns the number of sectors on the given track

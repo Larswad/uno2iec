@@ -42,30 +42,28 @@ public:
 	uchar newDisk(char* diskName);
 
 
-	bool remove(char* fileName);
+	bool deleteFile(const QString& fileName);
 	bool rename(char* oldName, char* newName);
 
 private:
-	bool readFirstLine(QString* dest = 0);
-	uchar parseLine(QString* dosName, QString *cbmName);
-	bool createFile(char* fileName);
-	bool seekFile(QString* dosName, QString& dirName, const QString& seekName, bool doOpen);
-
-
 	struct FileEntry {
 		enum Type {
 			TypePrg,
 			TypeDel,
 			TypeErased
-		};
-		QString nativeName; // 12 chars (8.3 format)
-		QString cbmName;		// 16 chars
+		} fileType;
+		QString nativeName; // 12 chars (8.3 format) padded with spaces
+		QString cbmName;		// 16 chars padded with spaces.
 	};
 	typedef QList<FileEntry> EntryList;
+
+	bool createFile(char* fileName);
+	bool findEntry(const QString& findName, FileEntry& entry) const;
+	const QString generateFile();
+
 	QString m_diskTitle; // 16 chars
 	EntryList m_entries;
-
-	// The real host file system M2I file:
+	// The real host file system M2I index file, OR the currently opened commodore file in the M2I index:
 	QFile m_hostFile;
 };
 

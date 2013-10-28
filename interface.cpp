@@ -449,7 +449,8 @@ void Interface::processGetOpenFileSize()
 	ushort size = m_currFileDriver->openedFileSize();
 
 	QByteArray data;
-	data.append('S').append(size >> 8).append(size bitand 0xff);
+	uchar high = size >> 8, low = size bitand 0xff;
+	data.append('S').append((char)high).append((char)low);
 	m_port.write(data.data(), data.size());
 	m_port.flush();
 	Log(FAC_IFACE, info, QString("GetOpenFileSize: Returning file size: %1").arg(QString::number(size)));
@@ -488,6 +489,8 @@ void Interface::processReadFileRequest(void)
 		data.append(m_currFileDriver->getc());
 		atEOF = m_currFileDriver->isEOF();
 	}
+	if(0 not_eq m_pListener)
+		m_pListener->bytesRead(data.size());
 	// prepend whatever count we got.
 	data.prepend(count);
 	// If we reached end of file, head byte in answer indicates with 'E' instead of 'B'.
@@ -495,8 +498,6 @@ void Interface::processReadFileRequest(void)
 
 	m_port.write(data.data(), data.size());
 	m_port.flush();
-	if(0 not_eq m_pListener)
-		m_pListener->bytesRead(data.size());
 } // processReadFileRequest
 
 

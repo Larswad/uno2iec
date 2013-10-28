@@ -1,7 +1,7 @@
 // DESCRIPTION:
 // This module implements support for the file format with extension .m2i
 // With an .m2i file, it is possible to mimic an unlimited size diskette with
-// read/write support and realistic filenames, while actually using FAT files.
+// read/write support and realistic filenames, while actually using nativs file system ("FAT") files.
 //
 // .m2i format:
 //
@@ -13,35 +13,29 @@
 // file types: P means prg file
 //             D means del file
 //             - means deleted file
-//
-// DISCLAIMER:
-// The author is in no way responsible for any problems or damage caused by
-// using this code. Use at your own risk.
-//
-// LICENSE:
-// This code is distributed under the GNU Public License
-// which can be found at http://www.gnu.org/licenses/gpl.txt
-//
 
 #include <string.h>
 #include <QTextStream>
 #include "m2idriver.hpp"
+#include "logger.hpp"
 
+using namespace Logging;
 
 // Local vars, driver state:
 
 namespace {
-const QString strError1("M2I FILE ERROR");
+const QString strM2IError("M2I FILE ERROR");
 const QString strPRG("PRG");
 const QString strDEL("DEL");
 const QString strID(" M2I");
 const QString strDotPRG(".PRG\0");
 const QString strDotM2I(".M2I\0");
 const int TITLE_SIZE = 16;
+const int NATIVENAME_SIZE = 12;
+const int CBMNAME_SIZE = 16;
 }
 
 
-// method below performs init of the driver with the given ATN command string.
 bool M2I::openHostFile(const QString& fileName)
 {
 	closeHostFile();
@@ -55,39 +49,84 @@ bool M2I::openHostFile(const QString& fileName)
 	QTextStream in(&m_hostFile);
 	bool isFirst = true;
 	bool success = true;
+	int lineNbr = 1;
+	// Parse file.
 	while(not in.atEnd() and success) {
 		QString line(in.readLine());
-		if(not line.endsWith("\r\n"))
-			 success = false;
-		else {
-			line = line.trimmed();
-			if(isFirst) {
-				isFirst = false;
-				if(line.length() > TITLE_SIZE)
-					success = false;
-				else
-					m_diskTitle = line;
-			}
-			else {
-				QStringList params(line.split(QChar(':')));
-				if(3 == params.size()) {
-					// TODO: Parse and check the header parameters here!
-					FileEntry fe;
-				}
-				else
-					success = false;
-			}
+		if(not line.endsWith("\r\n")) {
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, disk title too long.").arg(fileName, QString::number(lineNbr)));
+			success = false;
+			continue;
 		}
-	}
+		// TODO: Not trim ALL whites here, only the ending \r\n
+		line = line.trimmed();
+		// first line is disk title, process separately.
+		if(isFirst) {
+			isFirst = false;
+			if(line.length() > TITLE_SIZE) {
+				Log("M2I", error, QString("Parsing file %1 at line %2 failed, disk title too long.").arg(fileName, QString::number(lineNbr)));
+				success = false;
+			}
+			else
+				m_diskTitle = line;
+			continue;
+		}
+		QStringList params(line.split(QChar(':')));
+		if(3 not_eq params.size()) {
+			Log("M2I", error, QString("Parsing file %1 at lein %2 failed, more than 3 columns.").arg(fileName, QString::number(lineNbr)));
+			success = false;
+			continue;
+		}
+		FileEntry fe;
+		QString strColumn(params.takeFirst());
+		if(1 not_eq strColumn.length()) {
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, file type not of single character.").arg(fileName, QString::number(lineNbr)));
+			success = false;
+			continue;
+		}
+		switch(strColumn[0].toUpper().toLatin1()) {
+			case 'P':
+				fe.fileType = FileEntry::TypePrg;
+				break;
+			case 'D':
+				fe.fileType = FileEntry::TypeDel;
+				break;
+			case '-':
+				fe.fileType = FileEntry::TypeErased;
+				break;
+			default:
+				success = false;
+				Log("M2I", error, QString("Parsing file %1 at line %2 failed, illegal file type: '%3'").arg(fileName, QString::number(lineNbr), strColumn));
+				break;
+		}
+		if(not success)
+			continue;
+		fe.nativeName = params.takeFirst();
+		// Being strict: we stick to DOS 8.3 length, no more than that.
+		if(fe.nativeName.length() > 12) {
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, '%3' not DOS 8.3 length (max 12 chars)").arg(fileName, QString::number(lineNbr), fe.nativeName));
+			success = false;
+			continue;
+		}
+		fe.cbmName = params.takeFirst();
+		// Being strict: CBM name not longer than 16 chars.
+		if(fe.cbmName.length() <= 16)
+			m_entries.append(fe);
+		else {
+			success = false;
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, '%3' not CBM length (max 16 chars)").arg(fileName, QString::number(lineNbr), fe.cbmName));
+		}
+		++lineNbr;
+	} // while
 	m_hostFile.close();
-
-	// We accept m2i file if first line is OK:
+	m_status = success ? IMAGE_OK : NOT_READY;
 	return success;
 } // openHostFile
 
 
 void M2I::closeHostFile()
 {
+	m_entries.clear();
 	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	m_status = NOT_READY;
@@ -96,27 +135,19 @@ void M2I::closeHostFile()
 
 bool M2I::sendListing(ISendLine &cb)
 {
-	m_status = NOT_READY;
-	 // disk title
-	QString parsed;
-	// Reseek from beginning of M2I.
-	if(!m_hostFile.seek(0) or !readFirstLine(&parsed)) {
-		cb.send(0, strError1);
+	if(not (m_status bitand IMAGE_OK)) {
+		// We are not happy with the m2i file
+		cb.send(0, strM2IError);
 		return false;
 	}
 
 	// First line is disk title
-	QString line = QString("\x12\x22%1\x22%2").arg(parsed, strID);
-	cb.send(0, line);
+	cb.send(0, QString("\x12\x22%1\x22%2").arg(m_diskTitle, strID));
 
-	while(!m_hostFile.atEnd()) {
-		// Write lines
-		uchar ftype(parseLine(0, &parsed));
-
-		if('P' == ftype or 'D' == ftype) {
-			line = QString("  \x22%1\x22 %2").arg(parsed, 'p' == ftype ? strDotPRG : strDEL);
-			cb.send(0, line);
-		}
+	// Write lines
+	foreach(const FileEntry& e, m_entries) {
+		if(FileEntry::TypeDel == e.fileType or FileEntry::TypePrg == e.fileType)
+			cb.send(0, QString("  \x22%1\x22 %2").arg(e.cbmName, FileEntry::TypePrg == e.fileType ? strDotPRG : strDEL));
 	}
 	return true;
 } // sendListing
@@ -125,14 +156,14 @@ bool M2I::sendListing(ISendLine &cb)
 // Seek through M2I index. dosname and dirname must be pointers to
 // 12 and 16 byte buffers. Dosname can be NULL.
 //
-bool M2I::seekFile(QString* dosName, QString& dirName, const QString& seekName,
-									 bool doOpen)
+bool M2I::findEntry(const QString& findName, FileEntry& entry) const
 {
-	Q_UNUSED(dosName);
-	Q_UNUSED(dirName);
-	Q_UNUSED(seekName);
-	Q_UNUSED(doOpen);
 	bool found = false;
+	foreach(const FileEntry& e, m_entries) {
+		if(FileEntry::TypePrg == e.fileType) {
+
+		}
+	}
 /*
 	uchar i;
 	uchar seeklen, dirlen;
@@ -189,7 +220,32 @@ bool M2I::seekFile(QString* dosName, QString& dirName, const QString& seekName,
 } // seekFile
 
 
-bool M2I::remove(char* fileName)
+const QString M2I::generateFile()
+{
+	QString result;
+	// generate disktitle on first line.
+	result.append(m_diskTitle + "\r\n");
+	// generate file entries.
+	foreach(const FileEntry& e, m_entries) {
+		QChar typeChar;
+		switch(e.fileType) {
+			case FileEntry::TypePrg:
+				typeChar = QChar('P');
+				break;
+			case FileEntry::TypeDel:
+				typeChar = QChar('D');
+				break;
+			default:
+				typeChar = QChar('-');
+				break;
+		}
+		result.append(QString("%1:%2:%3\r\n").arg(typeChar).arg(e.nativeName, -NATIVENAME_SIZE, QChar(' ')).arg(e.cbmName, -CBMNAME_SIZE, QChar(' ')));
+	}
+	return result;
+} // generateFile
+
+
+bool M2I::deleteFile(const QString& fileName)
 {
 	Q_UNUSED(fileName);
 	bool ret = false;
@@ -477,6 +533,7 @@ bool M2I::close(void)
 
 // Get first line of m2i file, writes 16 chars in dest
 // Returns FALSE if there is a problem in the file
+/*
 bool M2I::readFirstLine(QString* dest)
 {
 	bool res = false;
@@ -490,15 +547,11 @@ bool M2I::readFirstLine(QString* dest)
 
 	return res;
 } // readFirstLine
-
+*/
 
 // Parses one line from the .m2i file.
 // File pos must be after reading the initial status char
-//
-// <file type char>:<dosname>:<cbmname><cr><lf>
-//
-// at dosname 12 chars is written, at cbmname 16 chars
-//
+/*
 uchar M2I::parseLine(QString* dosName, QString* cbmName)
 {
 	if(m_hostFile.atEnd())
@@ -529,7 +582,7 @@ uchar M2I::parseLine(QString* dosName, QString* cbmName)
 
 	return fsType;
 } // parseLine
-
+*/
 
 bool M2I::createFile(char* fileName)
 {
