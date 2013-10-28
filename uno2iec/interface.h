@@ -31,7 +31,7 @@ enum OpenState {
 };
 
 // The base pointer of basic.
-const word C64_BASIC_START = 0x0801;
+#define C64_BASIC_START 0x0801
 
 class Interface
 {
@@ -53,7 +53,7 @@ private:
 	void sendListing(/*PFUNC_SEND_LISTING sender*/);
 	void sendStatus(void);
 	bool removeFilePrefix(void);
-	void sendLine(byte len, char* text);
+	void sendLine(byte len, char* text, word &basicPtr);
 
 	// handler helpers.
 	void handleATNCmdCodeOpen(IEC::ATNCmd &cmd);
@@ -67,8 +67,6 @@ private:
 	byte m_openState;			// see OpenState
 	byte m_queuedError;
 
-	// send listing pointer in basic memory:
-	volatile word m_basicPtr;
 	// atn command buffer struct
 	IEC::ATNCmd& m_cmd;
 #ifdef USE_LED_DISPLAY

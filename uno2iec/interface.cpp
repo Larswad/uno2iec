@@ -42,7 +42,7 @@ namespace {
 char serCmdIOBuf[MAX_BYTES_PER_REQUEST];
 
 #ifdef USE_LED_DISPLAY
-byte scrollBuffer[30];
+byte scrollBuffer[35];
 #endif
 
 } // unnamed namespace
@@ -94,17 +94,17 @@ void Interface::sendStatus(void)
 
 
 // send single basic line, including heading basic pointer and terminating zero.
-void Interface::sendLine(byte len, char* text)
+void Interface::sendLine(byte len, char* text, word& basicPtr)
 {
 	byte i;
 
 	// Increment next line pointer
 	// note: minus two here because the line number is included in the array already.
-	m_basicPtr += len + 5 - 2;
+	basicPtr += len + 5 - 2;
 
 	// Send that pointer
-	m_iec.send(m_basicPtr bitand 0xFF);
-	m_iec.send(m_basicPtr >> 8);
+	m_iec.send(basicPtr bitand 0xFF);
+	m_iec.send(basicPtr >> 8);
 
 	// Send line number
 //	m_iec.send(lineNo bitand 0xFF);
@@ -121,10 +121,9 @@ void Interface::sendLine(byte len, char* text)
 
 void Interface::sendListing()
 {
-	noInterrupts();
 	// Reset basic memory pointer:
-	m_basicPtr = C64_BASIC_START;
-
+	word basicPtr = C64_BASIC_START;
+	noInterrupts();
 	// Send load address
 	m_iec.send(C64_BASIC_START bitand 0xff);
 	m_iec.send((C64_BASIC_START >> 8) bitand 0xff);
@@ -145,18 +144,18 @@ void Interface::sendListing()
 			if(len == actual) {
 				// send the bytes directly to CBM!
 				noInterrupts();
-				sendLine(len, serCmdIOBuf);
+				sendLine(len, serCmdIOBuf, basicPtr);
 				interrupts();
 			}
 			else {
 				resp = 'E'; // just to end the pain. We're out of sync or somthin'
-				sprintf(serCmdIOBuf, "Expected: %d chars, got %d.", len, actual);
+				sprintf_P(serCmdIOBuf, (PGM_P)F("Expected: %d chars, got %d."), len, actual);
 				Log(Error, FAC_IFACE, serCmdIOBuf);
 			}
 		}
 		else {
 			if('l' not_eq resp) {
-				sprintf(serCmdIOBuf, "Ending at char: %d.", resp);
+				sprintf_P(serCmdIOBuf, (PGM_P)F("Ending at char: %d."), resp);
 				Log(Error, FAC_IFACE, serCmdIOBuf);
 				Serial.readBytes(serCmdIOBuf, sizeof(serCmdIOBuf));
 				Log(Error, FAC_IFACE, serCmdIOBuf);
@@ -181,11 +180,10 @@ void Interface::sendFile()
 	// it is supposed to answer with S<highByte><LowByte>
 	if(3 not_eq len or serCmdIOBuf[0] not_eq 'S')
 		return;
-	word written = 0;
-
+	word written = 0, totalSize = (((word)((byte)serCmdIOBuf[1])) << 8) bitor (byte)(serCmdIOBuf[2]);
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
-		m_pDisplay->resetPercentage(((word)(serCmdIOBuf[1]) << 8) bitor serCmdIOBuf[2]);
+		m_pDisplay->resetPercentage(totalSize);
 #endif
 
 	bool success = true;
@@ -193,7 +191,9 @@ void Interface::sendFile()
 		Serial.write('R'); // ask for a byte/bunch of bytes
 		len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
 		if(2 not_eq len) {
-			Log(Error, FAC_IFACE, "2 Host bytes expected, stopping");
+			strcpy_P(serCmdIOBuf, (PGM_P)F("2 Host bytes expected, stopping"));
+			Log(Error, FAC_IFACE, serCmdIOBuf);
+			success = false;
 			break;
 		}
 		resp = serCmdIOBuf[0];
@@ -201,7 +201,9 @@ void Interface::sendFile()
 		if('B' == resp or 'E' == resp) {
 			byte actual = Serial.readBytes(serCmdIOBuf, len);
 			if(actual not_eq len) {
-				Log(Error, FAC_IFACE, "Host bytes expected, stopping");
+				strcpy_P(serCmdIOBuf, (PGM_P)F("Host bytes expected, stopping"));
+				success = false;
+				Log(Error, FAC_IFACE, serCmdIOBuf);
 				break;
 			}
 			// so we get some bytes, send them to CBM.
@@ -220,14 +222,20 @@ void Interface::sendFile()
 #endif
 			}
 		}
-		else if('E' not_eq resp)
-			Log(Error, FAC_IFACE, "Got unexp. cmd resp.char.");
+		else {
+			strcpy_P(serCmdIOBuf, (PGM_P)F("Got unexp. cmd resp.char."));
+			Log(Error, FAC_IFACE, serCmdIOBuf);
+			success = false;
+		}
 	} while(resp == 'B' and success); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
-
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
 		m_pDisplay->showPercentage(written);
 #endif
+	if(success) {
+		sprintf_P(serCmdIOBuf, (PGM_P)F("Transferred %u of %u bytes."), written, totalSize);
+		Log(Success, FAC_IFACE, serCmdIOBuf);
+	}
 } // sendFile
 
 
@@ -246,7 +254,7 @@ void Interface::saveFile()
 		} while(bytesInBuffer < sizeof(serCmdIOBuf) and !done);
 		// indicate to media host that we want to write a buffer. Give the total length including the heading 'W'+length bytes.
 		serCmdIOBuf[1] = bytesInBuffer;
-		Serial.write((const uint8_t*)serCmdIOBuf, bytesInBuffer);
+		Serial.write((const byte*)serCmdIOBuf, bytesInBuffer);
 		Serial.flush();
 	} while(!done);
 } // saveFile
@@ -264,7 +272,8 @@ byte Interface::handler(void)
 	interrupts();
 
 	if(retATN == IEC::ATN_ERROR) {
-		Log(Error, FAC_IFACE, "ATNCMD: IEC_ERROR!");
+		strcpy_P(serCmdIOBuf, (PGM_P)F("ATNCMD: IEC_ERROR!"));
+		Log(Error, FAC_IFACE, serCmdIOBuf);
 		reset();
 	}
 	// Did anything happen from the host side?
@@ -273,7 +282,7 @@ byte Interface::handler(void)
 		m_cmd.str[m_cmd.strlen] = '\0';
 #ifdef CONSOLE_DEBUG
 		{
-			sprintf(serCmdIOBuf, "ATN code:%d cmd: %s (len: %d) retATN: %d", m_cmd.code, m_cmd.str, m_cmd.strlen, retATN);
+			sprintf_P(serCmdIOBuf, (PGM_P)F("ATN code:%d cmd: %s (len: %d) retATN: %d"), m_cmd.code, m_cmd.str, m_cmd.strlen, retATN);
 			Log(Information, FAC_IFACE, serCmdIOBuf);
 		}
 #endif
@@ -339,7 +348,7 @@ void Interface::setMaxDisplay(Max7219 *pDisplay)
 
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
 {
-	sprintf(serCmdIOBuf, "O%u|%s\r", cmd.code bitand 0xF, cmd.str);
+	sprintf_P(serCmdIOBuf, (PGM_P)F("O%u|%s\r"), cmd.code bitand 0xF, cmd.str);
 	// NOTE: Host side handles BOTH file open command AND the command channel command (from the cmd.code).
 	Serial.print(serCmdIOBuf);
 } // handleATNCmdCodeOpen
@@ -360,7 +369,8 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
 		m_iec.sendFNF();
-		Log(Error, FAC_IFACE, "response not sync.");
+		strcpy_P(serCmdIOBuf, (PGM_P)F("response not sync."));
+		Log(Error, FAC_IFACE, serCmdIOBuf);
 	}
 	else {
 		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
@@ -431,7 +441,8 @@ void Interface::handleATNCmdCodeDataListen()
 	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
 		// FIXME: Check what the drive does here when things go wrong. FNF is probably not right.
 		m_iec.sendFNF();
-		Log(Error, FAC_IFACE, "response not sync.");
+		strcpy_P(serCmdIOBuf, (PGM_P)F("response not sync."));
+		Log(Error, FAC_IFACE, serCmdIOBuf);
 	}
 	else {
 		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
@@ -466,9 +477,9 @@ void Interface::handleATNCmdClose()
 #ifdef USE_LED_DISPLAY
 			serCmdIOBuf[len] = '\0';
 			if('n' == resp)
-				strcpy((char*)scrollBuffer, " SAVED: ");
+				strcpy_P((char*)scrollBuffer, (PGM_P)F(" SAVED: "));
 			else
-				strcpy((char*)scrollBuffer, " LOADED: ");
+				strcpy_P((char*)scrollBuffer, (PGM_P)F(" LOADED: "));
 			strcat((char*)scrollBuffer, serCmdIOBuf);
 
 			if(0 not_eq m_pDisplay)
@@ -477,7 +488,7 @@ void Interface::handleATNCmdClose()
 
 		}
 		else {
-			sprintf(serCmdIOBuf, "Exp: %d chars, got %d.", len, actual);
+			sprintf_P(serCmdIOBuf, (PGM_P)F("Exp: %d chars, got %d."), len, actual);
 			Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
 	}
