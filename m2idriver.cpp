@@ -28,8 +28,9 @@ const QString strM2IError("M2I FILE ERROR");
 const QString strPRG("PRG");
 const QString strDEL("DEL");
 const QString strID(" M2I");
-const QString strDotPRG(".PRG\0");
-const QString strDotM2I(".M2I\0");
+const QString strDotPRG("PRG");
+const QString strDotM2I("M2I");
+const QString strM2IEnd("M2I END.");
 const int TITLE_SIZE = 16;
 const int NATIVENAME_SIZE = 12;
 const int CBMNAME_SIZE = 16;
@@ -53,12 +54,12 @@ bool M2I::openHostFile(const QString& fileName)
 	// Parse file.
 	while(not in.atEnd() and success) {
 		QString line(in.readLine());
-		if(not line.endsWith("\r\n")) {
-			Log("M2I", error, QString("Parsing file %1 at line %2 failed, disk title too long.").arg(fileName, QString::number(lineNbr)));
-			success = false;
-			continue;
-		}
-		// TODO: Not trim ALL whites here, only the ending \r\n
+//		if(not line.endsWith("\r\n")) {
+//			Log("M2I", error, QString("Parsing file %1 at line %2 failed, disk title too long.").arg(fileName, QString::number(lineNbr)));
+//			success = false;
+//			continue;
+//		}
+//		// TODO: Not trim ALL whites here, only the ending \r\n
 		line = line.trimmed();
 		// first line is disk title, process separately.
 		if(isFirst) {
@@ -146,9 +147,17 @@ bool M2I::sendListing(ISendLine &cb)
 
 	// Write lines
 	foreach(const FileEntry& e, m_entries) {
-		if(FileEntry::TypeDel == e.fileType or FileEntry::TypePrg == e.fileType)
-			cb.send(0, QString("  \x22%1\x22 %2").arg(e.cbmName, FileEntry::TypePrg == e.fileType ? strDotPRG : strDEL));
+		if(FileEntry::TypeDel == e.fileType or FileEntry::TypePrg == e.fileType) {
+			QString name = '"' + e.cbmName + '"';
+			QFile f(e.nativeName.trimmed());
+			ushort fileSize = (ushort)(f.exists() ? f.size() : 0) / 256;
+			QString line(QString("   %1%2").arg(name, -19, ' ').arg(FileEntry::TypePrg == e.fileType ? strDotPRG : strDEL));
+			cb.send(fileSize, line.mid((int)log10(fileSize)));
+		}
 	}
+	// Write line with M2I_END
+
+	cb.send(0, strM2IEnd);
 	return true;
 } // sendListing
 

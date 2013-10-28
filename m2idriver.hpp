@@ -17,6 +17,11 @@ public:
 	bool openHostFile(const QString& fileName);
 	void closeHostFile();
 
+	bool supportsListing() const
+	{
+		return true;
+	}
+
 	bool sendListing(ISendLine& cb);
 
 	// command channel command
