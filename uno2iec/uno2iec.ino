@@ -8,7 +8,7 @@
 
 static Max7219* pMax;
 // Put ANYTHING cool in here you want to scroll as an initial text on your MAX7219!
-static const byte myText[] = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
+static const byte myText[] PROGMEM = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
 // Note: This is the pin configuration for the MAX7219 display, if used (not IEC related).
 static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 #endif
@@ -16,8 +16,8 @@ static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 // Pin 13 has a LED connected on most Arduino boards.
 const byte ledPort = 13;
 const byte numBlinks = 4;
-const char connectionString[] = "connect\r";
-const char okString[] = "OK>";
+const char connectionString[] PROGMEM = "connect\r";
+const char okString[] PROGMEM = "OK>";
 
 
 static void waitForPeer();
@@ -30,6 +30,27 @@ static ulong lastMillis = 0;
 
 void setup()
 {
+#ifdef CONFIG_HC06_BLUETOOTH
+	// Note: This ONLY works if device is not paired and connected. So be sure the host is not connected to the HC06
+	// when configuring the baud rate. Also important to use the latest configured baud rate before running commands below.
+	// When device is shipped it is set to 9600. When compiled and uploaded this code, power off the BT device completely
+	// so that the configuring is done from power-up state.
+//	Serial.begin(115200);
+
+	// Use this to change the bluetooth name of the device.
+//	Serial.write("AT+NAMEARDUINO");
+//	delay(1000);
+	// Use this to set new pin code, default is 1234.
+	//Serial.write("AT+PIN1234");
+	//delay(1000);
+	// Then the baudrate which is a value between 1 and C. Recommended settings are 38400 or 57600.
+	// Here is the list: 1:1200, 2:2400, 3:4800, 4:9600, 5:19200, 6:38400, 7:57600, 8:115200, 9:230400, A:460800, B:921600, C:1382400
+//	Serial.write("AT+BAUD7");
+//	delay(1000);
+//	Serial.end();
+	//for(;;);
+#endif
+
 	// Initialize serial and wait for port to open:
 	Serial.begin(DEFAULT_BAUD_RATE);
 	Serial.setTimeout(SERIAL_TIMEOUT_MSECS);
@@ -102,7 +123,8 @@ static void waitForPeer()
 		// empty all avail. in buffer.
 		while(Serial.available())
 			Serial.read();
-		Serial.print(connectionString);
+		strcpy_P(tempBuffer, connectionString);
+		Serial.print(tempBuffer);
 		Serial.flush();
 		// Indicate to user we are waiting for connection.
 		for(byte i = 0; i < numBlinks; ++i) {
@@ -111,12 +133,13 @@ static void waitForPeer()
 			digitalWrite(ledPort, LOW);   // turn the LED on (HIGH is the voltage level)
 			delay(500 / numBlinks / 2);               // wait for a second
 		}
-		connected = Serial.find((char*)okString);
+		strcpy_P(tempBuffer, okString);
+		connected = Serial.find(tempBuffer);
 	} // while(!connected)
 
 	// Now read whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
-		sscanf(tempBuffer, "%u|%u|%u|%u|%u", &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
+		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u"), &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
 		// we got the config from the HOST.
 		iec.setDeviceNumber(deviceNumber);
 		iec.setPins(atnPin, clockPin, dataPin, resetPin);
@@ -124,8 +147,9 @@ static void waitForPeer()
 	registerFacilities();
 
 	// We're in business.
-	sprintf(tempBuffer, "CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u.", deviceNumber);
+	sprintf_P(tempBuffer, (PGM_P)F("CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u."), deviceNumber);
 	Log(Success, 'M', tempBuffer);
-	sprintf(tempBuffer, "IEC pins: ATN:%u CLK:%u DATA:%u RST:%u", atnPin, clockPin, dataPin, resetPin);
+	Serial.flush();
+	sprintf_P(tempBuffer, (PGM_P)F("IEC pins: ATN:%u CLK:%u DATA:%u RST:%u"), atnPin, clockPin, dataPin, resetPin);
 	Log(Information, 'M', tempBuffer);
 } // waitForPeer
