@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 #include "t64driver.hpp"
 #include "logger.hpp"
 
