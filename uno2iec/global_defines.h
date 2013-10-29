@@ -15,7 +15,7 @@ typedef unsigned long ulong;
 // What it does is showing loading progress on the display and some nice scrolling of the filename and other
 // stuff on the display. The display hardware can be bought cheap here at dx.com:
 // http://dx.com/p/max7219-dot-matrix-module-w-5-dupont-lines-184854
-#define USE_LED_DISPLAY
+//#define USE_LED_DISPLAY
 
 // Define this if you want to configure a HC-06 bluetooth module connected to the arduino and make the communication
 // with the commodore machine completely wireless. Defining this will configure the BT module in the main sketch.
