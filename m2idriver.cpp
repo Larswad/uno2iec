@@ -15,6 +15,7 @@
 //             - means deleted file
 
 #include <string.h>
+#include <math.h>
 #include <QTextStream>
 #include "m2idriver.hpp"
 #include "logger.hpp"

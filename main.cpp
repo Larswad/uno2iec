@@ -67,7 +67,14 @@ int main(int argc, char *argv[])
 // This works even if the font is not registered in system globally.
 bool addEmbeddedFonts()
 {
+#ifndef TARGET_OS_X
 	QStringList list({ "PetMe64.ttf" , "PetMe2X.ttf" , "PetMe1282Y.ttf" });
+#else
+	// NOTE: QT5 for OSX has bug that won't let us use c++11 features. Special compile here until fixed.
+	QStringList list;
+	list << "PetMe64.ttf" << "PetMe2X.ttf" << "PetMe1282Y.ttf";
+#endif
+
 	int fontID(-1);
 	bool fontWarningShown(false), success(true);
 
