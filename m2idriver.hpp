@@ -7,6 +7,8 @@
 class M2I : public FileDriverBase
 {
 public:
+	M2I();
+
 	const QStringList& extension() const
 	{
 		static const QStringList ext({ "M2I" });
@@ -68,8 +70,10 @@ private:
 
 	QString m_diskTitle; // 16 chars
 	EntryList m_entries;
-	// The real host file system M2I index file, OR the currently opened commodore file in the M2I index:
+	// The real host file system M2I index file.
 	QFile m_hostFile;
+	QFile m_nativeFile;
+	FileEntry m_openedEntry;
 };
 
 #endif

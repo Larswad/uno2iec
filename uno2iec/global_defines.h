@@ -11,6 +11,10 @@ typedef unsigned long ulong;
 // Enable this to debug the IEC lines (checking soldering and physical connections). See project README.TXT
 //#define DEBUGLINES
 
+// This should be defined if the RESET line is soldered in the IEC DIN connector. When defined it will give the
+// arduino to go into a reset state and wait for the CBM to become ready for communiction.
+#define HAS_RESET_LINE
+
 // Define this if you want to include the support for the MAX7219 display library in this project.
 // What it does is showing loading progress on the display and some nice scrolling of the filename and other
 // stuff on the display. The display hardware can be bought cheap here at dx.com:

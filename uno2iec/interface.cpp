@@ -262,11 +262,13 @@ void Interface::saveFile()
 
 byte Interface::handler(void)
 {
+#ifdef HAS_RESET_LINE
 	if(m_iec.checkRESET()) {
 		// IEC reset line is in reset state, so we should set all states in reset.
 		reset();
 		return IEC::ATN_RESET;
 	}
+#endif
 	noInterrupts();
 	IEC::ATNCheck retATN = m_iec.checkATN(m_cmd);
 	interrupts();

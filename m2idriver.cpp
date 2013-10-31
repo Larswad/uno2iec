@@ -17,6 +17,7 @@
 #include <string.h>
 #include <math.h>
 #include <QTextStream>
+#include <QFileInfo>
 #include "m2idriver.hpp"
 #include "logger.hpp"
 
@@ -37,6 +38,9 @@ const int NATIVENAME_SIZE = 12;
 const int CBMNAME_SIZE = 16;
 }
 
+
+M2I::M2I()
+{}
 
 bool M2I::openHostFile(const QString& fileName)
 {
@@ -199,6 +203,7 @@ bool M2I::findEntry(const QString& findName, FileEntry& entry) const
 		i = parseLine(dosname, dirname);
 
 		if('P' == i) {
+		if('P' == i) {
 			// determine length of dir filename
 			for(dirlen = 16; (dirlen > 0) and (dirname[dirlen - 1] == ' '); dirlen--);
 
@@ -227,7 +232,7 @@ bool M2I::findEntry(const QString& findName, FileEntry& entry) const
 		closeHostFile();
 */
 	return found;
-} // seekFile
+} // findEntry
 
 
 const QString M2I::generateFile()
@@ -435,23 +440,20 @@ uchar M2I::cmd(char* cmd)
 
 bool M2I::fopen(const QString& fileName)
 {
-	Q_UNUSED(fileName);
-/*
-	char dirname[16];
-	char dosname[12];
-
-	m_status = NOT_READY;
-
-	// Look for filename
-	if(seekFile(dosname, dirname, filename, true)) {
-		// Open the dos name corresponding!
-		if(fatFopen(dosname))
+	m_status and_eq compl FILE_OPEN;
+	FileEntry entry;
+	if(findEntry(fileName, entry) and FileEntry::TypePrg == entry.fileType) {
+		QFileInfo f(m_hostFile);
+		m_nativeFile.setFileName(f.absolutePath() + entry.nativeName.trimmed());
+		// open the corresponding native name (dos 8.3 name).
+		if(m_nativeFile.open(QFile::ReadOnly)) {
 			m_status or_eq FILE_OPEN;
-
+			m_openedEntry = entry;
+		}
 	}
-	*/
-	return(m_status bitand FILE_OPEN);
-} // open
+
+	return 0 not_eq (m_status bitand FILE_OPEN);
+} // fopen
 
 
 // The new function ensures filename exists and is empty.
@@ -487,36 +489,26 @@ CBM::IOErrorMessage M2I::fopenWrite(const QString& fileName, bool replaceMode)
 
 const QString M2I::openedFileName() const
 {
-	// TODO: implement!
-	return QString();
+	return m_openedEntry.cbmName.trimmed();
 } // openedFileName
 
 
 ushort M2I::openedFileSize() const
 {
-	// TODO: implement!
-	return 0;
+	return m_nativeFile.isOpen() ? m_nativeFile.size() : 0;
 } // openedFileSize
+
 
 
 char M2I::getc(void)
 {
-	/*
-	if(m_status bitand FILE_OPEN)
-		return fatFgetc();
-*/
+	char ret = 0;
+	if(m_status bitand FILE_OPEN and not isEOF()) {
+		m_nativeFile.read(&ret, 1);
+		return ret;
+	}
 	return 0;
 } // getc
-
-
-bool M2I::isEOF(void) const
-{
-	/*
-	if(m2i_status bitand FILE_OPEN)
-		return fatFeof();
-*/
-	return true;
-} // isEOF
 
 
 // write char to open file, returns false if failure
@@ -529,6 +521,14 @@ bool M2I::putc(char c)
 		*/
 	return false;
 } // putc
+
+bool M2I::isEOF(void) const
+{
+	if(m_status bitand FILE_OPEN)
+		 return m_nativeFile.atEnd();
+	return true;
+} // isEOF
+
 
 
 // close file
