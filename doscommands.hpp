@@ -64,14 +64,14 @@ public:
 					 params = cmdString.mid(cmd->full().length());
 					 found = true;
 				}
-				else if(!cmd->abbrev().isEmpty() and cmdString.startsWith(cmd->abbrev(), Qt::CaseInsensitive)) {
+				else if(not cmd->abbrev().isEmpty() and cmdString.startsWith(cmd->abbrev(), Qt::CaseInsensitive)) {
 					params = cmdString.mid(cmd->abbrev().length());
 					found = true;
 				}
 			}
 			else {
 				QStringList splits(cmdString.split(cmd->delimeter()));
-				if(!splits.isEmpty() and (splits.first() == cmd->full() or splits.first() == cmd->abbrev())) {
+				if(not splits.isEmpty() and (splits.first() == cmd->full() or splits.first() == cmd->abbrev())) {
 					splits.removeFirst();
 					params = splits.join(cmd->delimeter());
 					found = true;

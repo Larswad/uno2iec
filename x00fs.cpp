@@ -44,7 +44,7 @@ bool x00FS::fopen(const QString& fileName)
 bool x00FS::close()
 {
 	NativeFS::close();
-	// Note: Should not keep mounted here since we're done. Fall back to native FS.
+	// NOTE: Should not keep this image mounted here since we're done. Fall back to native FS.
 	return false;
 } // close
 

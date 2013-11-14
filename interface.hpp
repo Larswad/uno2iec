@@ -39,7 +39,7 @@ public:
 		virtual void bytesRead(uint numBytes) = 0;
 		virtual void bytesWritten(uint numBytes) = 0;
 		virtual void fileClosed(const QString& lastFileName) = 0;
-		virtual bool isWriteProtected() = 0;
+		virtual bool isWriteProtected() const = 0;
 		virtual void deviceReset() = 0;
 	};
 
@@ -75,8 +75,8 @@ public:
 
 private:
 	void moveToParentOrNativeFS();
-	bool removeFilePrefix(QString &cmd);
-	void sendOpenResponse(char code);
+	bool removeFilePrefix(QString &cmd) const;
+	void sendOpenResponse(char code) const;
 
 	D64 m_d64;
 	T64 m_t64;

@@ -39,7 +39,12 @@ public:
 
 	const QStringList& extension() const
 	{
+#ifndef TARGET_OS_X
 		static const QStringList ext({ "D64" });
+#else
+		static const QStringList ext;
+		ext << "D64";
+#endif
 		return ext;
 	} // extension
 

@@ -3,16 +3,16 @@
 // With an .m2i file, it is possible to mimic an unlimited size diskette with
 // read/write support and realistic filenames, while actually using nativs file system ("FAT") files.
 //
-// .m2i format:
+// .m2i format description:
 //
 // <DISK TITLE (16 chars)><cr><lf>
 // <file type 1 char>:<dos filename 12chars>:<cbm filename 16 chars><cr><lf>
 // <file type 1 char>:<dos filename 12chars>:<cbm filename 16 chars><cr><lf>
 // <file type 1 char>:<dos filename 12chars>:<cbm filename 16 chars><cr><lf>
 //
-// file types: P means prg file
-//             D means del file
-//             - means deleted file
+// file types:	P means prg file
+//							D means del file
+//							- means deleted file
 
 #include <string.h>
 #include <math.h>
@@ -49,7 +49,7 @@ bool M2I::openHostFile(const QString& fileName)
 	// Interface has just opened the m2i file, save filename
 	m_hostFile.setFileName(fileName);
 
-	if(!m_hostFile.open(QIODevice::ReadOnly))
+	if(not m_hostFile.open(QIODevice::ReadOnly))
 		return false;
 
 	QTextStream in(&m_hostFile);
@@ -133,7 +133,7 @@ bool M2I::openHostFile(const QString& fileName)
 void M2I::closeHostFile()
 {
 	m_entries.clear();
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	m_status = NOT_READY;
 } // closeHostFile
@@ -499,7 +499,6 @@ ushort M2I::openedFileSize() const
 } // openedFileSize
 
 
-
 char M2I::getc(void)
 {
 	char ret = 0;
@@ -522,13 +521,13 @@ bool M2I::putc(char c)
 	return false;
 } // putc
 
+
 bool M2I::isEOF(void) const
 {
 	if(m_status bitand FILE_OPEN)
 		 return m_nativeFile.atEnd();
 	return true;
 } // isEOF
-
 
 
 // close file

@@ -1,7 +1,7 @@
 //
-// Title        : uno2iec - main
-// Author       : Lars Wadefalk
-// Date         : August 2013.
+// Title	: uno2iec - main
+// Author	: Lars Wadefalk
+// Date		: August 2013.
 //
 //
 // DISCLAIMER:
@@ -27,7 +27,7 @@
 
 
 // forwards.
-bool addEmbeddedFonts();
+static bool addEmbeddedFonts();
 
 
 int main(int argc, char *argv[])
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
 // Add embedded (truetype) fonts located in resources to application font database.
 // This works even if the font is not registered in system globally.
-bool addEmbeddedFonts()
+static bool addEmbeddedFonts()
 {
 #ifndef TARGET_OS_X
 	QStringList list({ "PetMe64.ttf" , "PetMe2X.ttf" , "PetMe1282Y.ttf" });
@@ -75,7 +75,6 @@ bool addEmbeddedFonts()
 	list << "PetMe64.ttf" << "PetMe2X.ttf" << "PetMe1282Y.ttf";
 #endif
 
-	int fontID(-1);
 	bool fontWarningShown(false), success(true);
 
 	foreach(const QString& strFont, list) {
@@ -84,13 +83,13 @@ bool addEmbeddedFonts()
 			success = false;
 		}
 		else {
-			fontID = QFontDatabase::addApplicationFontFromData(res.readAll());
+			int fontID(QFontDatabase::addApplicationFontFromData(res.readAll()));
 			if(-1 == fontID)
 				success = false;
 		}
 
 		// It is enough to display warning only once.
-		if(!success and !fontWarningShown) {
+		if(not success and not fontWarningShown) {
 			QMessageBox::warning(0, "Application", QString("Can't open the font %1 %2 %3.").arg(QChar(0x00AB)).arg(strFont).arg(QChar(0x00BB)));
 			fontWarningShown = true;
 		}

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QStandardItemModel>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <qextserialport.h>
 #include <QMap>
 #include "interface.hpp"
@@ -52,7 +53,7 @@ public:
 		void bytesRead(uint numBytes);
 		void bytesWritten(uint numBytes);
 		void fileClosed(const QString &lastFileName);
-		bool isWriteProtected();
+		bool isWriteProtected() const;
 		void deviceReset();
 
 		// ISendLine interface implementation.
@@ -83,12 +84,13 @@ private slots:
 				void on_actionSettings_triggered();
 				void on_reloadImageDir_clicked();
 				void on_dirList_doubleClicked(const QModelIndex &index);
-
+				void on_directoryChanged(const QString& path);
 private:
 		bool checkConnectRequest();
 		void enumerateComPorts();
 		void usePortByFriendlyName(const QString &friendlyName);
 		void processDebug(const QString &str);
+		void watchDirectory(const QString& dir);
 		void updateImageList(bool reloadDirectory = true);
 		void boldifyItem(QStandardItem *pItem);
 		void readSettings();
@@ -98,7 +100,7 @@ private:
 		void selectActionByName(const QList<QAction *>& actions, const QString& name) const;
 		void updateDirListColors();
 		void getBgFrAndFgColors(QColor &bgColor, QColor& frColor, QColor &fgColor);
-		void getMachineAndPaletteTheme(CbmMachineTheme *&pMachine, const QRgb *&pEmulatorPalette);
+		void getMachineAndPaletteTheme(CbmMachineTheme*& pMachine, const QRgb *&pEmulatorPalette);
 		void cbmCursorVisible(bool visible = true);
 
 		Ui::MainWindow *ui;
@@ -116,6 +118,7 @@ private:
 		AppSettings m_appSettings;
 		ushort m_totalReadWritten;
 		QString m_loadSaveName;
+		QFileSystemWatcher m_fsWatcher;
 };
 
 #endif // MAINWINDOW_HPP

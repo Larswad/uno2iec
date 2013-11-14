@@ -49,7 +49,7 @@ D64::D64(const QString& fileName)
 	: FileDriverBase(), m_hostFile(fileName), m_currentTrack(0), m_currentSector(0), m_currentOffset(0),
 		m_currentLinkTrack(0), m_currentLinkSector(0)
 {
-	if(!fileName.isEmpty())
+	if(not fileName.isEmpty())
 		openHostFile(fileName);
 } // dtor
 
@@ -82,7 +82,7 @@ bool D64::openHostFile(const QString& fileName)
 
 void D64::closeHostFile()
 {
-	if(!m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
+	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	m_status = NOT_READY;
 } // closeHostFile
@@ -162,7 +162,7 @@ char D64::getc(void)
 	uchar ret = 0;
 
 	// Check status
-	if(!isEOF()) {
+	if(not isEOF()) {
 		ret = hostReadByte();
 
 		if(255 == m_currentOffset) {
@@ -324,7 +324,7 @@ bool D64::fopen(const QString& fileName)
 
 	seekFirstDir();
 
-	while(!found and getDirEntry(m_currDirEntry)) {
+	while(not found and getDirEntry(m_currDirEntry)) {
 
 		// Acceptable filetype?
 		i = m_currDirEntry.m_type bitand FILE_TYPE_MASK;
@@ -379,7 +379,7 @@ ushort D64::openedFileSize() const
 
 bool D64::sendListing(ISendLine& cb)
 {
-	if(!(m_status bitand IMAGE_OK)) {
+	if(not (m_status bitand IMAGE_OK)) {
 		// We are not happy with the d64 file
 		cb.send(0, strD64Error);
 		return true;
@@ -432,7 +432,7 @@ bool D64::sendListing(ISendLine& cb)
 			line = QString("   \"%1 %2%3%4").arg(name) // %s  %s%c%c
 					.arg(strFileTypes[fileType])
 					.arg((dir.m_type bitand FILE_LOCKED) ? '<' : ' ') // Perhaps write locked symbol
-					.arg(!(dir.m_type bitand FILE_CLOSED) ? '*' : ' ');	// Perhaps write splat symbol
+					.arg(not (dir.m_type bitand FILE_CLOSED) ? '*' : ' ');	// Perhaps write splat symbol
 
 			// Line number is filesize in blocks:
 			ushort fileSize = dir.m_blocksLo + (dir.m_blocksHi << 8);

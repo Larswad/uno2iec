@@ -77,7 +77,7 @@ Interface::Interface(QextSerialPort& port)
 
 	QFile romFile(":/roms/rom_1541");
 	bool success = romFile.open(QIODevice::ReadOnly);
-	if(!success)
+	if(not success)
 		qDebug() << "couldn't open romfile: " << romFile.fileName();
 	else {
 		m_driveROM = romFile.readAll();
@@ -128,7 +128,7 @@ void Interface::setMountNotifyListener(IFileOpsNotify* pListener)
 
 // This function crops cmd string of initial @ or until :
 // Returns true if @ was detected
-bool Interface::removeFilePrefix(QString& cmd)
+bool Interface::removeFilePrefix(QString& cmd) const
 {
 	bool ret = false;
 
@@ -231,9 +231,9 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 		// whatever file system we have active, check if it supports media info.
 		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	}
-	else if(!cmd.isEmpty() and cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
+	else if(not cmd.isEmpty() and cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
 		m_openState = O_DIR;
-	else if(!cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
+	else if(not cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
 		moveToParentOrNativeFS();
 	}
 	else {
@@ -255,7 +255,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 				foreach(FileDriverBase* fs, m_fsList) {
 					// if extension matches last three characters in any file system, then we set that filesystem into use.
 					foreach(const QString& ext, fs->extension()) {
-						if(!ext.isEmpty() and cmd.endsWith(ext, Qt::CaseInsensitive)) {
+						if(not ext.isEmpty() and cmd.endsWith(ext, Qt::CaseInsensitive)) {
 							m_currFileDriver = fs;
 							fsFound = true;
 							break;
@@ -272,7 +272,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 					// call new format's reset
 					if(m_currFileDriver->openHostFile(cmd)) {
 						// see if this format supports listing, if not we're just opening as a file.
-						if(!m_currFileDriver->supportsListing())
+						if(not m_currFileDriver->supportsListing())
 							m_openState = O_FILE;
 						else {
 							// otherwise we're in directory mode now on this selected file system image.
@@ -318,7 +318,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 } // openFile
 
 
-void Interface::sendOpenResponse(char code)
+void Interface::sendOpenResponse(char code) const
 {
 	// Response: ><code><CR>
 	// send back response / result code to uno.
@@ -370,7 +370,7 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 			}
 			m_queuedError = openFile(cmd);
 			// if it was not only a local "UI" operation, we need to return some response to client.
-			if(!localImageSelectionMode) {
+			if(not localImageSelectionMode) {
 				// Remember last cmd string.
 				m_lastCmdString = cmd;
 				if(m_queuedError == CBM::ErrOK and (O_INFO == m_openState or O_DIR == m_openState))
@@ -433,7 +433,7 @@ void Interface::processCloseCommand()
 	if(0 not_eq m_pListener) // notify UI listener of change.
 		m_pListener->fileClosed(name);
 	Log(FAC_IFACE, info, QString("Close: Returning last opened file name: %1").arg(name));
-	if(!m_currFileDriver->close()) {
+	if(not m_currFileDriver->close()) {
 		m_currFileDriver = &m_native;
 		if(0 not_eq m_pListener)
 			m_pListener->imageUnmounted();
@@ -552,7 +552,7 @@ void Interface::buildDirectoryOrMediaList()
 	m_dirListing.clear();
 	if(O_DIR == m_openState) {
 		Log(FAC_IFACE, info, QString("Producing directory listing for FS: \"%1\"...").arg(m_currFileDriver->extFriendly()));
-		if(!m_currFileDriver->sendListing(*this)) {
+		if(not m_currFileDriver->sendListing(*this)) {
 			m_queuedError = CBM::ErrDirectoryError;
 			Log(FAC_IFACE, warning, QString("Directory listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())));
 		}
@@ -563,7 +563,7 @@ void Interface::buildDirectoryOrMediaList()
 	}
 	else if(O_INFO == m_openState) {
 		Log(FAC_IFACE, info, QString("Producing media info for FS: \"%1\"...").arg(m_currFileDriver->extFriendly()));
-		if(!m_currFileDriver->sendMediaInfo(*this)) {
+		if(not m_currFileDriver->sendMediaInfo(*this)) {
 			Log(FAC_IFACE, warning, QString("Media info listing indicated error. Still sending: %1 chars").arg(QString::number(m_dirListing.length())));
 			m_queuedError = CBM::ErrDirectoryError;
 		}

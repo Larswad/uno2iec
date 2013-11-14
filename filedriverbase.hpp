@@ -4,6 +4,7 @@
 #include <QString>
 #include <QStringList>
 #include <QFile>
+
 #include "uno2iec/cbmdefines.h"
 
 class ISendLine
@@ -12,18 +13,18 @@ public:
 	virtual void send(short lineNo, const QString& text) = 0;
 };
 
-
+/// Base class for all virtual file systems supported.
 class FileDriverBase
 {
 public:
 	enum FSStatus
 	{
-		NOT_READY = 0,  // driver not ready (host file not read or accepted).
-		IMAGE_OK   = (1 << 0),	// The open file in fat driver is accepted as a valid image (of the specific file system type).
-		FILE_OPEN = (1 << 1),	// A file is open right now
-		FILE_EOF  = (1 << 2),	// The open file is ended
-		DIR_OPEN  = (1 << 3),	// A directory entry is active
-		DIR_EOF   = (1 << 4)	// Last directory entry has been retrieved
+		NOT_READY = 0,					// driver not ready (host file not read or accepted).
+		IMAGE_OK  = (1 << 0),		// The open file in fat driver is accepted as a valid image (of the specific file system type).
+		FILE_OPEN = (1 << 1),		// A file is open right now
+		FILE_EOF  = (1 << 2),		// The open file is ended
+		DIR_OPEN  = (1 << 3),		// A directory entry is active
+		DIR_EOF   = (1 << 4)		// Last directory entry has been retrieved
 	};
 
 	FileDriverBase();
@@ -31,7 +32,8 @@ public:
 
 	// The three letter extension this file format represents (DOS style) Empty string returned means 'any' and is in default fs mode.
 	virtual const QStringList& extension() const = 0;
-	virtual const QString extFriendly()
+	// Returns a print-friendly version of the supported extensions as a pipe separated (single) string.
+	virtual const QString extFriendly() const
 	{
 		return extension().join(QChar('|'));
 	}

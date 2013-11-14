@@ -7,7 +7,7 @@ Logger::Logger(QObject *parent) : QObject(parent)
 {}
 
 
-void Logger::log(const QString& facility, const QString& message, LogLevelE level)
+void Logger::log(const QString& facility, const QString& message, LogLevelE level) const
 {
 	QString dateTime(QDate::currentDate().toString("yyyy-MM-dd") +
 									 QTime::currentTime().toString(" hh:mm:ss:zzz"));

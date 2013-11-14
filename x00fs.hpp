@@ -12,7 +12,7 @@ class x00FS : public NativeFS
 public:
 	struct X00Header
 	{
-		char x00Magic[8];					// $00 - $07 'C64File'
+		char x00Magic[8];						// $00 - $07 'C64File'
 		char originalFileName[17];	// $08 - $18 Original CBM name + nul
 		uchar recordSize;						// $19 Record size for REL files
 		//uchar Data[n];						// $1A - ...
@@ -22,10 +22,14 @@ public:
 	x00FS();
 	virtual ~x00FS() {}
 
-	// TODO: The extension returned should be a QStringList since we support more than one extension here.
 	const QStringList& extension() const
 	{
+#ifndef TARGET_OS_X
 		static const QStringList ext( { "P00", "R00", "S00" } );
+#else
+		static const QStringList ext;
+		ext << "P00" << "R00" << "S00";
+#endif
 		return ext;
 	} // extension
 

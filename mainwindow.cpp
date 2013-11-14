@@ -104,6 +104,7 @@ MainWindow::MainWindow(QWidget *parent) :
 , m_isConnected(false)
 , m_iface(m_port)
 , m_isInitialized(false)
+,	m_fsWatcher(this)
 {
 	ui->setupUi(this);
 
@@ -130,6 +131,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
 	ui->dockWidget->toggleViewAction()->setShortcut(QKeySequence("CTRL+L"));
 	ui->menuMain->insertAction(ui->menuMain->actions().first(), ui->dockWidget->toggleViewAction());
+
 	// Initialize WiringPI stuff, if we're on the Raspberry Pi platform.
 #ifdef HAS_WIRINGPI
 	system("/usr/local/bin/gpio -g mode 23 out");
@@ -139,6 +141,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	else
 		on_resetArduino_clicked();
 #endif
+
 	emulatorPalettes["vice"] = viceColors;
 	emulatorPalettes["ccs64"] = ccs64Colors;
 	emulatorPalettes["frodo"] = frodoColors;
@@ -158,7 +161,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	setupActionGroups();
 
-	Log("MAIN", success, "Application Initialized.");
 	m_isInitialized = true;
 	updateImageList();
 
@@ -167,6 +169,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	m_iface.setImageFilters(m_appSettings.imageFilters, m_appSettings.showDirectories);
 	// This will also reset the device!
 	updateDirListColors();
+	// We want notifications when the local file system changes so that we can update the image directory list.
+	connect(&m_fsWatcher, SIGNAL(directoryChanged(const QString&)), this, SLOT(on_directoryChanged(const QString&)));
+	watchDirectory(ui->imageDir->text());
+	Log("MAIN", success, "Application Initialized.");
 } // ctor
 
 
@@ -417,12 +423,12 @@ void LogHexData(const QByteArray& bytes, const QString& header = QString("R#%1:"
 
 bool MainWindow::checkConnectRequest()
 {
-	if(!m_pendingBuffer.contains("connect"))
+	if(not m_pendingBuffer.contains("connect"))
 		return false;
 	m_pendingBuffer.clear();
 	// Assume connected, maybe a real ack sequence is needed here from the client?
 	// Are we already connected? If so,
-	if(!m_isConnected) {
+	if(not m_isConnected) {
 		m_isConnected = true;
 		Log("MAIN", success, "Now connected to Arduino.");
 	}
@@ -450,7 +456,7 @@ void MainWindow::onDataAvailable()
 		return;
 	}
 
-	bool hasDataToProcess = !m_pendingBuffer.isEmpty();
+	bool hasDataToProcess = not m_pendingBuffer.isEmpty();
 	//	if(hasDataToProcess)
 	//		LogHexData(m_pendingBuffer);
 	while(hasDataToProcess) {
@@ -480,7 +486,7 @@ void MainWindow::onDataAvailable()
 		case 'S': // request for file size in bytes before sending file to CBM
 			m_pendingBuffer.remove(0, 1);
 			m_iface.processGetOpenFileSize();
-			hasDataToProcess = !m_pendingBuffer.isEmpty();
+			hasDataToProcess = not m_pendingBuffer.isEmpty();
 			break;
 
 		case 'O': // open command
@@ -495,7 +501,7 @@ void MainWindow::onDataAvailable()
 		case 'R': // read byte(s) from current file system mode, note that this command needs no termination, it needs to be short.
 			m_pendingBuffer.remove(0, 1);
 			m_iface.processReadFileRequest();
-			hasDataToProcess = !m_pendingBuffer.isEmpty();
+			hasDataToProcess = not m_pendingBuffer.isEmpty();
 			break;
 
 		case 'W': // write single character to file in current file system mode.
@@ -506,7 +512,7 @@ void MainWindow::onDataAvailable()
 					m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
 					// discard all processed (written) bytes from buffer.
 					m_pendingBuffer.remove(0, length);
-					hasDataToProcess = !m_pendingBuffer.isEmpty();
+					hasDataToProcess = not m_pendingBuffer.isEmpty();
 				}
 			}
 			break;
@@ -527,12 +533,12 @@ void MainWindow::onDataAvailable()
 				hasDataToProcess = false;
 			m_iface.processErrorStringRequest(static_cast<CBM::IOErrorMessage>(m_pendingBuffer.at(1)));
 			m_pendingBuffer.remove(0, 2);
-			hasDataToProcess = !m_pendingBuffer.isEmpty();
+			hasDataToProcess = not m_pendingBuffer.isEmpty();
 			break;
 
 		default:
 			// See if it is a reconnection attempt.
-			if(!checkConnectRequest()) {
+			if(not checkConnectRequest()) {
 				// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
 				if(-1 not_eq crIndex) {
 						m_pendingBuffer.remove(0, crIndex + 1);
@@ -682,7 +688,7 @@ void MainWindow::appendMessage(const QString& msg)
 	ui->log->setTextColor(Qt::darkBlue);
 	ui->log->insertPlainText(msg + "\n");
 
-	if(ui->log->toPlainText().length() and !ui->saveHtml->isEnabled()) {
+	if(ui->log->toPlainText().length() and not ui->saveHtml->isEnabled()) {
 		ui->saveHtml->setEnabled(true);
 		ui->saveLog->setEnabled(true);
 		ui->clearLog->setEnabled(true);
@@ -698,8 +704,19 @@ void MainWindow::on_browseImageDir_clicked()
 		ui->imageDir->setText(dirPath);
 		m_iface.changeNativeFSDirectory(dirPath);
 	}
+	watchDirectory(ui->imageDir->text());
 	updateImageList();
 } // on_browseImageDir_clicked()
+
+
+void MainWindow::watchDirectory(const QString& dir)
+{
+	// If the directory is not already under monitoring, we remove all present ones and start monitoring it.
+	if(not m_fsWatcher.directories().contains(dir, Qt::CaseInsensitive)) {
+		m_fsWatcher.removePaths(m_fsWatcher.directories());
+		m_fsWatcher.addPath(dir);
+	}
+} // watchDirectory
 
 
 void MainWindow::on_imageDir_editingFinished()
@@ -707,6 +724,7 @@ void MainWindow::on_imageDir_editingFinished()
 	if(not m_iface.changeNativeFSDirectory(ui->imageDir->text()))
 		ui->imageDir->setText(QDir::currentPath());
 	updateImageList();
+	watchDirectory(ui->imageDir->text());
 } // on_imageDir_editingFinished
 
 
@@ -791,14 +809,20 @@ void MainWindow::on_dirList_doubleClicked(const QModelIndex &index)
 {
 	Q_UNUSED(index);
 	ui->mountSelected->animateClick(250);
-	//	on_mountSelected_clicked();
-} // on_dirList_doubleClicked
+	//	on_dirList_doubleClicked
+}
+
+void MainWindow::on_directoryChanged(const QString& path)
+{
+	if(0 == path.compare(ui->imageDir->text(), Qt::CaseInsensitive))
+		updateImageList();
+} // on_directoryChanged
 
 
 void MainWindow::on_mountSelected_clicked()
 {
 	QModelIndexList selected = ui->dirList->selectionModel()->selectedRows(0);
-	if(!selected.size())
+	if(not selected.size())
 		return;
 	QString name = selected.first().data(Qt::DisplayRole).toString();
 
@@ -867,7 +891,7 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 					ui->imageDirList->setTextBackgroundColor(bgColor);
 				}
 				ui->imageDirList->insertPlainText(linePart);
-				rvs ^= true;
+				rvs xor_eq true;
 			}
 			ui->imageDirList->insertPlainText("\n");
 		}
@@ -962,7 +986,7 @@ void MainWindow::fileClosed(const QString& lastFileName)
 } // fileClosed
 
 
-bool MainWindow::isWriteProtected()
+bool MainWindow::isWriteProtected() const
 {
 	return ui->actionDisk_Write_Protected->isChecked();
 } // isWriteProtected

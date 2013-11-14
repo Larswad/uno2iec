@@ -11,7 +11,12 @@ public:
 
 	const QStringList& extension() const
 	{
+#ifndef TARGET_OS_X
 		static const QStringList ext({ "M2I" });
+#else
+		static const QStringList ext;
+		ext << "M2I";
+#endif
 		return ext;
 	} // extension
 

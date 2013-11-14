@@ -72,7 +72,7 @@ CBM::IOErrorMessage Scratch::process(const QString &params, Interface &iface)
 	// TODO: check write protect here!
 	// TODO: Check that there is no path stuff in the name, we don't like that here.
 	Log(FACDOS, info, QString("About to scratch file: %1").arg(params));
-	if(!iface.currentFileDriver()->deleteFile(params))
+	if(not iface.currentFileDriver()->deleteFile(params))
 		return CBM::ErrFileNotFound; // should be the proper reason of course.
 	return CBM::ErrFilesScratched;
 } // Scratch
@@ -102,7 +102,7 @@ CBM::IOErrorMessage RenameFile::process(const QString& params, Interface& iface)
 	if(iface.currentFileDriver()->fileExists(newName))
 		return CBM::ErrFileExists;
 	// Check if old file exists.
-	if(!iface.currentFileDriver()->fileExists(oldName))
+	if(not iface.currentFileDriver()->fileExists(oldName))
 		return CBM::ErrFileNotFound;
 
 	// NOTE: Need to check here whether the file is renamed across paths or not?
