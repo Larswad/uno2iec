@@ -240,7 +240,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 		// open file depending on interface state
 		if(m_currFileDriver == &m_native) {
 			// Try if cd works, then try open as file and if none of these ok...then give up
-			if(m_native.setCurrentDirectory(cmd)) {
+			if(QDir(cmd).exists() and m_native.setCurrentDirectory(cmd)) {
 				Log(FAC_IFACE, success, QString("Changed to native FS directory: %1").arg(cmd));
 				if(0 not_eq m_pListener) // notify UI listener of change.
 					m_pListener->directoryChanged(QDir::currentPath());

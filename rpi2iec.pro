@@ -25,19 +25,30 @@ QMAKE_CXXFLAGS += -std=gnu++0x
 
 
 win32 {
-		# version resource and appicon.
-		RC_FILE = rpi2iec.rc
+	# version resource and appicon.
+	RC_FILE = rpi2iec.rc
+	OBJPRE = win
+}
+
+unix {
+	OBJPRE = nix
 }
 
 # To compile for Raspberry PI, run qmake with the flags: CONFIG+=raspberry
 raspberry {
-		# So wiringPi include files can be found during compile
-		INCLUDEPATH += /usr/local/include
-		# To link the wiringPi library when making the executable
-		LIBS += -L/usr/local/lib -lwiringPi
-		# To conditionally compile wiringPi so that it still builds on other platforms.
-		DEFINES += "HAS_WIRINGPI="
+	# So wiringPi include files can be found during compile
+	INCLUDEPATH += /usr/local/include
+	# To link the wiringPi library when making the executable
+	LIBS += -L/usr/local/lib -lwiringPi
+	# To conditionally compile wiringPi so that it still builds on other platforms.
+	DEFINES += "HAS_WIRINGPI="
+
+	OBJPRE = pi
 } #raspberry
+
+mac {
+  OBJPRE = mac
+}
 
 SOURCES += main.cpp\
 		mainwindow.cpp \
@@ -85,17 +96,18 @@ RESOURCES += \
 		resources.qrc
 
 
+
+# we want intermediate build files stored in configuration and platform specific folders.
+# Reason is not getting compile errors when switching from building under one platform to another.
+# Object file formats are different. We don't want to mix release and debug either.
 CONFIG(debug, debug|release) {
-	DESTDIR = debug
-	OBJECTS_DIR = debug/.obj
-	MOC_DIR = debug/.moc
-	RCC_DIR = debug/.rcc
-	UI_DIR = debug/.ui
+	REL = debug
 } else {
-	DESTDIR = release
-	OBJECTS_DIR = release/.obj
-	MOC_DIR = release/.moc
-	RCC_DIR = release/.rcc
-	UI_DIR = release/.ui
+	REL = release
 }
 
+OBJECTS_DIR = $$quote($${REL}/.obj$${OBJPRE})
+DESTDIR = $$quote($${REL})
+MOC_DIR = $$quote($${REL}/.moc)
+RCC_DIR = $$quote($${REL}/.rcc)
+UI_DIR = $$quote($${REL}/.ui)

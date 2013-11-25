@@ -221,6 +221,7 @@ bool NativeFS::setCurrentDirectory(const QString& dir)
 		Log("NATIVEFS", success, QString("Changing current directory to: %1").arg(QDir::currentPath()));
 	else
 		Log("NATIVEFS", warning, QString("Failed changing current directory to: %1 (this may be just OK)").arg(dir));
+
 	return wasSuccess;
 } // setCurrentDirectory
 
