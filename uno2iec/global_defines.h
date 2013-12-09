@@ -28,7 +28,7 @@ typedef unsigned long ulong;
 // Define this for speed increase when reading (filling serial buffer while transferring
 // to CBM without interrupts off). It is experimental, stability needs to be checked
 // further even though it seems to work just fine.
-#define EXPERIMENTAL_SPEED_FIX
+//#define EXPERIMENTAL_SPEED_FIX
 
 // For serial communication. 115200 Works fine, but probably use 57600 for bluetooth dongle for stability.
 #define DEFAULT_BAUD_RATE 115200
