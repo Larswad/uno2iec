@@ -25,7 +25,12 @@ typedef unsigned long ulong;
 // with the commodore machine completely wireless. Defining this will configure the BT module in the main sketch.
 //#define CONFIG_HC06_BLUETOOTH
 
-// For serial communication.
+// Define this for speed increase when reading (filling serial buffer while transferring
+// to CBM without interrupts off). It is experimental, stability needs to be checked
+// further even though it seems to work just fine.
+#define EXPERIMENTAL_SPEED_FIX
+
+// For serial communication. 115200 Works fine, but probably use 57600 for bluetooth dongle for stability.
 #define DEFAULT_BAUD_RATE 115200
 #define SERIAL_TIMEOUT_MSECS 1000
 

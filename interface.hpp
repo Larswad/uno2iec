@@ -48,7 +48,7 @@ public:
 
 	CBM::IOErrorMessage openFile(const QString &cmdString);
 	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
-	void processReadFileRequest();
+	void processReadFileRequest(ushort length = 0);
 	void processWriteFileRequest(const QByteArray &theBytes);
 	CBM::IOErrorMessage reset(bool informUnmount = false);
 
@@ -90,6 +90,7 @@ private:
 	QextSerialPort& m_port;
 	CBM::IOErrorMessage m_queuedError;
 	OpenState m_openState;
+	ushort m_currReadLength;
 	QString m_lastCmdString;
 	QList<QByteArray> m_dirListing;
 	IFileOpsNotify* m_pListener;

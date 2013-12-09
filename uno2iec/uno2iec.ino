@@ -119,7 +119,7 @@ static void waitForPeer()
 	pinMode(ledPort, OUTPUT);
 
 	boolean connected = false;
-	while(!connected) {
+	while(not connected) {
 		// empty all avail. in buffer.
 		while(Serial.available())
 			Serial.read();
@@ -135,7 +135,7 @@ static void waitForPeer()
 		}
 		strcpy_P(tempBuffer, okString);
 		connected = Serial.find(tempBuffer);
-	} // while(!connected)
+	} // while(not connected)
 
 	// Now read whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {

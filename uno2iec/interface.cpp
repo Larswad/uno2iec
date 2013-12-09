@@ -82,7 +82,7 @@ void Interface::sendStatus(void)
 	} while(readResult not_eq 1 or serCmdIOBuf[0] not_eq ':');
 	// get the string.
 	readResult = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf));
-	if(!readResult)
+	if(not readResult)
 		return; // something went wrong with result from host.
 
 	// Length does not include the CR, write all but the last one should be with EOI.
@@ -179,16 +179,19 @@ void Interface::sendFile()
 	byte len = Serial.readBytes(serCmdIOBuf, 3);
 	// it is supposed to answer with S<highByte><LowByte>
 	if(3 not_eq len or serCmdIOBuf[0] not_eq 'S')
-		return;
-	word written = 0, totalSize = (((word)((byte)serCmdIOBuf[1])) << 8) bitor (byte)(serCmdIOBuf[2]);
+		return; // got some garbage response.
+	word bytesDone = 0, totalSize = (((word)((byte)serCmdIOBuf[1])) << 8) bitor (byte)(serCmdIOBuf[2]);
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
 		m_pDisplay->resetPercentage(totalSize);
 #endif
 
 	bool success = true;
+	// Initial request for a bunch of bytes, here we specify the read size for every subsequent 'r' command.
+	// This begins the transfer "game".
+	Serial.write('r');											// ask for a byte/bunch of bytes
+	Serial.write(MAX_BYTES_PER_REQUEST);		// specify the arduino serial library buffer limit for best performance / throughput.
 	do {
-		Serial.write('R'); // ask for a byte/bunch of bytes
 		len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
 		if(2 not_eq len) {
 			strcpy_P(serCmdIOBuf, (PGM_P)F("2 Host bytes expected, stopping"));
@@ -206,21 +209,33 @@ void Interface::sendFile()
 				Log(Error, FAC_IFACE, serCmdIOBuf);
 				break;
 			}
+#ifdef EXPERIMENTAL_SPEED_FIX
+			if('E' not_eq resp) // if not received the final buffer, initiate a new buffer request while we're feeding the CBM.
+				Serial.write('R'); // ask for a byte/bunch of bytes
+#endif
 			// so we get some bytes, send them to CBM.
 			for(byte i = 0; success and i < len; ++i) { // End if sending to CBM fails.
+#ifndef EXPERIMENTAL_SPEED_FIX
 				noInterrupts();
+#endif
 				if(resp == 'E' and i == len - 1)
 					success = m_iec.sendEOI(serCmdIOBuf[i]); // indicate end of file.
 				else
 					success = m_iec.send(serCmdIOBuf[i]);
+#ifndef EXPERIMENTAL_SPEED_FIX
 				interrupts();
-				++written;
+#endif
+				++bytesDone;
 
 #ifdef USE_LED_DISPLAY
-				if(!(written % 32) and 0 not_eq m_pDisplay)
-					m_pDisplay->showPercentage(written);
+				if(not (bytesDone % 32) and 0 not_eq m_pDisplay)
+					m_pDisplay->showPercentage(bytesDone);
 #endif
 			}
+#ifndef EXPERIMENTAL_SPEED_FIX
+			if('E' not_eq resp) // if not received the final buffer, initiate a new buffer request while we're feeding the CBM.
+				Serial.write('R'); // ask for a byte/bunch of bytes
+#endif
 		}
 		else {
 			strcpy_P(serCmdIOBuf, (PGM_P)F("Got unexp. cmd resp.char."));
@@ -228,12 +243,17 @@ void Interface::sendFile()
 			success = false;
 		}
 	} while(resp == 'B' and success); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
+	// If something failed and we have serial bytes in recieve queue we need to flush it out.
+	if(not success and Serial.available()) {
+		while(Serial.available())
+			Serial.read();
+	}
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
-		m_pDisplay->showPercentage(written);
+		m_pDisplay->showPercentage(bytesDone);
 #endif
 	if(success) {
-		sprintf_P(serCmdIOBuf, (PGM_P)F("Transferred %u of %u bytes."), written, totalSize);
+		sprintf_P(serCmdIOBuf, (PGM_P)F("Transferred %u of %u bytes."), bytesDone, totalSize);
 		Log(Success, FAC_IFACE, serCmdIOBuf);
 	}
 } // sendFile
@@ -251,12 +271,12 @@ void Interface::saveFile()
 			serCmdIOBuf[bytesInBuffer++] = m_iec.receive();
 			interrupts();
 			done = (m_iec.state() bitand IEC::eoiFlag) or (m_iec.state() bitand IEC::errorFlag);
-		} while(bytesInBuffer < sizeof(serCmdIOBuf) and !done);
+		} while(bytesInBuffer < sizeof(serCmdIOBuf) and not done);
 		// indicate to media host that we want to write a buffer. Give the total length including the heading 'W'+length bytes.
 		serCmdIOBuf[1] = bytesInBuffer;
 		Serial.write((const byte*)serCmdIOBuf, bytesInBuffer);
 		Serial.flush();
-	} while(!done);
+	} while(not done);
 } // saveFile
 
 
@@ -369,7 +389,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
 	} while(lengthOrResult not_eq 1 or serCmdIOBuf[0] not_eq '>');
 
-	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
+	if(not lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
 		m_iec.sendFNF();
 		strcpy_P(serCmdIOBuf, (PGM_P)F("response not sync."));
 		Log(Error, FAC_IFACE, serCmdIOBuf);
@@ -440,7 +460,7 @@ void Interface::handleATNCmdCodeDataListen()
 		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
 	} while(lengthOrResult not_eq 1 or serCmdIOBuf[0] not_eq '>');
 
-	if(!lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
+	if(not lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
 		// FIXME: Check what the drive does here when things go wrong. FNF is probably not right.
 		m_iec.sendFNF();
 		strcpy_P(serCmdIOBuf, (PGM_P)F("response not sync."));

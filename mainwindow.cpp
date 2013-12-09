@@ -465,89 +465,101 @@ void MainWindow::onDataAvailable()
 
 		// Get the first waiting character, which should be the commend to perform.
 		switch(cmdString.at(0).toLatin1()) {
-		case '!': // register facility string.
-			if(-1 == crIndex)
-				hasDataToProcess = false; // escape from here, command is incomplete.
-			else {
-				processAddNewFacility(cmdString.left(crIndex));
-				m_pendingBuffer.remove(0, crIndex + 1);
-			}
-			break;
-
-		case 'D': // debug output.
-			if(-1 == crIndex)
-				hasDataToProcess = false; // escape from here, command is incomplete.
-			else {
-				processDebug(cmdString.left(crIndex));
-				m_pendingBuffer.remove(0, crIndex + 1);
-			}
-			break;
-
-		case 'S': // request for file size in bytes before sending file to CBM
-			m_pendingBuffer.remove(0, 1);
-			m_iface.processGetOpenFileSize();
-			hasDataToProcess = not m_pendingBuffer.isEmpty();
-			break;
-
-		case 'O': // open command
-			if(-1 == crIndex)
-				hasDataToProcess = false; // escape from here, command is incomplete.
-			else {// Open was issued, string goes from 1 to CRpos - 1
-				m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
-				m_pendingBuffer.remove(0, crIndex + 1);
-			}
-			break;
-
-		case 'R': // read byte(s) from current file system mode, note that this command needs no termination, it needs to be short.
-			m_pendingBuffer.remove(0, 1);
-			m_iface.processReadFileRequest();
-			hasDataToProcess = not m_pendingBuffer.isEmpty();
-			break;
-
-		case 'W': // write single character to file in current file system mode.
-			hasDataToProcess = false; // assume we may need to wait for additional data.
-			if(m_pendingBuffer.size() > 1) {
-				uchar length = (uchar)m_pendingBuffer.at(1);
-				if(m_pendingBuffer.size() >= length) {
-					m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
-					// discard all processed (written) bytes from buffer.
-					m_pendingBuffer.remove(0, length);
-					hasDataToProcess = not m_pendingBuffer.isEmpty();
+			case '!': // register facility string.
+				if(-1 == crIndex)
+					hasDataToProcess = false; // escape from here, command is incomplete.
+				else {
+					processAddNewFacility(cmdString.left(crIndex));
+					m_pendingBuffer.remove(0, crIndex + 1);
 				}
-			}
-			break;
+				break;
 
-		case 'L': // directory/media info Line request:
-			// Just remove the BYTE from queue and do business.
-			m_pendingBuffer.remove(0, 1);
-			m_iface.processLineRequest();
-			break;
+			case 'D': // debug output.
+				if(-1 == crIndex)
+					hasDataToProcess = false; // escape from here, command is incomplete.
+				else {
+					processDebug(cmdString.left(crIndex));
+					m_pendingBuffer.remove(0, crIndex + 1);
+				}
+				break;
 
-		case 'C': // close FILE command
-			m_pendingBuffer.remove(0, 1);
-			m_iface.processCloseCommand();
-			break;
+			case 'S': // request for file size in bytes before sending file to CBM
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processGetOpenFileSize();
+				hasDataToProcess = not m_pendingBuffer.isEmpty();
+				break;
 
-		case 'E': // Ask for translation of error string from error code
-			if(cmdString.size() < 1)
-				hasDataToProcess = false;
-			m_iface.processErrorStringRequest(static_cast<CBM::IOErrorMessage>(m_pendingBuffer.at(1)));
-			m_pendingBuffer.remove(0, 2);
-			hasDataToProcess = not m_pendingBuffer.isEmpty();
-			break;
+			case 'O': // open command
+				if(-1 == crIndex)
+					hasDataToProcess = false; // escape from here, command is incomplete.
+				else {// Open was issued, string goes from 1 to CRpos - 1
+					m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
+					m_pendingBuffer.remove(0, crIndex + 1);
+				}
+				break;
 
-		default:
-			// See if it is a reconnection attempt.
+			case 'R': // read byte(s) from current file system driver, note that this command needs no termination, it needs to be short.
+				// The size given back is the current size, it is default MAX_BYTES_PER_REQUEST but may be changed with 'r' command.
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processReadFileRequest();
+				break;
+
+			case 'r': // same as 'R', but we are also given the expected read size. All succeeding 'R' will be with this size.
+				if(m_pendingBuffer.size() < 2)
+					hasDataToProcess = false;
+				else {
+					uchar length = (uchar)m_pendingBuffer.at(1);
+					m_pendingBuffer.remove(0, 2);
+					m_iface.processReadFileRequest(length);
+				}
+				break;
+
+			case 'W': // write single character to file in current file system mode.
+				hasDataToProcess = false; // assume we may need to wait for additional data.
+				if(m_pendingBuffer.size() > 1) {
+					uchar length = (uchar)m_pendingBuffer.at(1);
+					if(m_pendingBuffer.size() >= length) {
+						m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
+						// discard all processed (written) bytes from buffer.
+						m_pendingBuffer.remove(0, length);
+						hasDataToProcess = not m_pendingBuffer.isEmpty();
+					}
+				}
+				break;
+
+			case 'L': // directory/media info Line request:
+				// Just remove the BYTE from queue and do business.
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processLineRequest();
+				break;
+
+			case 'C': // close FILE command
+				m_pendingBuffer.remove(0, 1);
+				m_iface.processCloseCommand();
+				break;
+
+			case 'E': // Ask for translation of error string from error code
+				if(cmdString.size() < 2) // must have both characters, otherwise request is incomplete.
+					hasDataToProcess = false;
+				else {
+					m_iface.processErrorStringRequest(static_cast<CBM::IOErrorMessage>(m_pendingBuffer.at(1)));
+					m_pendingBuffer.remove(0, 2);
+				}
+				hasDataToProcess = not m_pendingBuffer.isEmpty();
+				break;
+
+			default:
+				// See if it is a reconnection attempt.
 			if(not checkConnectRequest()) {
-				// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
-				if(-1 not_eq crIndex) {
+					// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
+					if(-1 not_eq crIndex) {
 						m_pendingBuffer.remove(0, crIndex + 1);
+					}
+					else // got something, might be in middle of something and with no CR, just get out.
+						m_pendingBuffer.remove(0, 1);
+					//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
 				}
-				else // got something, might be in middle of something and with no CR, just get out.
-					m_pendingBuffer.remove(0, 1);
-				//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
-			}
-			break;
+				break;
 		}
 		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.
 		if(hasDataToProcess)

@@ -66,6 +66,7 @@ Interface::Interface(QextSerialPort& port)
 	: m_currFileDriver(0), m_port(port)
 	, m_queuedError(CBM::ErrOK)
 	,	m_openState(O_NOTHING)
+	, m_currReadLength(MAX_BYTES_PER_REQUEST)
 	, m_pListener(0)
 {
 	// Build the list of implemented / supported file systems.
@@ -479,13 +480,16 @@ void Interface::processLineRequest()
 } // processOpenCommand
 
 
-void Interface::processReadFileRequest(void)
+void Interface::processReadFileRequest(ushort length)
 {
 	QByteArray data;
 	uchar count;
 	bool atEOF = false;
-	// NOTE: -2 because we need two bytes for the protocol.
-	for(count = 0; count < MAX_BYTES_PER_REQUEST - 2 and not atEOF; ++count) {
+
+	if(length)
+		m_currReadLength = length;
+	// NOTE: -2 here because we need two bytes for the protocol.
+	for(count = 0; count < m_currReadLength - 2 and not atEOF; ++count) {
 		data.append(m_currFileDriver->getc());
 		atEOF = m_currFileDriver->isEOF();
 	}
