@@ -611,7 +611,7 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="minimumSize">
     <size>
-     <width>418</width>
+     <width>535</width>
      <height>200</height>
     </size>
    </property>
@@ -719,6 +719,29 @@ p, li { white-space: pre-wrap; }
          <property name="icon">
           <iconset resource="resources.qrc">
            <normaloff>:/icons/icons/clear.png</normaloff>:/icons/icons/clear.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>32</width>
+           <height>32</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="filterSetup">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Filter Setup...</string>
+         </property>
+         <property name="icon">
+          <iconset resource="resources.qrc">
+           <normaloff>:/icons/icons/filter.png</normaloff>:/icons/icons/filter.png</iconset>
          </property>
          <property name="iconSize">
           <size>

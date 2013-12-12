@@ -353,69 +353,71 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 void MainWindow::readSettings()
 {
-	QSettings settings;
+	QSettings sets;
 
-	ui->imageDir->setText(settings.value("imageDirectory", QDir::currentPath()).toString());
-	ui->singleImageName->setText(settings.value("singleImageName").toString());
+	ui->imageDir->setText(sets.value("imageDirectory", QDir::currentPath()).toString());
+	ui->singleImageName->setText(sets.value("singleImageName").toString());
 	QDir::setCurrent(ui->imageDir->text());
-	ui->imageFilter->setText(settings.value("imageFilter", QString()).toString());
-	m_appSettings.portName = settings.value("portName", m_ports.isEmpty() ? "COM1" : m_ports.first().friendName).toString();
-	m_appSettings.baudRate = settings.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toUInt();
-	m_appSettings.deviceNumber = settings.value("deviceNumber", QString::number(DEFAULT_DEVICE_NUMBER)).toUInt();
-	m_appSettings.atnPin = settings.value("atnPin", QString::number(DEFAULT_ATN_PIN)).toUInt();
-	m_appSettings.clockPin = settings.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toUInt();
-	m_appSettings.dataPin = settings.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toUInt();
-	m_appSettings.resetPin = settings.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toUInt();
+	ui->imageFilter->setText(sets.value("imageFilter", QString()).toString());
+	m_appSettings.portName = sets.value("portName", m_ports.isEmpty() ? "COM1" : m_ports.first().friendName).toString();
+	m_appSettings.baudRate = sets.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toUInt();
+	m_appSettings.deviceNumber = sets.value("deviceNumber", QString::number(DEFAULT_DEVICE_NUMBER)).toUInt();
+	m_appSettings.atnPin = sets.value("atnPin", QString::number(DEFAULT_ATN_PIN)).toUInt();
+	m_appSettings.clockPin = sets.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toUInt();
+	m_appSettings.dataPin = sets.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toUInt();
+	m_appSettings.resetPin = sets.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toUInt();
 	//	ui->srqInPin = settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toUInt();
 
-	m_appSettings.imageFilters = settings.value("imageFilters", "*.D64,*.T64,*.M2I,*.PRG,*.P00,*.SID").toString();
-	m_appSettings.showDirectories = settings.value("showDirectories", false).toBool();
-	m_appSettings.programVersion = settings.value("lastProgramVersion", "unset").toString();
+	m_appSettings.imageFilters = sets.value("imageFilters", "*.D64,*.T64,*.M2I,*.PRG,*.P00,*.SID").toString();
+	m_appSettings.showDirectories = sets.value("showDirectories", false).toBool();
+	m_appSettings.programVersion = sets.value("lastProgramVersion", "unset").toString();
 
-	m_appSettings.emulatorPalette = settings.value("emulatorPalette", "ccs64").toString();
-	m_appSettings.cbmMachine = settings.value("cbmMachine", "C 64").toString();
+	m_appSettings.emulatorPalette = sets.value("emulatorPalette", "ccs64").toString();
+	m_appSettings.cbmMachine = sets.value("cbmMachine", "C 64").toString();
 
-	ui->actionDisk_Write_Protected->setChecked(settings.value("diskWriteProtected", false).toBool());
+	ui->actionDisk_Write_Protected->setChecked(sets.value("diskWriteProtected", false).toBool());
 
-	restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
-	restoreState(settings.value("mainWindowState").toByteArray());
+	restoreGeometry(sets.value("mainWindowGeometry").toByteArray());
+	restoreState(sets.value("mainWindowState").toByteArray());
 	QList<int> splits;
-	splits.append(settings.value("splitterpos1_size", 0).toInt());
-	splits.append(settings.value("splitterpos2_size", 0).toInt());
+	splits.append(sets.value("splitterpos1_size", 0).toInt());
+	splits.append(sets.value("splitterpos2_size", 0).toInt());
 	if(splits.at(0) and splits.at(1))
 		ui->splitter->setSizes(splits);
+	Logging::loggerInstance().loadFilters(sets);
 } // readSettings
 
 
 void MainWindow::writeSettings() const
 {
-	QSettings settings;
-	settings.setValue("mainWindowGeometry", saveGeometry());
-	settings.setValue("mainWindowState", saveState());
+	QSettings sets;
+	sets.setValue("mainWindowGeometry", saveGeometry());
+	sets.setValue("mainWindowState", saveState());
 	QList<int> splits = ui->splitter->sizes();
 	if(splits.size() >= 2) {
-		settings.setValue("splitterpos1_size", splits.at(0));
-		settings.setValue("splitterpos2_size", splits.at(1));
+		sets.setValue("splitterpos1_size", splits.at(0));
+		sets.setValue("splitterpos2_size", splits.at(1));
 	}
-	settings.setValue("lastProgramVersion", m_appSettings.programVersion);
+	sets.setValue("lastProgramVersion", m_appSettings.programVersion);
 
-	settings.setValue("imageDirectory", ui->imageDir->text());
-	settings.setValue("singleImageName", ui->singleImageName->text());
-	settings.setValue("imageFilter", ui->imageFilter->text());
-	settings.setValue("portName", m_appSettings.portName);
-	settings.setValue("baudRate", QString::number(m_appSettings.baudRate));
-	settings.setValue("deviceNumber", QString::number(m_appSettings.deviceNumber));
-	settings.setValue("atnPin", QString::number(m_appSettings.atnPin));
-	settings.setValue("clockPin", QString::number(m_appSettings.clockPin));
-	settings.setValue("dataPin", QString::number(m_appSettings.dataPin));
+	sets.setValue("imageDirectory", ui->imageDir->text());
+	sets.setValue("singleImageName", ui->singleImageName->text());
+	sets.setValue("imageFilter", ui->imageFilter->text());
+	sets.setValue("portName", m_appSettings.portName);
+	sets.setValue("baudRate", QString::number(m_appSettings.baudRate));
+	sets.setValue("deviceNumber", QString::number(m_appSettings.deviceNumber));
+	sets.setValue("atnPin", QString::number(m_appSettings.atnPin));
+	sets.setValue("clockPin", QString::number(m_appSettings.clockPin));
+	sets.setValue("dataPin", QString::number(m_appSettings.dataPin));
 	//	settings.setValue("srqInPin", QString::number(m_appSettings.srqInPin));
-	settings.setValue("imageFilters", m_appSettings.imageFilters);
-	settings.setValue("showDirectories", m_appSettings.showDirectories);
+	sets.setValue("imageFilters", m_appSettings.imageFilters);
+	sets.setValue("showDirectories", m_appSettings.showDirectories);
 
-	settings.setValue("emulatorPalette", m_appSettings.emulatorPalette);
-	settings.setValue("cbmMachine", m_appSettings.cbmMachine);
+	sets.setValue("emulatorPalette", m_appSettings.emulatorPalette);
+	sets.setValue("cbmMachine", m_appSettings.cbmMachine);
 
-	settings.setValue("diskWriteProtected", ui->actionDisk_Write_Protected->isChecked());
+	sets.setValue("diskWriteProtected", ui->actionDisk_Write_Protected->isChecked());
+	Logging::loggerInstance().saveFilters(sets);
 } // writeSettings
 
 
@@ -649,6 +651,12 @@ void MainWindow::on_clearLog_clicked()
 	ui->clearLog->setEnabled(false);
 	ui->pauseLog->setEnabled(false);
 } // on_m_clearLog_clicked
+
+
+void MainWindow::on_filterSetup_clicked()
+{
+	Logging::loggerInstance().configureFilters(this);
+} // on_filterSetup_clicked
 
 
 void MainWindow::on_saveLog_clicked()
@@ -1107,3 +1115,4 @@ void MainWindow::updateDirListColors()
 	ui->imageDirList->setCursorWidth(pMachine->cursorWidth);
 	deviceReset();
 } // updateDirListColors
+

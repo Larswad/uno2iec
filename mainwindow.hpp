@@ -84,6 +84,8 @@ private slots:
 	void on_reloadImageDir_clicked();
 	void on_dirList_doubleClicked(const QModelIndex &index);
 	void on_directoryChanged(const QString& path);
+	void on_filterSetup_clicked();
+
 private:
 	bool checkConnectRequest();
 	void enumerateComPorts();

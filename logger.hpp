@@ -4,6 +4,8 @@
 #include <QObject>
 #include "logfiltersetup.hpp"
 
+class QSettings;
+
 namespace Logging {
 
 typedef enum {
@@ -31,7 +33,11 @@ public:
 	void log(const QString &facility, const QString &message, LogLevelE level);
 	bool addTransport(ILogTransport* pTransport);
 	bool removeTransport(ILogTransport* pTransport);
-	void configureFilters();
+
+	// filters
+	void configureFilters(QWidget *parent);
+	void saveFilters(QSettings& sets);
+	void loadFilters(QSettings& sets);
 
 	static Logger& getLoggerInstance();
 signals:

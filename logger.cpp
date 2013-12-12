@@ -1,10 +1,14 @@
 #include "logger.hpp"
 #include <QDate>
+#include <QSettings>
 
 namespace Logging {
 
 Logger::Logger(QObject *parent) : QObject(parent)
-{}
+{
+	m_levels.fill(true, NUM_SEVERITY_LEVELS);
+} // ctor
+
 
 void Logger::log(const QString& facility, const QString& message, LogLevelE level)
 {
@@ -57,11 +61,50 @@ bool Logger::removeTransport(ILogTransport* pTransport)
 } // removeTransport
 
 
-void Logger::configureFilters()
+void Logger::configureFilters(QWidget* parent = 0)
 {
-	LogFilterSetup dlgSetup(m_filters, m_levels);
+	LogFilterSetup dlgSetup(m_filters, m_levels, parent);
 	dlgSetup.exec();
 } // configureFilters
+
+
+void Logger::saveFilters(QSettings& sets)
+{
+	sets.beginGroup("logFilters");
+	LogFilterMap::const_iterator i = m_filters.constBegin();
+	while(i not_eq m_filters.constEnd()) {
+		sets.setValue(i.key(), i.value());
+		++i;
+	}
+	sets.endGroup();
+
+	// write severity levels.
+	sets.beginWriteArray("logLevels");
+	for(int i = 0; i < m_levels.size(); ++i) {
+		sets.setArrayIndex(i);
+		sets.setValue("isEnabled", m_levels[i]);
+	}
+	sets.endArray();
+} // saveFilters
+
+
+void Logger::loadFilters(QSettings& sets)
+{
+	sets.beginGroup("logFilters");
+	QStringList keys = sets.childKeys();
+	foreach(QString key, keys)
+		m_filters[key] = sets.value(key).toBool();
+	sets.endGroup();
+
+	// read severity levels.
+	int numEntries = sets.beginReadArray("logLevels");
+	m_levels.resize(qMax(numEntries, m_levels.size()));
+	for(int i = 0; i < numEntries; ++i) {
+		sets.setArrayIndex(i);
+		m_levels[i] = sets.value("isEnabled", true).toBool();
+	}
+	sets.endArray();
+} // loadFilters
 
 
 Logger& loggerInstance()
