@@ -13,10 +13,10 @@ public:
 
 	const QStringList& extension() const
 	{
-#ifndef TARGET_OS_X
+#if !(defined(TARGET_OS_X) || defined(_MSC_VER))
 		static const QStringList ext({ "T64" });
 #else
-		static const QStringList ext;
+		static QStringList ext;
 		ext << "T64";
 #endif
 		return ext;
@@ -62,8 +62,12 @@ public:
 	bool close(void);
 
 private:
-
+#ifdef _MSC_VER
+#pragma pack(push, before_1, 1)
+	typedef struct
+		#else
 	typedef struct __attribute__((packed))
+#endif
 	{
 		uchar c64sFileType;
 		uchar d64FileType;
@@ -78,7 +82,11 @@ private:
 	} DirEntry; // 32 bytes
 
 
+#ifdef _MSC_VER
+	typedef struct
+		#else
 	typedef struct __attribute__((packed))
+#endif
 	{
 		uchar signature[32];
 		ushort versionNo;
@@ -90,6 +98,9 @@ private:
 		uchar tapeName[24];
 	} Header; // 32 bytes
 
+#ifdef _MSC_VER
+#pragma pack(pop, before_1)
+#endif
 	// The real host file system D64 image file:
 	QFile m_hostFile;
 

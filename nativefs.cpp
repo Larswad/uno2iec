@@ -164,7 +164,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 	cb.send(0, line);
 
 	QFileInfoList list(dir.entryInfoList(filters, QDir::NoDot bitor QDir::Files
-		bitor (m_listDirectories ? QDir::AllDirs : QDir::Files), QDir::Name bitor QDir::DirsFirst));
+																			 bitor (m_listDirectories ? QDir::AllDirs : QDir::Files), QDir::Name bitor QDir::DirsFirst));
 
 	Log("NATIVEFS", info, QString("Listing %1 entrie(s) to CBM.").arg(QString::number(list.count())));
 	while(not list.isEmpty()) {
@@ -185,7 +185,7 @@ bool NativeFS::sendListing(ISendLine& cb)
 
 		ushort fileSize = entry.size() / 1024;
 		// Send initial spaces (offset) according to file size
-		cb.send(fileSize, line.mid((int)log10(fileSize)));
+		cb.send(fileSize, line.mid((int)log10((double)fileSize)));
 	}
 
 	return true;

@@ -1,6 +1,7 @@
 *creator.user*
 *.user
 *.o
+*.pdb
 moc_*
 rpi2iec
 *.html

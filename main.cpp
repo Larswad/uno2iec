@@ -46,7 +46,12 @@ int main(int argc, char *argv[])
 	// Configure our "looks". Take the most preferred one, but take into accout what may exist on this platform.
 	foreach(QString style, QStyleFactory::keys())
 		qDebug() << "style: " << style;
+#if !(defined(TARGET_OS_X) || defined(_MSC_VER))
 	QStringList preferredStyles({ "WindowsXP", "Fusion", "CleanLooks", "Windows"});
+#else
+	QStringList preferredStyles;
+	preferredStyles << "WindowsXP" << "Fusion" << "CleanLooks" << "Windows";
+#endif
 	foreach(const QString& style, preferredStyles)
 		if(QStyleFactory::keys().contains(style)) {
 			a.setStyle(QStyleFactory::create(style));
@@ -67,7 +72,7 @@ int main(int argc, char *argv[])
 // This works even if the font is not registered in system globally.
 static bool addEmbeddedFonts()
 {
-#ifndef TARGET_OS_X
+#if !(defined(TARGET_OS_X) || defined(_MSC_VER))
 	QStringList list({ "PetMe64.ttf" , "PetMe2X.ttf" , "PetMe1282Y.ttf" });
 #else
 	// NOTE: QT5 for OSX has bug that won't let us use c++11 features. Special compile here until fixed.

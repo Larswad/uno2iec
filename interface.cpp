@@ -1,11 +1,12 @@
+#include <QStringList>
+#include <QDir>
+#include <QDebug>
+
 #include "interface.hpp"
 #include "d64driver.hpp"
 #include "t64driver.hpp"
 #include "m2idriver.hpp"
-#include <QStringList>
-#include <logger.hpp>
-#include <QDir>
-#include <QDebug>
+#include "logger.hpp"
 #include "doscommands.hpp"
 
 using namespace Logging;
@@ -347,20 +348,20 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 			// command channel command
 			// (note: if any previous openfile command has given us an error, the 'current' file system to use is not defined and
 			// therefore the command will fail, we don't even have the native fs to use for the open command).
-//			if(0 == m_currFileDriver)
-//				m_queuedError = ErrDriveNotReady;
-//			else
-//				m_queuedError = m_currFileDriver->cmdChannel(cmd);
-				if(cmd.isEmpty()) {
-					// Response: ><code><CR>
-					// The code return is according to the values of the IOErrorMessage enum.
-					// send back m_queuedError to uno.
-					sendOpenResponse((char)m_queuedError);
-				}
-				else {
-					m_queuedError = CBMDos::Command::execute(cmd, *this);
-				}
-				Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)));
+			//			if(0 == m_currFileDriver)
+			//				m_queuedError = ErrDriveNotReady;
+			//			else
+			//				m_queuedError = m_currFileDriver->cmdChannel(cmd);
+			if(cmd.isEmpty()) {
+				// Response: ><code><CR>
+				// The code return is according to the values of the IOErrorMessage enum.
+				// send back m_queuedError to uno.
+				sendOpenResponse((char)m_queuedError);
+			}
+			else {
+				m_queuedError = CBMDos::Command::execute(cmd, *this);
+			}
+			Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)));
 		}
 		else if(CBM::READPRG_CHANNEL == chan) {
 			// ...it was a open file for reading (load) command.

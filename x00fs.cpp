@@ -11,7 +11,7 @@ using namespace Logging;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
- const QString X00MAGIC_STR("C64File");
+const QString X00MAGIC_STR("C64File");
 }
 
 
@@ -54,12 +54,20 @@ CBM::IOErrorMessage x00FS::fopenWrite(const QString& fileName, bool replaceMode)
 	CBM::IOErrorMessage retCode = NativeFS::fopenWrite(fileName, replaceMode);
 	if(CBM::ErrOK == retCode) {
 		// We must write the header before anything else.
+#ifdef _MSC_VER
+		strcpy_s((char*)m_header.x00Magic, sizeof(m_header.x00Magic), X00MAGIC_STR.toLocal8Bit().data());
+#else
 		strcpy((char*)m_header.x00Magic, X00MAGIC_STR.toLocal8Bit().data());
+#endif
 		// Use the given filename stripped of path and trimmed down in size for original CBM file name.
 		QFileInfo fi(fileName);
 		QString originalName(fi.baseName());
 		originalName.truncate(sizeof(m_header.originalFileName));
+#ifdef _MSC_VER
+		strcpy_s((char*)m_header.originalFileName, sizeof(m_header.originalFileName), originalName.toLocal8Bit().data());
+#else
 		strcpy((char*)m_header.originalFileName, originalName.toLocal8Bit().data());
+#endif
 
 		// write header.
 		m_hostFile.write((char*)&m_header, sizeof(m_header));

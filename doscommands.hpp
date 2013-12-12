@@ -5,8 +5,8 @@
 #include <QList>
 #include <QChar>
 #include <QStringList>
-#include <logger.hpp>
 
+#include "logger.hpp"
 #include "filedriverbase.hpp"
 
 class Interface;
@@ -61,8 +61,8 @@ public:
 		foreach(Command* cmd, s_attached) {
 			if(cmd->delimeter().isNull()) {
 				if(cmdString.startsWith(cmd->full())) {
-					 params = cmdString.mid(cmd->full().length());
-					 found = true;
+					params = cmdString.mid(cmd->full().length());
+					found = true;
 				}
 				else if(not cmd->abbrev().isEmpty() and cmdString.startsWith(cmd->abbrev(), Qt::CaseInsensitive)) {
 					params = cmdString.mid(cmd->abbrev().length());
@@ -92,7 +92,7 @@ public:
 		QString params, stripped(cmdString);
 		// Strip of trailing whitespace (in fact, CR for e.g. OPEN 1,8,15,"I:" which generates a CR.
 		while(stripped.endsWith(QChar('\r')) or stripped.endsWith(QChar(' ')))
-					stripped.chop(1);
+			stripped.chop(1);
 		Command* dosCmd = find(stripped, params);
 		if(0 not_eq dosCmd)
 			return dosCmd->process(params, iface);

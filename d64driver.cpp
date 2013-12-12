@@ -438,7 +438,7 @@ bool D64::sendListing(ISendLine& cb)
 			ushort fileSize = dir.m_blocksLo + (dir.m_blocksHi << 8);
 
 			// Send initial spaces (offset) according to file size
-			cb.send(fileSize, line.mid((int)log10(fileSize)));
+			cb.send(fileSize, line.mid((int)log10((double)fileSize)));
 		}
 	}
 
@@ -529,26 +529,26 @@ uchar D64::DirEntry::sector() const
  */
 ushort D64::xxxsectorsPerTrack(uchar track)
 {
-//	switch(m_header.imageType bitand IMAGE_TYPE_MASK)
-//	{
-//		case D81:
-//			return 40;
+	//	switch(m_header.imageType bitand IMAGE_TYPE_MASK)
+	//	{
+	//		case D81:
+	//			return 40;
 
-//		case DNP:
-//			return 256;
+	//		case DNP:
+	//			return 256;
 
-//		case D41:
-//		case D71:
-//		default:
-//			if(track > 35)
-//				track -= 35;
-//			if(track < 18)
-//				return 21;
-//			if(track < 25)
-//				return 19;
-//			if(track < 31)
-//				return 18;
-//			return 17;
-//	}
+	//		case D41:
+	//		case D71:
+	//		default:
+	//			if(track > 35)
+	//				track -= 35;
+	//			if(track < 18)
+	//				return 21;
+	//			if(track < 25)
+	//				return 19;
+	//			if(track < 31)
+	//				return 18;
+	//			return 17;
+	//	}
 	return 0;
 } // sectorsPerTrack

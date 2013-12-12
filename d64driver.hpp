@@ -39,10 +39,10 @@ public:
 
 	const QStringList& extension() const
 	{
-#ifndef TARGET_OS_X
+#if !(defined(TARGET_OS_X) || defined(_MSC_VER))
 		static const QStringList ext({ "D64" });
 #else
-		static const QStringList ext;
+		static QStringList ext;
 		ext << "D64";
 #endif
 		return ext;
@@ -82,7 +82,12 @@ public:
 	// Send information about file system (whether it is OK, sizes etc.).
 	bool sendMediaInfo(ISendLine &cb);
 
+#ifdef _MSC_VER
+#pragma pack(push, before_1, 1)
+	class ImageHeader
+		#else
 	class __attribute__((packed)) ImageHeader
+#endif
 	{
 		public:
 		// Note: This is a POD class, may NOT contain any virtual methods or additional data than the DirType struct.
@@ -91,15 +96,19 @@ public:
 		~ImageHeader();
 
 		// Offsets in a D64 directory entry, also needed for raw dirs
-		#define DIR_OFS_FILE_TYPE       2
-		#define DIR_OFS_TRACK           3
-		#define DIR_OFS_SECTOR          4
-		#define DIR_OFS_FILE_NAME       5
-		#define DIR_OFS_SIZE_LOW        0x1e
-		#define DIR_OFS_SIZE_HI         0x1f
+#define DIR_OFS_FILE_TYPE       2
+#define DIR_OFS_TRACK           3
+#define DIR_OFS_SECTOR          4
+#define DIR_OFS_FILE_NAME       5
+#define DIR_OFS_SIZE_LOW        0x1e
+#define DIR_OFS_SIZE_HI         0x1f
 	};
 
+#ifdef _MSC_VER
+	class DirEntry
+		#else
 	class __attribute__((packed)) DirEntry
+#endif
 	{
 		public:
 		// Note: This is a POD class, may NOT contain any virtual methods or additional data than the DirType struct.
@@ -126,7 +135,9 @@ public:
 		uchar m_blocksLo;     // 16-bit file size in blocks, multiply by
 		uchar m_blocksHi;     // D64_BLOCK_DATA to get bytes
 	}; // total of 30 bytes
-
+#ifdef _MSC_VER
+#pragma pack(pop, before_1)
+#endif
 	// special commands.
 	static bool newDisk(const QString &name, const QString &id);
 

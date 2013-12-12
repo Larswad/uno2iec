@@ -267,9 +267,9 @@ const QString T64::openedFileName() const
 ushort T64::calcFileLength(DirEntry dir)
 {
 	return ((ushort)dir.endAddressLo
-				bitor ((ushort)dir.endAddressHi << 8))
-				- ((ushort)dir.startAddressLo
-				bitor ((ushort)dir.startAddressHi << 8));
+					bitor ((ushort)dir.endAddressHi << 8))
+			- ((ushort)dir.startAddressLo
+				 bitor ((ushort)dir.startAddressHi << 8));
 } // calcFileLength
 
 
@@ -310,7 +310,7 @@ bool T64::sendListing(ISendLine& cb)
 			// Send filename, which is padded with spaces, line number is just zero.
 			QString line = QString("  \"%1\" %2").arg(QString::fromLocal8Bit(reinterpret_cast<char*>(dir.fileName), sizeof(dir.fileName)), strPrg);
 
-			cb.send(fileBlocks, line.mid((int)log10(fileBlocks)));
+			cb.send(fileBlocks, line.mid((int)log10((double)fileBlocks)));
 		}
 	}
 	// Write line with TAPE_END

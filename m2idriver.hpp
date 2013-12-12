@@ -11,10 +11,10 @@ public:
 
 	const QStringList& extension() const
 	{
-#ifndef TARGET_OS_X
+#if !(defined(TARGET_OS_X) || defined(_MSC_VER))
 		static const QStringList ext({ "M2I" });
 #else
-		static const QStringList ext;
+		static QStringList ext;
 		ext << "M2I";
 #endif
 		return ext;

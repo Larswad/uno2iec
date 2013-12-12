@@ -84,7 +84,7 @@ CBM::IOErrorMessage RenameFile::process(const QString& params, Interface& iface)
 
 	// old name and new name must be present, no more no less.
 	if(2 not_eq names.count())
-			return CBM::ErrSyntaxError;
+		return CBM::ErrSyntaxError;
 
 	const QString oldName(names[0]);
 	const QString newName(names[1]);
@@ -119,7 +119,7 @@ CBM::IOErrorMessage CopyFiles::process(const QString& params, Interface& iface)
 	const QStringList paramList(params.split(QChar('=')));
 	// destination name and source name(s) parameters must be present, no more no less.
 	if(2 not_eq paramList.count())
-			return CBM::ErrSyntaxError;
+		return CBM::ErrSyntaxError;
 	const QString destName(paramList[0]);
 	// destination name must not be empty it they must have legal characters.
 	if(destName.isEmpty())
