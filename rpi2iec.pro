@@ -20,6 +20,8 @@ INCLUDEPATH += ../qextserialport/src
 #QMAKE_LIBDIR += ../qextserialport/src/build
 include(../qextserialport/src/qextserialport.pri)
 
+QMAKE_CXXFLAGS += -std=gnu++0x
+    # QMAKE_CXXFLAGS +=-std=c++0x
 
 
 win32 {
@@ -30,8 +32,6 @@ win32 {
 
 unix {
     OBJPRE = nix
-    QMAKE_CXXFLAGS += -std=gnu++0x
-# QMAKE_CXXFLAGS +=-std=c++0x
 }
 
 # To compile for Raspberry PI, run qmake with the flags: CONFIG+=raspberry
@@ -63,7 +63,8 @@ SOURCES += main.cpp\
         aboutdialog.cpp \
         settingsdialog.cpp \
         doscommands.cpp \
-        x64driver.cpp
+        x64driver.cpp \
+    logfiltersetup.cpp
 
 HEADERS += mainwindow.hpp \
         t64driver.hpp \
@@ -80,11 +81,13 @@ HEADERS += mainwindow.hpp \
         dirlistthemingconsts.hpp \
         doscommands.hpp \
         uno2iec/cbmdefines.h \
-        x64driver.hpp
+        x64driver.hpp \
+    logfiltersetup.hpp
 
 FORMS += mainwindow.ui \
         aboutdialog.ui \
-        settingsdialog.ui
+        settingsdialog.ui \
+    logfiltersetup.ui
 
 OTHER_FILES += \
         changes.txt \

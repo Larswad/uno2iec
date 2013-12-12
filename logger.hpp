@@ -2,6 +2,7 @@
 #define LOGGER_HPP
 
 #include <QObject>
+#include "logfiltersetup.hpp"
 
 namespace Logging {
 
@@ -9,7 +10,8 @@ typedef enum {
 	error,
 	warning,
 	info,
-	success
+	success,
+	NUM_SEVERITY_LEVELS
 } LogLevelE;
 
 struct ILogTransport
@@ -26,9 +28,10 @@ class Logger : public QObject
 	typedef QList<ILogTransport*> LogTransportList;
 public:
 	explicit Logger(QObject *parent = 0);
-	void log(const QString &facility, const QString &message, LogLevelE level) const;
+	void log(const QString &facility, const QString &message, LogLevelE level);
 	bool addTransport(ILogTransport* pTransport);
 	bool removeTransport(ILogTransport* pTransport);
+	void configureFilters();
 
 	static Logger& getLoggerInstance();
 signals:
@@ -37,6 +40,8 @@ public slots:
 
 private:
 	LogTransportList m_transports;
+	LogFilterMap m_filters;
+	QVector<bool> m_levels;
 };
 
 Logger& loggerInstance();

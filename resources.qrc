@@ -16,6 +16,7 @@
         <file>icons/pause.png</file>
         <file>icons/restart.png</file>
         <file>icons/save.png</file>
+        <file>icons/filter.png</file>
     </qresource>
     <qresource prefix="/roms">
         <file alias="rom_1541">other/dos1541</file>

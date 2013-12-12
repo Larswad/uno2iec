@@ -6,9 +6,22 @@ namespace Logging {
 Logger::Logger(QObject *parent) : QObject(parent)
 {}
 
-
-void Logger::log(const QString& facility, const QString& message, LogLevelE level) const
+void Logger::log(const QString& facility, const QString& message, LogLevelE level)
 {
+	LogFilterMap::const_iterator it(m_filters.find(facility));
+
+	if(it == m_filters.end())
+		m_filters[facility] = true; // add to existing facilities, enabled by default.
+	else
+		if(!it.value())
+			return; // filtered out!
+
+	// manage unlikely out-of-range value.
+	level = level >= NUM_SEVERITY_LEVELS ? info : level;
+
+	if(!m_levels[level]) // check if severity level is filtered out.
+		return;
+
 	QString dateTime(QDate::currentDate().toString("yyyy-MM-dd") +
 									 QTime::currentTime().toString(" hh:mm:ss:zzz"));
 
@@ -42,6 +55,13 @@ bool Logger::removeTransport(ILogTransport* pTransport)
 	m_transports.removeAt(index);
 	return true;
 } // removeTransport
+
+
+void Logger::configureFilters()
+{
+	LogFilterSetup dlgSetup(m_filters, m_levels);
+	dlgSetup.exec();
+} // configureFilters
 
 
 Logger& loggerInstance()
