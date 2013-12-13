@@ -30,8 +30,9 @@ enum IECChannels {
 */
 
 // Back arrow character code.
-#define CBM_BACK_ARROW 95
-#define CBM_EXCLAMATION '!'
+#define CBM_BACK_ARROW 0x5f
+#define CBM_EXCLAMATION_MARKS "!!"
+#define CBM_DOLLAR_SIGN '$'
 
 ////////////////////////////////////////////////////////////////////////////////
 //

@@ -72,9 +72,7 @@ CBM::IOErrorMessage Scratch::process(const QString &params, Interface &iface)
 	// TODO: check write protect here!
 	// TODO: Check that there is no path stuff in the name, we don't like that here.
 	Log(FACDOS, info, QString("About to scratch file: %1").arg(params));
-	if(not iface.currentFileDriver()->deleteFile(params))
-		return CBM::ErrFileNotFound; // should be the proper reason of course.
-	return CBM::ErrFilesScratched;
+	return iface.currentFileDriver()->deleteFile(params) ? CBM::ErrFileNotFound : CBM::ErrFilesScratched;
 } // Scratch
 
 

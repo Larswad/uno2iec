@@ -31,9 +31,6 @@ public:
 
 	bool sendListing(ISendLine& cb);
 
-	// command channel command
-	uchar cmd(char* s);
-
 	bool fopen(const QString& fileName);
 	CBM::IOErrorMessage fopenWrite(const QString& fileName, bool replaceMode = false);
 
@@ -53,9 +50,9 @@ public:
 	// new disk, creates empty M2I file with diskname and opens it
 	uchar newDisk(char* diskName);
 
-
 	bool deleteFile(const QString& fileName);
-	bool rename(char* oldName, char* newName);
+
+	CBM::IOErrorMessage renameFile(const QString& oldName, const QString& newName);
 
 private:
 	struct FileEntry {
@@ -66,6 +63,12 @@ private:
 		} fileType;
 		QString nativeName; // 12 chars (8.3 format) padded with spaces
 		QString cbmName;		// 16 chars padded with spaces.
+
+		// Needed for QList::removeOne
+		bool operator==(const FileEntry& rhs)
+		{
+			return this->fileType == rhs.fileType and this->nativeName == rhs.nativeName and this->cbmName == rhs.nativeName;
+		}
 	};
 	typedef QList<FileEntry> EntryList;
 

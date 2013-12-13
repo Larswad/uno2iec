@@ -77,6 +77,7 @@ Interface::Interface(QextSerialPort& port)
 	m_fsList.append(&m_m2i);
 	m_fsList.append(&m_x00fs);
 
+	// We have included the rom in our Qt resources.
 	QFile romFile(":/roms/rom_1541");
 	bool success = romFile.open(QIODevice::ReadOnly);
 	if(not success)
@@ -90,8 +91,7 @@ Interface::Interface(QextSerialPort& port)
 
 
 Interface::~Interface()
-{
-} // dtor
+{} // dtor
 
 
 void Interface::setImageFilters(const QString& filters, bool showDirs)
@@ -208,36 +208,43 @@ void Interface::writeDriveMemory(ushort address, const QByteArray& bytes)
 } // writeDriveMemory
 
 
-// Parse LOAD command, open either file/directory/d64/t64
-//
+// Parse LOAD command, open either special/file/directory/d64/t64/...
+// The specials are:
+// single arrow / double slash: up one folder/image, rest of string may reference file or folder relative that.
+// double arrow: Reset interface
+// double exclamation: Get media info
+// dollar: Load current directory listing
 CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 {
-	QString cmd(cmdString);
+	QString cmd(cmdString); // need to take copy since we're continously modifying string while processing.
 	CBM::IOErrorMessage retCode = CBM::ErrOK;
 
-	// fall back result
+	// assume fall back result
 	m_openState = O_NOTHING;
 
-	while(cmd.size() >= 2 and "//" == cmd.left(2)) {
+	// Either a single back arrow or double slash takes the command relative parent folder or 'up' from the current image.
+	if(not cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1() and cmd not_eq QString("%1%1").arg(CBM_BACK_ARROW)) {
+		moveToParentOrNativeFS();
+		cmd.remove(0, 1);
+	}
+	else while((cmd.size() >= 2 and "//" == cmd.left(2))) {
 		moveToParentOrNativeFS();
 		cmd.remove(0, 2);
 	}
+
 	// Check double back arrow first, it is a reset state.
-	if(cmd.size() == 2 and CBM_BACK_ARROW == cmd.at(0).toLatin1() and CBM_BACK_ARROW == cmd.at(1)) {
+	if(cmd == QString("%1%1").arg(CBM_BACK_ARROW)) {
 		// move to reset state of interface and make sure UI does not assume any mounted media as well.
 		reset(true);
-		Log(FAC_IFACE, success, "Going back to NativeFS and sending media info.");
+		Log(FAC_IFACE, success, "Resetting, going back to NativeFS and sending media info.");
 	}
-	else if(cmd.size() == 2 and CBM_EXCLAMATION == cmd.at(0).toLatin1() and CBM_EXCLAMATION == cmd.at(1)) {
+	else if(CBM_EXCLAMATION_MARKS == cmd) {
 		// to get the media info for any OTHER media, the '!!' should be used on the CBM side.
 		// whatever file system we have active, check if it supports media info.
 		m_openState = m_currFileDriver->supportsMediaInfo() ? O_INFO : O_NOTHING;
 	}
-	else if(not cmd.isEmpty() and cmd.at(0) == QChar('$')) // Send directory listing of the current directory, of whatever file system is the actual one.
+	else if(not cmd.isEmpty() and cmd.at(0) == QChar(CBM_DOLLAR_SIGN)) // Send directory listing of the current directory, of whatever file system is the actual one.
 		m_openState = O_DIR;
-	else if(not cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) {
-		moveToParentOrNativeFS();
-	}
 	else {
 		// open file depending on interface state
 		if(m_currFileDriver == &m_native) {
@@ -252,7 +259,6 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 			}
 			else if(m_native.openHostFile(cmd)) {
 				// File opened, investigate filetype
-				FileDriverList::const_iterator i;
 				bool fsFound = false;
 				foreach(FileDriverBase* fs, m_fsList) {
 					// if extension matches last three characters in any file system, then we set that filesystem into use.
