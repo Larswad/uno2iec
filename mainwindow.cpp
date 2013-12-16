@@ -676,6 +676,45 @@ void MainWindow::on_filterSetup_clicked()
 
 void MainWindow::on_command_issued(const QString& cmd)
 {
+//	QByteArray request;
+	if(cmd.isEmpty())
+		return;
+	QString params(cmd.mid(1));
+
+	// simulate dos-wedge like commands.
+	if('@' == cmd[0]) {
+		if(params.isEmpty()) {
+			// Display (and clear) the disk drive status
+			// TODO:
+		}
+		else if("$" == params) {
+			// Display the disk directory without overwriting the BASIC program in memory
+			// TODO:
+		}
+		else {
+			// Execute a disk drive command (e.g. S0:filename, V0:, I0:)
+			// TODO:
+		}
+	}
+	else if((cmd[0] == '/' or cmd[0] == '%')) {
+		// Load a basic program into ram.
+		 if(params.isEmpty()) {
+			 // send syntax error.
+		 }
+		// TODO:
+	}
+	else if(cmd[0] == CBM_BACK_ARROW) {
+		// Save a BASIC program to disk
+		if(params.isEmpty()) {
+			// send syntax error.
+		}
+		// TODO:
+	}
+	else {
+		// unknown command, send syntax error.
+		// TODO:
+	}
+
 	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
 } // on_filterSetup_clicked
 

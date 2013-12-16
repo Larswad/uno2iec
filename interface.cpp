@@ -331,11 +331,7 @@ void Interface::sendOpenResponse(char code) const
 	// Response: ><code><CR>
 	// send back response / result code to uno.
 	QByteArray data;
-	data.append('>');
-	data.append(code);
-	data.append('\r');
-	m_port.write(data);
-	m_port.flush();
+	write(data.append('>').append(code).append('\r'));
 } // sendOpenResponse
 
 
@@ -436,8 +432,7 @@ void Interface::processCloseCommand()
 	QByteArray data;
 	// TODO: return proper response here: small 'n' means last operation was a save operation.
 	data.append(m_openState == O_SAVE or m_openState == O_SAVE_REPLACE ? 'n' : 'N').append((char)name.length()).append(name);
-	m_port.write(data);
-	m_port.flush();
+	write(data);
 	if(0 not_eq m_pListener) // notify UI listener of change.
 		m_pListener->fileClosed(name);
 	Log(FAC_IFACE, info, QString("Close: Returning last opened file name: %1").arg(name));
@@ -458,9 +453,7 @@ void Interface::processGetOpenFileSize()
 
 	QByteArray data;
 	uchar high = size >> 8, low = size bitand 0xff;
-	data.append('S').append((char)high).append((char)low);
-	m_port.write(data.data(), data.size());
-	m_port.flush();
+	write(data.append('S').append((char)high).append((char)low));
 	Log(FAC_IFACE, info, QString("GetOpenFileSize: Returning file size: %1").arg(QString::number(size)));
 } // processGetOpenedFileSize
 
@@ -470,13 +463,11 @@ void Interface::processLineRequest()
 	if(O_INFO == m_openState or O_DIR == m_openState) {
 		if(m_dirListing.isEmpty()) {
 			// last line was produced. Send back the ending char.
-			m_port.write("l");
-			m_port.flush();
+			write("l");
 			Log(FAC_IFACE, success, "Last directory line written to arduino.");
 		}
 		else {
-			m_port.write(m_dirListing.first().data(), m_dirListing.first().size());
-			m_port.flush();
+			write(m_dirListing.first());
 			m_dirListing.removeFirst();
 		}
 	}
@@ -506,9 +497,7 @@ void Interface::processReadFileRequest(ushort length)
 	data.prepend(count);
 	// If we reached end of file, head byte in answer indicates with 'E' instead of 'B'.
 	data.prepend(atEOF ? 'E' : 'B');
-
-	m_port.write(data.data(), data.size());
-	m_port.flush();
+	write(data);
 } // processReadFileRequest
 
 
@@ -537,9 +526,7 @@ void Interface::processErrorStringRequest(CBM::IOErrorMessage code)
 	}
 
 	// append message and the common ending and terminate with CR.
-	retStr.append(messageString + s_errorEnding + '\r');
-	m_port.write(retStr);
-	m_port.flush();
+	write(retStr.append(messageString + s_errorEnding + '\r'));
 } // processErrorStringRequest
 
 
@@ -590,3 +577,13 @@ bool Interface::changeNativeFSDirectory(const QString& newDir)
 {
 	return m_native.setCurrentDirectory(newDir);
 } // changeNativeFSDirectory
+
+
+void Interface::write(const QByteArray& data, bool flush) const
+{
+	if(m_port.isOpen()) {
+		m_port.write(data);
+		if(flush)
+			m_port.flush();
+	}
+} // write

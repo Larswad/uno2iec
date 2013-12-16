@@ -77,6 +77,8 @@ private:
 	void moveToParentOrNativeFS();
 	bool removeFilePrefix(QString &cmd) const;
 	void sendOpenResponse(char code) const;
+	/// Write AND flush the data to the serial port, IF open.
+	void write(const QByteArray& data, bool flush = true) const;
 
 	D64 m_d64;
 	T64 m_t64;
