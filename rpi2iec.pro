@@ -64,7 +64,8 @@ SOURCES += main.cpp\
         settingsdialog.cpp \
         doscommands.cpp \
         x64driver.cpp \
-    logfiltersetup.cpp
+    logfiltersetup.cpp \
+    qcmdtextedit.cpp
 
 HEADERS += mainwindow.hpp \
         t64driver.hpp \
@@ -82,7 +83,8 @@ HEADERS += mainwindow.hpp \
         doscommands.hpp \
         uno2iec/cbmdefines.h \
         x64driver.hpp \
-    logfiltersetup.hpp
+    logfiltersetup.hpp \
+    qcmdtextedit.h
 
 FORMS += mainwindow.ui \
         aboutdialog.ui \

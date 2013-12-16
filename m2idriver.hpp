@@ -55,6 +55,7 @@ public:
 	CBM::IOErrorMessage renameFile(const QString& oldName, const QString& newName);
 
 private:
+	// The M2I file records represtented in internal form.
 	struct FileEntry {
 		enum Type {
 			TypePrg,
@@ -73,7 +74,7 @@ private:
 	typedef QList<FileEntry> EntryList;
 
 	bool createFile(char* fileName);
-	bool findEntry(const QString& findName, FileEntry& entry) const;
+	bool findEntry(const QString& findName, FileEntry& entry, bool allowWildcards = true) const;
 	const QString generateFile();
 
 	QString m_diskTitle; // 16 chars

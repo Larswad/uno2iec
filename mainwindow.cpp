@@ -147,6 +147,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	Log("MAIN", success, QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())));
 	// we want events from the port.
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
+	connect(ui->imageDirList, SIGNAL(commandIssued(QString)), this, SLOT(on_command_issued(QString)));
 	ui->dockWidget->toggleViewAction()->setShortcut(QKeySequence("CTRL+L"));
 	ui->menuMain->insertAction(ui->menuMain->actions().first(), ui->dockWidget->toggleViewAction());
 
@@ -466,7 +467,7 @@ bool MainWindow::checkConnectRequest()
 
 
 ////////////////////////////////////////////////////////////////////////////
-// Dispatcher for when something has arrived on the serial port.
+// Dispatcher for when something has arrived on the serial port / simulated data.
 ////////////////////////////////////////////////////////////////////////////
 void MainWindow::onDataAvailable()
 {
@@ -475,10 +476,24 @@ void MainWindow::onDataAvailable()
 		checkConnectRequest();
 		return;
 	}
+	processData();
+} // onDataAvailable
 
+
+#ifdef QT_DEBUG
+void MainWindow::simulateData(const QByteArray& data)
+{
+	m_pendingBuffer.append(data);
+	processData();
+} // simulateData
+#endif
+
+
+void MainWindow::processData(void)
+{
 	bool hasDataToProcess = not m_pendingBuffer.isEmpty();
 	//	if(hasDataToProcess)
-	//		LogHexData(m_pendingBuffer);
+	//		LogHexData(buffer);
 	while(hasDataToProcess) {
 		QString cmdString(m_pendingBuffer);
 		int crIndex =	cmdString.indexOf('\r');
@@ -506,7 +521,7 @@ void MainWindow::onDataAvailable()
 			case 'S': // request for file size in bytes before sending file to CBM
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processGetOpenFileSize();
-				hasDataToProcess = not m_pendingBuffer.isEmpty();
+//				hasDataToProcess = not buffer.isEmpty();
 				break;
 
 			case 'O': // open command
@@ -542,7 +557,7 @@ void MainWindow::onDataAvailable()
 						m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
 						// discard all processed (written) bytes from buffer.
 						m_pendingBuffer.remove(0, length);
-						hasDataToProcess = not m_pendingBuffer.isEmpty();
+//						hasDataToProcess = not buffer.isEmpty();
 					}
 				}
 				break;
@@ -565,7 +580,7 @@ void MainWindow::onDataAvailable()
 					m_iface.processErrorStringRequest(static_cast<CBM::IOErrorMessage>(m_pendingBuffer.at(1)));
 					m_pendingBuffer.remove(0, 2);
 				}
-				hasDataToProcess = not m_pendingBuffer.isEmpty();
+//				hasDataToProcess = not buffer.isEmpty();
 				break;
 
 			default:
@@ -586,9 +601,9 @@ void MainWindow::onDataAvailable()
 			hasDataToProcess = not m_pendingBuffer.isEmpty();
 	} // while(hasDataToProcess);
 
-	//	if(not m_pendingBuffer.isEmpty())
+	//	if(not buffer.isEmpty())
 	//		LogHexData(m_pendingBuffer, "U:#%1");
-} // onDataAvailable
+} // processData
 
 
 void MainWindow::processAddNewFacility(const QString& str)
@@ -656,6 +671,12 @@ void MainWindow::on_clearLog_clicked()
 void MainWindow::on_filterSetup_clicked()
 {
 	Logging::loggerInstance().configureFilters(this);
+}
+
+
+void MainWindow::on_command_issued(const QString& cmd)
+{
+	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
 } // on_filterSetup_clicked
 
 

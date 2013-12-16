@@ -200,44 +200,19 @@ bool M2I::deleteFile(const QString& fileName)
 } // deleteFile
 
 
-CBM::IOErrorMessage M2I::renameFile(const QString &oldName, const QString &newName)
+CBM::IOErrorMessage M2I::renameFile(const QString& oldName, const QString& newName)
 {
-	Q_UNUSED(oldName);
-	Q_UNUSED(newName);
-	CBM::IOErrorMessage ret = CBM::ErrOK;
-	/*
-				char dirName[16];
-				uchar j;
-
-				m_status and_eq compl FILE_OPEN;
-
-				// Open m2i index
-				if(!fatFopen(m2i_filename))
-								return false;
-
-				// Look for oldname
-				if(seekFile(NULL, dirName, oldName, false)) {
-
-								// File found, rename entry in m2i
-								// Seek back until name
-								fatFseek((ulong)(-33 + 15), SEEK_CUR);
-
-								// write new name, space padded
-								j = newName[0];
-								for(uchar i = 0; i < 16;i++) {
-												if (j) {
-																fatFputc(j);
-																j = newName[i + 1];
-												}
-												else
-																fatFputc(' ');
-								}
-								ret = true;
-				}
-
-				// Close m2i
-				fatFclose();
-*/
+	FileEntry e;
+	bool result = findEntry(oldName, e, false);
+	CBM::IOErrorMessage ret = CBM::ErrFileNotFound;
+	if(result and FileEntry::TypePrg == e.fileType) {
+		// modify in-place instead of deleting and creating new entry.
+		FileEntry& modEntry(m_entries[m_entries.indexOf(e)]);
+		QFile	f(QFileInfo(m_hostFile).absolutePath() + modEntry.nativeName.trimmed());
+		modEntry.nativeName = newName.trimmed().left(NATIVENAME_SIZE);
+		modEntry.cbmName = newName.trimmed().left(CBMNAME_SIZE);
+		f.rename(modEntry.nativeName);
+	}
 	return ret;
 } // rename
 
@@ -398,13 +373,15 @@ bool M2I::close(void)
 /// findName: Name of the entry to search for (may contain ? or * wildcard character(s)).
 /// entry: If found the entry will be placed in this reference.
 /// return bool: true if entry was found.
-bool M2I::findEntry(const QString& findName, FileEntry& entry) const
+bool M2I::findEntry(const QString& findName, FileEntry& entry, bool allowWildcards) const
 {
+	const QString trimmedFind = findName.trimmed();
 	// trimming here is mostly for disregarding any ending blanks.
-	QRegExp matcher(findName.trimmed(), Qt::CaseInsensitive, QRegExp::Wildcard);
+	QRegExp matcher(trimmedFind, Qt::CaseInsensitive, QRegExp::Wildcard);
 	bool found = false;
 	foreach(const FileEntry& e, m_entries) {
-		if(/*FileEntry::TypePrg == e.fileType and */matcher.exactMatch(e.cbmName)) {
+		if(/*FileEntry::TypePrg == e.fileType and */allowWildcards ? matcher.exactMatch(e.cbmName.trimmed())
+			 : trimmedFind.compare(e.cbmName, Qt::CaseInsensitive)) {
 			entry = e;
 			found = true;
 			break;
@@ -435,10 +412,11 @@ const QString M2I::generateFile()
 			typeChar = QChar('-');
 			break;
 		}
+		// pad both native file name and cbm dos name with spaces.
 		result.append(QString("%1:%2:%3\r\n").arg(typeChar)
 									.arg(e.nativeName, -NATIVENAME_SIZE, QChar(' '))
 									.arg(e.cbmName, -CBMNAME_SIZE, QChar(' ')));
-	}
+	} // foreach
 
 	return result;
 } // generateFile

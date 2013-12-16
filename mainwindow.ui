@@ -109,7 +109,7 @@
         <bool>false</bool>
        </property>
       </widget>
-      <widget class="QTextEdit" name="imageDirList">
+      <widget class="QCmdTextEdit" name="imageDirList">
        <property name="font">
         <font>
          <family>Pet Me 64</family>
@@ -547,7 +547,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>641</width>
-     <height>19</height>
+     <height>20</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMain">
@@ -978,6 +978,13 @@ p, li { white-space: pre-wrap; }
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QCmdTextEdit</class>
+   <extends>QTextEdit</extends>
+   <header>qcmdtextedit.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>

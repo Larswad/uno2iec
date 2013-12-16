@@ -86,6 +86,8 @@ private slots:
 	void on_directoryChanged(const QString& path);
 	void on_filterSetup_clicked();
 
+	void on_command_issued(const QString& cmd);
+
 private:
 	bool checkConnectRequest();
 	void enumerateComPorts();
@@ -103,6 +105,9 @@ private:
 	void getBgFrAndFgColors(QColor &bgColor, QColor& frColor, QColor &fgColor);
 	void getMachineAndPaletteTheme(CbmMachineTheme*& pMachine, const QRgb *&pEmulatorPalette);
 	void cbmCursorVisible(bool visible = true);
+
+	void simulateData(const QByteArray& data);
+	void processData(void);
 
 	Ui::MainWindow *ui;
 	QextSerialPort m_port;
