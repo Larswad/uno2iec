@@ -39,6 +39,7 @@ public:
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
+	void writeTextToDirList(const QString& text, bool atCursor = true);
 	void processAddNewFacility(const QString &str);
 	void checkVersion();
 	void closeEvent(QCloseEvent *event);
@@ -63,6 +64,9 @@ public:
 	void appendLevelAndFacility(Logging::LogLevelE level, const QString& levelFacility);
 	void appendMessage(const QString& msg);
 
+public slots:
+	void onCommandIssued(const QString& cmd);
+
 private slots:
 	void onDirListColorSelected(QAction *pAction);
 	void onCbmMachineSelected(QAction *pAction);
@@ -85,8 +89,6 @@ private slots:
 	void on_dirList_doubleClicked(const QModelIndex &index);
 	void on_directoryChanged(const QString& path);
 	void on_filterSetup_clicked();
-
-	void on_command_issued(const QString& cmd);
 
 private:
 	bool checkConnectRequest();

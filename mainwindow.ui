@@ -141,6 +141,9 @@ padding: -4px
        <property name="horizontalScrollBarPolicy">
         <enum>Qt::ScrollBarAlwaysOff</enum>
        </property>
+       <property name="undoRedoEnabled">
+        <bool>false</bool>
+       </property>
        <property name="lineWrapMode">
         <enum>QTextEdit::WidgetWidth</enum>
        </property>

@@ -34,6 +34,9 @@ enum IECChannels {
 #define CBM_EXCLAMATION_MARKS "!!"
 #define CBM_DOLLAR_SIGN '$'
 
+const int MAX_CBM_SCREEN_ROWS = 25;
+const int MAX_CBM_SCREEN_COLS = 40;
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Error messages

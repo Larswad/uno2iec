@@ -147,7 +147,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	Log("MAIN", success, QString("Application Started, using port %1 @ %2").arg(m_port.portName()).arg(QString::number(m_port.baudRate())));
 	// we want events from the port.
 	connect(&m_port, SIGNAL(readyRead()), this, SLOT(onDataAvailable()));
-	connect(ui->imageDirList, SIGNAL(commandIssued(QString)), this, SLOT(on_command_issued(QString)));
+	connect(ui->imageDirList, SIGNAL(commandIssued(const QString&)), this, SLOT(onCommandIssued(const QString&)));
 	ui->dockWidget->toggleViewAction()->setShortcut(QKeySequence("CTRL+L"));
 	ui->menuMain->insertAction(ui->menuMain->actions().first(), ui->dockWidget->toggleViewAction());
 
@@ -498,7 +498,7 @@ void MainWindow::processData(void)
 		QString cmdString(m_pendingBuffer);
 		int crIndex =	cmdString.indexOf('\r');
 
-		// Get the first waiting character, which should be the commend to perform.
+		// Get the first waiting character, which should be the command to perform.
 		switch(cmdString.at(0).toLatin1()) {
 			case '!': // register facility string.
 				if(-1 == crIndex)
@@ -674,9 +674,11 @@ void MainWindow::on_filterSetup_clicked()
 }
 
 
-void MainWindow::on_command_issued(const QString& cmd)
+void MainWindow::onCommandIssued(const QString& cmd)
 {
-//	QByteArray request;
+	writeTextToDirList("READY.\n");
+
+	//	QByteArray request;
 	if(cmd.isEmpty())
 		return;
 	QString params(cmd.mid(1));
@@ -685,15 +687,16 @@ void MainWindow::on_command_issued(const QString& cmd)
 	if('@' == cmd[0]) {
 		if(params.isEmpty()) {
 			// Display (and clear) the disk drive status
-			// TODO:
+			simulateData(QByteArray().append(QString("O%1|\r").arg(CBM::CMD_CHANNEL)));
 		}
 		else if("$" == params) {
-			// Display the disk directory without overwriting the BASIC program in memory
+			// "Display the disk directory without overwriting the BASIC program in memory"
 			// TODO:
+			simulateData(QByteArray().append(QString("O%1|$\r").arg(CBM::READPRG_CHANNEL)));
 		}
 		else {
 			// Execute a disk drive command (e.g. S0:filename, V0:, I0:)
-			// TODO:
+			simulateData(QByteArray().append(QString("O%1|%2\r").arg(CBM::CMD_CHANNEL).arg(params)));
 		}
 	}
 	else if((cmd[0] == '/' or cmd[0] == '%')) {
@@ -707,12 +710,14 @@ void MainWindow::on_command_issued(const QString& cmd)
 		// Save a BASIC program to disk
 		if(params.isEmpty()) {
 			// send syntax error.
+			writeTextToDirList("?SYNTAX ERROR.\nREADY.\n");
 		}
 		// TODO:
 	}
 	else {
+
 		// unknown command, send syntax error.
-		// TODO:
+		writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
 	}
 
 	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
@@ -811,7 +816,8 @@ void MainWindow::watchDirectory(const QString& dir)
 {
 	// If the directory is not already under monitoring, we remove all present ones and start monitoring it.
 	if(not m_fsWatcher.directories().contains(dir, Qt::CaseInsensitive)) {
-		m_fsWatcher.removePaths(m_fsWatcher.directories());
+		if(not m_fsWatcher.directories().isEmpty())
+			m_fsWatcher.removePaths(m_fsWatcher.directories());
 		m_fsWatcher.addPath(dir);
 	}
 } // watchDirectory
@@ -1029,11 +1035,7 @@ void MainWindow::fileLoading(const QString& fileName, ushort fileSize)
 	ui->loadProgress->show();
 	m_totalReadWritten = 0;
 	ui->loadProgress->setValue(m_totalReadWritten);
-	QTextCursor cursor = ui->imageDirList->textCursor();
-	cursor.movePosition(QTextCursor::End);
-	cursor.deleteChar();
-	cursor.insertText(QString("LOAD\"%1\",%2\nSEARCHING FOR %1\nLOADING\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
-	ui->imageDirList->setTextCursor(cursor);
+	writeTextToDirList(QString("LOAD\"%1\",%2\nSEARCHING FOR %1\nLOADING\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 	cbmCursorVisible(false);
 } // fileLoading
 
@@ -1044,10 +1046,8 @@ void MainWindow::fileSaving(const QString& fileName)
 	ui->loadProgress->hide();
 	ui->progressInfoText->clear();
 	ui->progressInfoText->setEnabled(true);
+	writeTextToDirList(QString("SAVE\"%1\",%2\n\nSAVING %1\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 	QTextCursor cursor = ui->imageDirList->textCursor();
-	cursor.movePosition(QTextCursor::End);
-	cursor.deleteChar();
-	cursor.insertText(QString("SAVE\"%1\",%2\n\nSAVING %1\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 	m_totalReadWritten = 0;
 	cbmCursorVisible(false);
 } // fileLoading
@@ -1068,6 +1068,37 @@ void MainWindow::bytesWritten(uint numBytes)
 } // bytesWritten
 
 
+void MainWindow::writeTextToDirList(const QString& text, bool atCursorPos)
+{
+	QTextCursor c = ui->imageDirList->textCursor();
+	QStringList lines = text.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+	if(not atCursorPos)
+		c.movePosition(QTextCursor::End);
+	foreach(QString line, lines) {
+//		c.deleteChar();
+		c.select(QTextCursor::LineUnderCursor);
+		c.insertText(line);
+		if(not c.atEnd()) {
+			c.movePosition(QTextCursor::Down);
+			c.movePosition(QTextCursor::StartOfLine);
+		}
+		else {
+			c.insertText("\n");
+			ui->imageDirList->setTextCursor(c);
+			if(ui->imageDirList->currentLineNumber() >= CBM::MAX_CBM_SCREEN_ROWS) {
+				c.movePosition(QTextCursor::Start);
+				c.movePosition(QTextCursor::Down, QTextCursor::KeepAnchor, ui->imageDirList->currentLineNumber() - CBM::MAX_CBM_SCREEN_ROWS);
+				c.removeSelectedText();
+				c.movePosition(QTextCursor::End);
+			}
+		}
+	}
+//	int height = ui->imageDirList->geometry().height() - 120;
+//	Log("test", info, QString("wrows: %1").arg(QString::number(height / QFontMetrics(ui->imageDirList->font()).lineSpacing())));
+	ui->imageDirList->setTextCursor(c);
+} // addTextToDirList
+
+
 void MainWindow::fileClosed(const QString& lastFileName)
 {
 	Q_UNUSED(lastFileName);
@@ -1075,11 +1106,7 @@ void MainWindow::fileClosed(const QString& lastFileName)
 	ui->loadProgress->setEnabled(false);
 	ui->loadProgress->setValue(0);
 	ui->loadProgress->show();
-	QTextCursor cursor = ui->imageDirList->textCursor();
-	cursor.movePosition(QTextCursor::End);
-	cursor.deleteChar();
-	cursor.insertText("READY.\n");
-	ui->imageDirList->setTextCursor(cursor);
+	writeTextToDirList("READY.\n");
 	cbmCursorVisible();
 } // fileClosed
 
@@ -1146,8 +1173,8 @@ void MainWindow::getMachineAndPaletteTheme(CbmMachineTheme*& pMachine, const QRg
 {
 	pMachine = 0;
 	pEmulatorPalette = 0;
-	EmulatorPaletteMap::iterator itEmulatorPalette = emulatorPalettes.find(m_appSettings.emulatorPalette);
-	CbmMachineThemeMap::iterator itMachineTheme = machineThemes.find(m_appSettings.cbmMachine);
+	EmulatorPaletteMap::iterator itEmulatorPalette(emulatorPalettes.find(m_appSettings.emulatorPalette));
+	CbmMachineThemeMap::iterator itMachineTheme(machineThemes.find(m_appSettings.cbmMachine));
 	if(itEmulatorPalette not_eq emulatorPalettes.end())
 		pEmulatorPalette = *itEmulatorPalette;
 	if(itMachineTheme not_eq machineThemes.end())
@@ -1164,6 +1191,7 @@ void MainWindow::updateDirListColors()
 	QColor bgColor, frColor, fgColor;
 	getBgFrAndFgColors(bgColor, frColor, fgColor);
 
+	// Construct and apply a stylesheet that matches the chosen machine type and emulator palette.
 	QString sheet = QString("background-color: rgb(%1);\ncolor: rgb(%2);\n"
 													"border: 60px solid %3;\npadding: -4px;\n"
 													"font: %4;\n").arg(
@@ -1173,6 +1201,7 @@ void MainWindow::updateDirListColors()
 				pMachine->font);
 	ui->imageDirList->setStyleSheet(sheet);
 	ui->imageDirList->setCursorWidth(pMachine->cursorWidth);
+	// TODO: Do we really need to issue reset here. Might just well remember the contents and then restore it.
 	deviceReset();
 } // updateDirListColors
 

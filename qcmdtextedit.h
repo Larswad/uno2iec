@@ -9,6 +9,8 @@ class QCmdTextEdit : public QTextEdit
 public:
 	explicit QCmdTextEdit(QWidget* parent = 0);
 
+	int currentLineNumber();
+
 signals:
 	void commandIssued(const QString& cmd);
 

@@ -330,8 +330,7 @@ void Interface::sendOpenResponse(char code) const
 {
 	// Response: ><code><CR>
 	// send back response / result code to uno.
-	QByteArray data;
-	write(data.append('>').append(code).append('\r'));
+	write(QByteArray().append('>').append(code).append('\r'));
 } // sendOpenResponse
 
 
