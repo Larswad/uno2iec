@@ -15,28 +15,24 @@ which can be found at http://www.gnu.org/licenses/gpl.txt
 
 Description
 ------------
-The UNO2IEC device simulates a 1541 drive and enables loading and saving files or
-programs between a CBM and any "current" folder on the host system. The host system location can be a network share,
-an USB or SD flash media, SSD or any hard disk that is supported by a Windows, Linux or Mac operating systems.
+The UNO2IEC device simulates a 1541 drive and enables loading and saving files or programs between a CBM and any "current" folder on the host system.
+The host system's media location can be a network share, a USB or SD flash media, SSD or any hard disk that is supported by a Windows, Linux or Mac operating systems.
 
-The direct commununication with the CBM is an Arduino (uno, nano, dumilanouve or similar) communicating over a regular serial line
-with the media host system. The serial line can be either the gpio pin mapped serial port on the arduino or the
-serial over USB port. In case using the USB-over-serial port, the benefit is automatic reset of the Arduino when the
-host connects to it.
+The direct commununication with the CBM is an Arduino (uno, nano, dumilanouve or similar) communicating over a regular serial line with the media host system. The serial line can be either the gpio pin mapped serial port on the arduino or the
+serial over USB port (FTDI). In case using the USB-over-serial port, the advantage is the ability to trigger an automatic reset of the Arduino when the host connects to it.
 
-Note: As of writing the project does not yet support any turboloaders. There are however plans and ideas to provide
-this support. It should be possible with some extra work of performance tuning for the optimum handling of the
-serial interface between the arduino and the host. The memory and Arduino computing performance is more than good enough.
+Note: As of writing the project does not yet support any turboloaders. There are however plans and ideas to provide this support. It should be possible with some extra work of performance tuning for the optimum handling of the
+serial interface between the arduino and the host. The memory and Arduino processing capabilities are more than good enough.
 
-The project inherits both code and ideas from the MMC2IEC project, originally written by
-Jan Derogee's and Lars Pontoppidan. The sd2iec project is also used as a reference for the IEC interface and commodore
-dos protocols. Their original work and achievements is great and highly respected.
+This project has inherited both code and ideas from the MMC2IEC project, originally written by Jan Derogee and Lars Pontoppidan.
+The sd2iec project has also been used as a reference for the IEC interface and commodore DOS protocols.
+Their original work and achievements is great and also highly respected.
 
-The code in this project however, has been subject to heavy redesign. While much of it was being ported to C++ and Qt,
-the main idea is to let the old commodore targeted media be transferred from a PC host rather than just a MMC or SD card.
+The code in this project however, has been subject to heavy redesign. Nothing of the original code is kept in its original state.
+Everything has been ported to C++ and Qt, the code was refactored to object oriented programmering and fits nicely as such.
 
-The design of this project required the IEC protocol between the CBM and the emulated 1541 to be refactored into having
-divided responsibilities between the Arduino (as a low level middlehand) and the PC host as a media-tank.
+The main idea is to let the old commodore targeted media be transferred from a PC host rather than just a MMC or SD card.
+Therefore the design of this project required the IEC protocol between the CBM and the emulated 1541 to be refactored into having divided responsibilities between the Arduino (as a low level middlehand) and the PC host as a media-tank. In the MMC2IEC and SD2IEC projects everything was written to work and function on one single CPU (or system).
 A secondary proprietary RS232-serial based protocol between the Arduino is utilized to be able to transfer the actual media to
 the CBM. This protocol was designed for compactness and performance in order to maintain the IEC transfer speed.
 
@@ -57,25 +53,25 @@ Project homepage:
 
 Hardware setup and variations
 -----------------------------
-Arduino Uno/Nano: ATmega 16U2 328 microcontroller @ 16Mhz, 32KB flash, SRAM 2KB, EEPOM 1 KB.
-Connect at least ATN, CLOCK, DATA and GND pin to the IEC bus on the CBM. The RESET and SRQIN (latter one is unused on the C64)
-are optional to wire, however if you don't connect the RESET pin, the HAS_RESET_LINE definition should be commented out in the
-file global_defines.h. The SRQ_IN pin may be later supported for C128 compatability.
+Arduino Uno/Nano: ATmega 16U2 328 microcontroller @ 16Mhz, 32KB flash, SRAM 2KB, EEPROM 1 KB.
+Connect at least ATN, CLOCK, DATA and GND pin to the IEC bus on the CBM. The RESET and SRQIN (latter one is unused on the C64) are optional to wire, however if you don't connect the RESET pin, the HAS_RESET_LINE definition should be commented out in the file global_defines.h. The SRQ_IN pin may be later supported for C128 compatibility.
 
 The Arduino UNO can be bought very cheap at dx.com:
 http://dx.com/p/uno-r3-development-board-microcontroller-mega328p-atmega16u2-compat-for-arduino-blue-black-215600
+
 Same goes for the Arduino NANO which is even more compact and cheap:
 http://dx.com/p/nano-v3-0-avr-atmega328-p-20au-module-board-usb-cable-for-arduino-118037
 
 Optional: LED matrix with MAX7219 controller.
 Can be bought cheap at dx.com with 5 dupont lines:
 http://dx.com/p/max7219-dot-matrix-module-w-5-dupont-lines-184854
-Whether or not using the LED matrix when compiling, either define or comment out the USE_LED_DISPLAY macro in the
-global_defines.h header in the uno2iec project.
-Optional: HC-06 compatible Bluetooth module. This will provide the possibility to make your arduino completely wirelessly
-communicating with the PC media host. The JY-MCU is cheap, around 8 bucks and is pretty easy to configure:
+
+Whether or not using the LED matrix when compiling, either define or comment out the USE_LED_DISPLAY macro in the global_defines.h header in the uno2iec project.
+
+Optional: HC-06 compatible Bluetooth module. This will provide the possibility to make your arduino completely wirelessly communicating with the PC media host. The JY-MCU is cheap, around 8 bucks and is pretty easy to configure:
 http://dx.com/p/jy-mcu-arduino-bluetooth-wireless-serial-port-module-104299
-See separate section further down.
+
+See separate section further down for how to configure and use the LED Matrix and Bluetooth communication.
 
 Cables:
 -------
@@ -85,21 +81,33 @@ If you have an Arduino Mini needs female cables instead, use the following:
 http://dx.com/p/single-port-female-to-female-jumper-wire-set-50-pack-20cm-length-55454
 
 Either connect Arduino to a PC, MAC. Media host side project can be compiled on either Linux, Windows or Mac desktop.
-It works on the Raspberry Pi as a host as well. Connect two serial pins (RX, TX, twisted of course) on the PI to the arduino. A third
-pin may also be connected with the purpose to reset the Arduino from the PI side (the PI uses the wiringPi project for GPIO access). The
-raspbian image is the suggested linux to use on Pi, it needs Qt build and runtime support.
+It works on the Raspberry Pi as a host as well. Connect two serial pins (RX, TX, twisted of course) on the PI to the arduino. A third pin may also be connected with the purpose to reset the Arduino from the PI side (the PI uses the wiringPi project for GPIO access). The raspbian image is the suggested linux to use on Pi, it needs Qt build and runtime support.
 For more info about how to prepare a raspberry pi properly for external serial communication, read the notes.txt file.
 There are a few details when it comes to releasing the serial port from the kernel log.
 
 
 How to build
 ------------
-Open the PC/Raspberry project (.pro) file in Qt creator and build either as release or debug.
+Getting the code:
+The latest committed code is fetched from github using the following git command line:
+
+git clone https://github.com/Larswad/uno2iec.git
+
+OR you can download the code as a zip file from github at the following URL:
+https://github.com/Larswad/uno2iec/archive/master.zip
+
+To be sure to get a version that is more tested and stable use the latest release (tagged) version, refer to the available releases at github:
+https://github.com/Larswad/uno2iec/releases
+
+Open the PC (or if raspberry pi) project (.pro) file in Qt creator and build either as release or debug.
 For windows, move back to the projects page and untick the "Shadow build" option. This puts object and executable
 files in release and debug folders under the source folder.
 
+Build a single executable without dependencies:
+-----------------------------------------------
 
-REQUIRES: (external dependencies):
+
+REQUIREMENTS: (external dependencies):
 QextSerialPort project:
 https://code.google.com/p/qextserialport/
 

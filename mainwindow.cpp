@@ -486,6 +486,11 @@ void MainWindow::simulateData(const QByteArray& data)
 	m_pendingBuffer.append(data);
 	processData();
 } // simulateData
+#else
+void MainWindow::simulateData(const QByteArray& data)
+{
+	Q_UNUSED(data);
+}
 #endif
 
 
