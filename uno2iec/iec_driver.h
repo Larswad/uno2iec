@@ -49,8 +49,8 @@ public:
 
 	typedef struct _tagATNCMD {
 		byte code;
-		char str[ATN_CMD_MAX_LENGTH];
-		byte strlen;
+		byte str[ATN_CMD_MAX_LENGTH];
+		byte strLen;
 	} ATNCmd;
 
 	IEC(byte deviceNumber = DEFAULT_IEC_DEVICE);

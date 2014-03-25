@@ -43,7 +43,7 @@ public:
 		return false;
 	}
 
-	void closeHostFile();
+	void unmountHostImage();
 	bool fopen(const QString& fileName);
 	bool close();
 	CBM::IOErrorMessage fopenWrite(const QString& fileName, bool replaceMode);

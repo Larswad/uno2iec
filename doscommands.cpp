@@ -36,7 +36,7 @@ RemoveDirectory rmDirCmd;
 }
 
 
-CBM::IOErrorMessage InitDrive::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage InitDrive::process(const QByteArray& params, Interface& iface)
 {
 	// Either ignore or check that no parameters are given here!
 	Q_UNUSED(params);
@@ -44,7 +44,7 @@ CBM::IOErrorMessage InitDrive::process(const QString& params, Interface& iface)
 } // InitDrive
 
 
-CBM::IOErrorMessage ValidateDisk::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage ValidateDisk::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -52,33 +52,32 @@ CBM::IOErrorMessage ValidateDisk::process(const QString& params, Interface& ifac
 } // ValidateDisk
 
 
-CBM::IOErrorMessage NewDisk::process(const QString &params, Interface &iface)
+CBM::IOErrorMessage NewDisk::process(const QByteArray &params, Interface &iface)
 {
-	QStringList newParams(params.split(',', QString::SkipEmptyParts));
+	QStringList newParams(QString(params).split(',', QString::SkipEmptyParts));
 
 	if(newParams.empty() or newParams.count() > 2)
 		return CBM::ErrSyntaxError;
 	// TODO: Native file system should here create a new D64 file by using D64 helper, and then CALL that D64 to format/initialize it.
-	// If the current file driver already IS a D64, then it just initializes the current disk, samt goes for T64.
-	//iface.currentFileDriver->newDisk(newParams[0], newParams.count() > 1 ? params[1] : QString());
-	Q_UNUSED(iface);
-
-	return CBM::ErrNotImplemented;
+	// If the current file driver already IS a D64, then it just initializes the current disk, same goes for T64 and M2I.
+	return iface.currentFileDriver()->newDisk(newParams[0], newParams.count() > 1 ? newParams[1] : QString());
 } // NewDisk
 
 
-CBM::IOErrorMessage Scratch::process(const QString &params, Interface &iface)
+CBM::IOErrorMessage Scratch::process(const QByteArray &params, Interface &iface)
 {
+	const QString file(params);
 	// TODO: check write protect here!
 	// TODO: Check that there is no path stuff in the name, we don't like that here.
-	Log(FACDOS, info, QString("About to scratch file: %1").arg(params));
-	return iface.currentFileDriver()->deleteFile(params) ? CBM::ErrFileNotFound : CBM::ErrFilesScratched;
+	// TODO: Support drive number (e.g. S0:<file>)
+	Log(FACDOS, info, QString("About to scratch file: %1").arg(file));
+	return iface.currentFileDriver()->deleteFile(file) ? CBM::ErrFilesScratched : CBM::ErrFileNotFound;
 } // Scratch
 
 
-CBM::IOErrorMessage RenameFile::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage RenameFile::process(const QByteArray& params, Interface& iface)
 {
-	const QStringList names(params.split(QChar('=')));
+	const QStringList names(QString(params).split(QChar('=')));
 
 	// old name and new name must be present, no more no less.
 	if(2 not_eq names.count())
@@ -112,9 +111,11 @@ CBM::IOErrorMessage RenameFile::process(const QString& params, Interface& iface)
 } // RenameFile
 
 
-CBM::IOErrorMessage CopyFiles::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage CopyFiles::process(const QByteArray& params, Interface& iface)
 {
-	const QStringList paramList(params.split(QChar('=')));
+	Log(FACDOS, info, QString("Reached copy1"));
+
+	const QStringList paramList(QString(params).split(QChar('=')));
 	// destination name and source name(s) parameters must be present, no more no less.
 	if(2 not_eq paramList.count())
 		return CBM::ErrSyntaxError;
@@ -122,8 +123,10 @@ CBM::IOErrorMessage CopyFiles::process(const QString& params, Interface& iface)
 	// destination name must not be empty it they must have legal characters.
 	if(destName.isEmpty())
 		return CBM::ErrNoFileGiven;
+	Log(FACDOS, info, QString("Reached copy2:%1").arg(destName));
 	if(isIllegalCBMName(destName))
 		return CBM::ErrSyntaxError;
+	Log(FACDOS, info, QString("Reached copy3"));
 
 	// check availability and validity of source file name(s).
 	const QStringList sourceList(paramList[1].split(QChar(',')));
@@ -144,7 +147,7 @@ CBM::IOErrorMessage CopyFiles::process(const QString& params, Interface& iface)
 } // CopyFiles
 
 
-CBM::IOErrorMessage SetPosition::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage SetPosition::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -152,7 +155,7 @@ CBM::IOErrorMessage SetPosition::process(const QString& params, Interface& iface
 } // SetPosition
 
 
-CBM::IOErrorMessage BlockRead::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage BlockRead::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -160,7 +163,7 @@ CBM::IOErrorMessage BlockRead::process(const QString& params, Interface& iface)
 } // BlockRead
 
 
-CBM::IOErrorMessage BlockWrite::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage BlockWrite::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -168,7 +171,7 @@ CBM::IOErrorMessage BlockWrite::process(const QString& params, Interface& iface)
 } // BlockWrite
 
 
-CBM::IOErrorMessage MemoryRead::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage MemoryRead::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -176,15 +179,30 @@ CBM::IOErrorMessage MemoryRead::process(const QString& params, Interface& iface)
 } // MemoryReadCmd
 
 
-CBM::IOErrorMessage MemoryWrite::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage MemoryWrite::process(const QByteArray& params, Interface& iface)
 {
-	Q_UNUSED(params);
-	Q_UNUSED(iface);
-	return CBM::ErrNotImplemented;
+	if(params.length() < 3)
+		return CBM::ErrSyntaxError;
+	ushort address = ((ushort)params.at(1)) << 8 bitor ((uchar)params.at(0));
+	ushort length = (uchar)params.at(2);
+	QByteArray bytes(params.mid(3));
+	Log(FACDOS, warning, QString("M-W 0x%1:%2").arg(QString::number(address, 16))
+		.arg(QString::number(length)));
+	// What to do if the designated length doesn't match with the actual received amount of bytes?
+	if(bytes.length() not_eq length) {
+		// resize and don't expect more, temporary solution?
+		bytes.resize(length);
+		// TODO: if we fix this, here we need to know that succeeding bytes are meant to be written with M-W.
+		// and we need to know how many is left and where.
+	}
+	// Do the actual memory write.
+	iface.writeDriveMemory(address, bytes);
+
+	return CBM::ErrOK;
 } // MemoryWrite
 
 
-CBM::IOErrorMessage BufferPointer::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage BufferPointer::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -192,7 +210,7 @@ CBM::IOErrorMessage BufferPointer::process(const QString& params, Interface& ifa
 } // BufferPointer
 
 
-CBM::IOErrorMessage BlockAllocate::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage BlockAllocate::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -200,7 +218,7 @@ CBM::IOErrorMessage BlockAllocate::process(const QString& params, Interface& ifa
 } // BlockAllocate
 
 
-CBM::IOErrorMessage BlockFree::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage BlockFree::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -208,7 +226,7 @@ CBM::IOErrorMessage BlockFree::process(const QString& params, Interface& iface)
 } // BlockFree
 
 
-CBM::IOErrorMessage BlockExecute::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage BlockExecute::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -216,7 +234,7 @@ CBM::IOErrorMessage BlockExecute::process(const QString& params, Interface& ifac
 } // BlockExecute
 
 
-CBM::IOErrorMessage MemoryExecute::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage MemoryExecute::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -224,7 +242,7 @@ CBM::IOErrorMessage MemoryExecute::process(const QString& params, Interface& ifa
 } // MemoryExecute
 
 
-CBM::IOErrorMessage VC20ModeOnOff::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage VC20ModeOnOff::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -232,7 +250,7 @@ CBM::IOErrorMessage VC20ModeOnOff::process(const QString& params, Interface& ifa
 } // VC20ModeOnOff
 
 
-CBM::IOErrorMessage DeviceAddress::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage DeviceAddress::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -241,14 +259,14 @@ CBM::IOErrorMessage DeviceAddress::process(const QString& params, Interface& ifa
 
 // This is totally f'ed up right now. Fix so that it works as sd2iec.
 // http://sd2iec.de/cgi-bin/gitweb.cgi?p=sd2iec.git;a=blob_plain;f=README
-CBM::IOErrorMessage ChangeDirectory::process(const QString &params, Interface &iface)
+CBM::IOErrorMessage ChangeDirectory::process(const QByteArray &params, Interface &iface)
 {
-	Log(FACDOS, info, QString("Changing to directory: %1").arg(params));
+	Log(FACDOS, info, QString("Changing to directory: %1").arg(QString(params)));
 	return iface.openFile(params);
 } // ChangeDirectory
 
 
-CBM::IOErrorMessage MakeDirectory::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage MakeDirectory::process(const QByteArray& params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);
@@ -256,7 +274,7 @@ CBM::IOErrorMessage MakeDirectory::process(const QString& params, Interface& ifa
 } // MakeDirectory
 
 
-CBM::IOErrorMessage RemoveDirectory::process(const QString& params, Interface& iface)
+CBM::IOErrorMessage RemoveDirectory::process(const QByteArray &params, Interface& iface)
 {
 	Q_UNUSED(params);
 	Q_UNUSED(iface);

@@ -1,3 +1,31 @@
+                              UNO2IEC Change Log
+================================================================================
+2014-04-25:
+* In both the arduino and Qt application the open command 'O' has changed
+the format so that it is counted with a length specifier instead of CR or zero termination.
+Reason is that commands may contain any byte, for instance if is writing data to 1541 memory or raw.
+* In FileDriverBase added virtual method supportsType where a file system can be inquired whether
+it supports the given file by checking its extension.
+The method default implementation uses the extension() method to enumerate all file extension
+and find out whether it is available.
+* Added virtual newDisk (format) method in filedriverbase. Only M2I format supports this as of now.
+This should be added support for T64, D64, G64 further on. Only skeleton in D64 exists,
+unsure how to call it as an instance method though.
+* Renamed openHostFile and closeHostFile to mountHostImage and unmountHostImage as more suitful names.
+* dos copy command implemented parsing for, but only implemented for nativefs.
+* Memory Write command implemented to some extent, but must be tested still!
+* All dos commands are now parsed as byte arrays and not as qstrings because they must be terminated
+with a container that uses length specifier and not zero terminations.
+* Made some code refactoring and tidying in the interface class on the Qt side.
+* File writing/creation in M2I-container added. But this is still needed to be tested, probably not working yet.
+* Added simulation of dos commands (in 'wedge' style) entered in the cbm-view. This is only added for debug
+builds and is used to test implementations without having to rig the complete system with hardware and all.
+Testing is added with parsing of command and results by using a simulated state-machine controlled with an enum
+that gets new additions for each new thing to test.
+* BUGFIX: The resetPin assignment was not made persistent with QSettings, only read out with default value.
+* NEW: CBM-view now simulates a more true to the nature scrolling cbm screen where text at top and bottom disappears
+instead of being remembered like in a typical qtextedit control.
+
 
                               MMC2IEC Change Log
 

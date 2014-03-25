@@ -14,7 +14,7 @@
 // features and excludes others.
 //
 // DESCRIPTION:
-// The interface connects all the loose ends in MMC2IEC.
+// This "interface" class is the main driving logic for the IEC command handling.
 //
 // Commands from the IEC communication are interpreted, and the appropriate data
 // from either Native, a D64 or T64 image is sent back.
@@ -301,10 +301,10 @@ byte Interface::handler(void)
 	// Did anything happen from the host side?
 	else if(retATN not_eq IEC::ATN_IDLE) {
 		// A command is recieved, make cmd string null terminated
-		m_cmd.str[m_cmd.strlen] = '\0';
+		m_cmd.str[m_cmd.strLen] = '\0';
 #ifdef CONSOLE_DEBUG
 		{
-			sprintf_P(serCmdIOBuf, (PGM_P)F("ATN code:%d cmd: %s (len: %d) retATN: %d"), m_cmd.code, m_cmd.str, m_cmd.strlen, retATN);
+			sprintf_P(serCmdIOBuf, (PGM_P)F("ATN code:%d cmd: %s (len: %d) retATN: %d"), m_cmd.code, m_cmd.str, m_cmd.strLen, retATN);
 			Log(Information, FAC_IFACE, serCmdIOBuf);
 		}
 #endif
@@ -327,13 +327,13 @@ byte Interface::handler(void)
 				if(retATN == IEC::ATN_CMD_TALK) {
 					 // when the CMD channel is read (status), we first need to issue the host request. The data channel is opened directly.
 					if(CMD_CHANNEL == chan)
-						handleATNCmdCodeOpen(m_cmd);
-					handleATNCmdCodeDataTalk(chan);
+						handleATNCmdCodeOpen(m_cmd); // This is typically an empty command,
+					handleATNCmdCodeDataTalk(chan); // ...but we do expect a response from PC that we can send back to CBM.
 				}
 				else if(retATN == IEC::ATN_CMD_LISTEN)
 					handleATNCmdCodeDataListen();
-				else if(retATN == IEC::ATN_CMD)
-					handleATNCmdCodeOpen(m_cmd);
+				else if(retATN == IEC::ATN_CMD) // Here we are sending a command to PC and executing it, but not sending response
+					handleATNCmdCodeOpen(m_cmd);	// back to CBM, the result code of the command is however buffered on the PC side.
 				break;
 
 			case IEC::ATN_CODE_CLOSE:
@@ -370,9 +370,15 @@ void Interface::setMaxDisplay(Max7219 *pDisplay)
 
 void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
 {
-	sprintf_P(serCmdIOBuf, (PGM_P)F("O%u|%s\r"), cmd.code bitand 0xF, cmd.str);
+	serCmdIOBuf[0] = 'O';
+	serCmdIOBuf[2] = cmd.code bitand 0xF;
+	byte length = 3;
+	memcpy(&serCmdIOBuf[length], cmd.str, cmd.strLen);
+	length += cmd.strLen;
+	// Set the length so that receiving side know how much to read out.
+	serCmdIOBuf[1] = length;
 	// NOTE: Host side handles BOTH file open command AND the command channel command (from the cmd.code).
-	Serial.print(serCmdIOBuf);
+	Serial.write((const byte*)serCmdIOBuf, length);
 } // handleATNCmdCodeOpen
 
 
@@ -479,7 +485,7 @@ void Interface::handleATNCmdCodeDataListen()
 
 		if(ErrOK == m_queuedError)
 			saveFile();
-		else // FIXME: Check what the drive does here when saving goes wrong. FNF is probably not right.
+		else // FIXME: Check what the drive does here when saving goes wrong. FNF is probably not right. Dummyread entire buffer from CBM?
 			m_iec.sendFNF();
 	}
 } // handleATNCmdCodeDataListen

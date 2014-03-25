@@ -1,7 +1,6 @@
 #ifndef INTERFACE_HPP
 #define INTERFACE_HPP
 
-#include <qextserialport.h>
 #include <QStringList>
 
 #include "filedriverbase.hpp"
@@ -41,15 +40,17 @@ public:
 		virtual void fileClosed(const QString& lastFileName) = 0;
 		virtual bool isWriteProtected() const = 0;
 		virtual void deviceReset() = 0;
+		/// Write AND flush the data to the serial port, IF open.
+		virtual void writePort(const QByteArray& data, bool flush = true) = 0;
 	};
 
-	Interface(QextSerialPort& port);
+	Interface();
 	virtual ~Interface();
 
 	CBM::IOErrorMessage openFile(const QString &cmdString);
-	void processOpenCommand(const QString &cmd, bool localImageSelectionMode = false);
+	void processOpenCommand(uchar channel, const QByteArray &cmd, bool localImageSelectionMode = false);
 	void processReadFileRequest(ushort length = 0);
-	void processWriteFileRequest(const QByteArray &theBytes);
+	void priocessWriteFileRequest(const QByteArray &theBytes);
 	CBM::IOErrorMessage reset(bool informUnmount = false);
 
 	// State specific: CBM requests a single directory line from us.
@@ -65,6 +66,8 @@ public:
 	bool changeNativeFSDirectory(const QString &newDir);
 	void setMountNotifyListener(IFileOpsNotify *pListener);
 	void setImageFilters(const QString &filters, bool showDirs);
+	void processWriteFileRequest(const QByteArray &theBytes);
+	void writePort(const QByteArray& data, bool flush = true);
 	FileDriverBase* currentFileDriver()
 	{
 		return m_currFileDriver;
@@ -77,8 +80,8 @@ private:
 	void moveToParentOrNativeFS();
 	bool removeFilePrefix(QString &cmd) const;
 	void sendOpenResponse(char code) const;
-	/// Write AND flush the data to the serial port, IF open.
-	void write(const QByteArray& data, bool flush = true) const;
+	void write(const QByteArray &data, bool flush = true) const;
+	QString errorStringFromCode(CBM::IOErrorMessage code);
 
 	D64 m_d64;
 	T64 m_t64;
@@ -89,11 +92,10 @@ private:
 
 	FileDriverList m_fsList;
 	FileDriverBase* m_currFileDriver;
-	QextSerialPort& m_port;
 	CBM::IOErrorMessage m_queuedError;
 	OpenState m_openState;
 	ushort m_currReadLength;
-	QString m_lastCmdString;
+	QByteArray m_lastCmdString;
 	QList<QByteArray> m_dirListing;
 	IFileOpsNotify* m_pListener;
 	// The ROM file for the 1541 drive (16 KB).

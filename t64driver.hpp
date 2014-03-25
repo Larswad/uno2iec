@@ -24,8 +24,8 @@ public:
 
 	// The host file system T64 image is opened or re-opened with the method below.
 	// If cannot be opened or not a T64 image, it returns false, true otherwise.
-	bool openHostFile(const QString& fileName);
-	void closeHostFile();
+	bool mountHostImage(const QString& fileName);
+	void unmountHostImage();
 
 	// t64 driver api
 	//

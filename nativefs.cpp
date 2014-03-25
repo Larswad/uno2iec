@@ -23,23 +23,23 @@ void NativeFS::setListingFilters(const QString &filters, bool listDirectories)
 } // setListingFilters
 
 
-bool NativeFS::openHostFile(const QString& fileName)
+bool NativeFS::mountHostImage(const QString& fileName)
 {
 	return fopen(fileName);
-} // openHostFile
+} // mountHostImage
 
 
-void NativeFS::closeHostFile()
+void NativeFS::unmountHostImage()
 {
 	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	m_status = NOT_READY;
-} // closeHostFile
+} // unmountHostImage
 
 
 bool NativeFS::fopen(const QString& fileName)
 {
-	closeHostFile();
+	unmountHostImage();
 	m_hostFile.setFileName(fileName);
 	bool success = m_hostFile.open(QIODevice::ReadOnly);
 	m_status = success ? FILE_OPEN : NOT_READY;
@@ -50,7 +50,7 @@ bool NativeFS::fopen(const QString& fileName)
 
 CBM::IOErrorMessage NativeFS::fopenWrite(const QString &fileName, bool replaceMode)
 {
-	closeHostFile();
+	unmountHostImage();
 	m_hostFile.setFileName(fileName);
 	if(m_hostFile.exists() and not replaceMode)
 		return CBM::ErrFileExists;
@@ -129,9 +129,31 @@ bool NativeFS::putc(char c)
 
 bool NativeFS::close()
 {
-	closeHostFile();
+	unmountHostImage();
 	return true;
 } // close
+
+
+CBM::IOErrorMessage NativeFS::copyFiles(const QStringList &sourceNames, const QString &destName)
+{
+	QFile destFile(destName);
+	if(not destFile.open(QFile::WriteOnly))
+		return CBM::ErrWriteProtectOn; // TODO: Maybe find out better reason for error.
+
+	// copy (append) each file from the list.
+	foreach(const QString& source, sourceNames) {
+		QFile sourceFile(source);
+		if(not sourceFile.open(QFile::ReadOnly)) {
+			destFile.close();
+			destFile.remove();
+			return CBM::ErrFileNotFound;
+		}
+		destFile.write(sourceFile.readAll());
+		sourceFile.close();
+	}
+	destFile.close();
+	return CBM::ErrOK;
+} // copyFiles
 
 
 bool NativeFS::sendListing(ISendLine& cb)

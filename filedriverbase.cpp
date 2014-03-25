@@ -11,6 +11,16 @@ FileDriverBase::~FileDriverBase()
 } // dtor
 
 
+bool FileDriverBase::supportsType(const QString& fileName) const
+{
+	foreach(const QString& ext, extension()) {
+		if(not ext.isEmpty() and fileName.endsWith(ext, Qt::CaseInsensitive))
+			return true;
+	}
+	return false;
+} // supportsType
+
+
 bool FileDriverBase::supportsListing() const
 {
 	return false;
@@ -99,6 +109,16 @@ bool FileDriverBase::setCurrentDirectory(const QString& dir)
 	Q_UNUSED(dir);
 	return false;
 } // setCurrentDirectory
+
+
+CBM::IOErrorMessage FileDriverBase::newDisk(const QString& name, const QString& id, bool mount)
+{
+	Q_UNUSED(name);
+	Q_UNUSED(id);
+	Q_UNUSED(mount);
+	// This may also mean it is not applicable to the image type in question.
+	return CBM::ErrNotImplemented;
+} // newDisk
 
 
 bool FileDriverBase::deleteFile(const QString& fileName)

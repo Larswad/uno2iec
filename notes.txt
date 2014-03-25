@@ -81,9 +81,10 @@ The facilityId is a single id of a previously registered facility.
 Register facility with abbreviating character and corresponding string to expand to on host side.
 !<abbreviationChar><facilityString><CR>
 
-IEC open command, channel is 0-15, the command string is just like from the iec interface. Pipe separated, CR terminated.
-The code return is according to the values of the IOErrorMessage enum.
-Request: O<channel>|command string<CR>
+IEC open/command, the command string is just like from the IEC interface. First byte is 'O', second byte is the TOTAL length including the first 'O'.
+The command has not zero or CR termination. The third byte is the channel (0-15), at the fourth byte begins the actual command string.
+The code returned is according to the values of the IOErrorMessage enum.
+Request: O<BYTE length><BYTE channel><command string BYTE 0..n>
 Response: ><code><CR>
 
 Read byte(s) from current file of current (last selected) file system type.

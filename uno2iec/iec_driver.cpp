@@ -285,7 +285,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 						// If the command is DATA and it is not to expect just a small command on the command channel, then
 						// we're into something more heavy. Otherwise read it all out right here until UNLISTEN is received.
 						if((c bitand 0xF0) == ATN_CODE_DATA and (c bitand 0xF) not_eq CMD_CHANNEL) {
-								// A heapload of data might come now, too big for this context, the caller handles this, we're done here.
+								// A heapload of data might come now, too big for this context to handle so the caller handles this, we're done here.
 								//Log(Information, FAC_IEC, "LDATA");
 								ret = ATN_CMD_LISTEN;
 						}
@@ -365,7 +365,7 @@ IEC::ATNCheck IEC::checkATN(ATNCmd& cmd)
 		// some delay is required before more ATN business can take place.
 		delayMicroseconds(TIMING_ATN_DELAY);
 
-		cmd.strlen = i;
+		cmd.strLen = i;
 		return ret;
 } // checkATN
 

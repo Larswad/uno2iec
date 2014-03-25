@@ -50,8 +50,8 @@ public:
 
 	// The host file system D64 image is opened or re-opened with the method below.
 	// If cannot be opened or not a D64 image, it returns false, true otherwise.
-	bool openHostFile(const QString& fileName);
-	void closeHostFile();
+	bool mountHostImage(const QString& fileName);
+	void unmountHostImage();
 
 	// Open a file in the image by filename: Returns true if successful
 	bool fopen(const QString& fileName);
@@ -139,7 +139,7 @@ public:
 #pragma pack(pop, before_1)
 #endif
 	// special commands.
-	static bool newDisk(const QString &name, const QString &id);
+	CBM::IOErrorMessage newDisk(const QString& name, const QString& id);
 
 private:
 

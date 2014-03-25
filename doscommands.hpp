@@ -39,7 +39,7 @@ public:
 	}
 
 	// perform the actual processing of the command itself.
-	virtual CBM::IOErrorMessage process(const QString& params, Interface& iface) = 0;
+	virtual CBM::IOErrorMessage process(const QByteArray& params, Interface& iface) = 0;
 
 	// Static methods for command implementations.
 	static void attach(Command* cmd)
@@ -54,26 +54,32 @@ public:
 
 	// find a command implementation that matches the given command string either by full name or abbreviation
 	// and return it. The command will be stripped by leading command identifier and delimeter and returned in params.
-	static Command* find(const QString& cmdString, QString& params)
+	static Command* find(const QByteArray& cmdArray, QByteArray& params)
 	{
 		bool found = false;
 
+		// Get an instance as a string to make it easier to compare with.
+		const QString cmdString(cmdArray);
 		foreach(Command* cmd, s_attached) {
 			if(cmd->delimeter().isNull()) {
-				if(cmdString.startsWith(cmd->full())) {
-					params = cmdString.mid(cmd->full().length());
+				if(cmdString.startsWith(cmd->full(), Qt::CaseSensitive)) {
+					params = cmdArray.mid(cmd->full().length());
 					found = true;
 				}
 				else if(not cmd->abbrev().isEmpty() and cmdString.startsWith(cmd->abbrev(), Qt::CaseInsensitive)) {
-					params = cmdString.mid(cmd->abbrev().length());
+					params = cmdArray.mid(cmd->abbrev().length());
 					found = true;
 				}
 			}
 			else {
-				QStringList splits(cmdString.split(cmd->delimeter()));
+				QList<QByteArray> splits(cmdArray.split(cmd->delimeter().toLatin1()));
 				if(not splits.isEmpty() and (splits.first() == cmd->full() or splits.first() == cmd->abbrev())) {
 					splits.removeFirst();
-					params = splits.join(cmd->delimeter());
+					foreach(const QByteArray& split, splits) {
+						if(not params.isEmpty())
+							params.append(cmd->delimeter());
+						params.append(split);
+					}
 					found = true;
 				}
 			}
@@ -87,11 +93,11 @@ public:
 
 
 	// Find and execute the given command.
-	static CBM::IOErrorMessage execute(const QString& cmdString, Interface& iface)
+	static CBM::IOErrorMessage execute(const QByteArray& cmdString, Interface& iface)
 	{
-		QString params, stripped(cmdString);
+		QByteArray params, stripped(cmdString);
 		// Strip of trailing whitespace (in fact, CR for e.g. OPEN 1,8,15,"I:" which generates a CR.
-		while(stripped.endsWith(QChar('\r')) or stripped.endsWith(QChar(' ')))
+		while(stripped.endsWith(QChar('\r').toLatin1()) or stripped.endsWith(QChar(' ').toLatin1()))
 			stripped.chop(1);
 		Command* dosCmd = find(stripped, params);
 		if(0 not_eq dosCmd)
@@ -106,7 +112,7 @@ protected:
 	virtual void attachMe() {}
 	static bool isIllegalCBMName(const QString& name)
 	{
-		return name.indexOf(QRegExp("m[=\"*?,]"));
+		return name.indexOf(QRegExp("m[=\"*?,]")) not_eq -1;
 	}
 
 private:
@@ -116,7 +122,7 @@ private:
 #define DECLARE_DOSCMD_IMPL(NAME, FULL) \
 	public:NAME() { attach(this); } \
 	const QString full() { return FULL; } \
-	CBM::IOErrorMessage process(const QString& params, Interface& iface); \
+	CBM::IOErrorMessage process(const QByteArray& params, Interface& iface); \
 	protected: void attachMeB() {	attach(this); }
 
 
@@ -298,7 +304,7 @@ public:
 
 // MEMORY-WRITE - Write Data to the floppy RAM
 // Abbreviation: M-W (You must use the abbreviation, the full form is not legal).
-// Syntax: "M-W"+CHR$(LowAddress)+CHR$(HighAddress)+CHR$(Size)
+// Syntax: "M-W"+CHR$(LowAddress)+CHR$(HighAddress)+CHR$(Size)+payload[Size]
 class MemoryWrite : public Command
 {
 public:

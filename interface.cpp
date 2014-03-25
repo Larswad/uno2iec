@@ -63,8 +63,8 @@ const QString s_errorEnding = ",00,00";
 } // anonymous
 
 
-Interface::Interface(QextSerialPort& port)
-	: m_currFileDriver(0), m_port(port)
+Interface::Interface()
+	: m_currFileDriver(0)
 	, m_queuedError(CBM::ErrOK)
 	,	m_openState(O_NOTHING)
 	, m_currReadLength(MAX_BYTES_PER_REQUEST)
@@ -113,7 +113,7 @@ CBM::IOErrorMessage Interface::reset(bool informUnmount)
 	m_dirListing.empty();
 	m_lastCmdString.clear();
 	foreach(FileDriverBase* fs, m_fsList)
-		fs->closeHostFile(); // TODO: Better with a reset or init method on all file systems.
+		fs->unmountHostImage(); // TODO: Better with a reset or init method on all file systems.
 	if(0 not_eq m_pListener)
 		m_pListener->deviceReset();
 	m_queuedError = CBM::ErrIntro;
@@ -187,23 +187,47 @@ void Interface::readDriveMemory(ushort address, ushort length, QByteArray& bytes
 } // readDriveMemory
 
 
+// TODO: Place this in a utility file instead.
+static QByteArray& replaceBytes(QByteArray& lhs, int pos, int len, const QByteArray& rhs)
+{
+	for(int i = pos, j = 0; i < pos + len and i < lhs.length() and j < rhs.length(); ++i, ++j)
+		lhs[i] = rhs[j];
+	return lhs;
+} // replaceBytes
+
+
 void Interface::writeDriveMemory(ushort address, const QByteArray& bytes)
 {
+	QByteArray source(bytes);
 	// When doing resize (chop) after replace its because if address + array goes outside memory.
 	if(/*address >= CBM1541_RAM_OFFSET and */address < CBM1541_RAM_OFFSET + m_driveRAM.size()) {
-		m_driveRAM.replace(address, bytes.size(), bytes);
+		replaceBytes(m_driveRAM, address, bytes.size(), source);
 		m_driveRAM.resize(CBM1541_RAM_SIZE);
 	}
-	else if(address >= CBM1541_VIA1_OFFSET and address <= CBM1541_VIA1_OFFSET + m_via1MEM.size()) {
-		m_via1MEM.replace(address - CBM1541_VIA1_OFFSET, bytes.size(), bytes);
-		qDebug() << "size before: " << m_via1MEM.size();
+	else if((address >= CBM1541_VIA1_OFFSET and address <= CBM1541_VIA1_OFFSET + m_via1MEM.size())
+					or (address < CBM1541_VIA1_OFFSET and address + bytes.length() > CBM1541_VIA1_OFFSET)) {
+		ushort length = bytes.length();
+		if(address < CBM1541_VIA1_OFFSET) {
+			source.remove(0, CBM1541_VIA1_OFFSET - address);
+			length -= CBM1541_VIA1_OFFSET - address;
+			address = CBM1541_VIA1_OFFSET;
+		}
+		replaceBytes(m_via1MEM, address - CBM1541_VIA1_OFFSET, length, source);
 		m_via1MEM.resize(CBM1541_VIA1_SIZE);
-		qDebug() << "size after: " << m_via1MEM.size();
 	}
-	else if(address >= CBM1541_VIA2_OFFSET and address <= CBM1541_VIA2_OFFSET + m_via2MEM.size()) {
-		m_via2MEM.replace(address - CBM1541_VIA2_OFFSET, bytes.size(), bytes);
+	else if((address >= CBM1541_VIA2_OFFSET and address <= CBM1541_VIA2_OFFSET + m_via2MEM.size())
+					or (address < CBM1541_VIA2_OFFSET and address + bytes.length() > CBM1541_VIA2_OFFSET)) {
+		ushort length = bytes.length();
+		if(address < CBM1541_VIA2_OFFSET) {
+			source.remove(0, CBM1541_VIA2_OFFSET - address);
+			length -= CBM1541_VIA2_OFFSET - address;
+			address = CBM1541_VIA2_OFFSET;
+		}
+		replaceBytes(m_via2MEM, address - CBM1541_VIA2_OFFSET, bytes.size(), source);
 		m_via2MEM.resize(CBM1541_VIA2_SIZE);
 	}
+	else
+		qDebug() << "trying to write to an invalid address.";
 	// any other memory range is a no-op. Can't write to ROM, can't write to non-existent memory.
 } // writeDriveMemory
 
@@ -257,28 +281,23 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 				if(0 not_eq m_pListener)
 					m_pListener->imageMounted(cmd, m_currFileDriver);
 			}
-			else if(m_native.openHostFile(cmd)) {
+			else if(m_native.mountHostImage(cmd)) {
 				// File opened, investigate filetype
 				bool fsFound = false;
 				foreach(FileDriverBase* fs, m_fsList) {
-					// if extension matches last three characters in any file system, then we set that filesystem into use.
-					foreach(const QString& ext, fs->extension()) {
-						if(not ext.isEmpty() and cmd.endsWith(ext, Qt::CaseInsensitive)) {
-							m_currFileDriver = fs;
-							fsFound = true;
-							break;
-						}
-					}
-					if(fsFound)
+					// if extension matches ending characters in any file systems extension list, then we set that filesystem into use.
+					if((fsFound = fs->supportsType(cmd))) {
+						m_currFileDriver = fs;
 						break;
+					}
 				}
 				// did we have a match?
 				if(fsFound) {
-					m_native.closeHostFile();
+					m_native.unmountHostImage();
 					Log(FAC_IFACE, info, QString("Trying image mount using driver: %1").arg(m_currFileDriver->extFriendly()));
 					// file extension matches, change interface state
 					// call new format's reset
-					if(m_currFileDriver->openHostFile(cmd)) {
+					if(m_currFileDriver->mountHostImage(cmd)) {
 						// see if this format supports listing, if not we're just opening as a file.
 						if(not m_currFileDriver->supportsListing())
 							m_openState = O_FILE;
@@ -334,44 +353,40 @@ void Interface::sendOpenResponse(char code) const
 } // sendOpenResponse
 
 
-void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionMode)
+void Interface::processOpenCommand(uchar channel, const QByteArray& cmd, bool localImageSelectionMode)
 {
 	// Request: <channel>|<command string>
-	Log(FAC_IFACE, info, QString("processOpenCommand, cmd: %1").arg(cmd));
-	QStringList params(cmd.split('|'));
-	if(params.count() < 2) // enough params?
-		m_queuedError = CBM::ErrSerialComm;
-	else {
-		uchar chan = params.at(0).toInt();
-		const QString cmd = params.at(1);
-		// Are we addressing the command channel?
-		if(CBM::CMD_CHANNEL == chan) {
-			// command channel command
-			// (note: if any previous openfile command has given us an error, the 'current' file system to use is not defined and
-			// therefore the command will fail, we don't even have the native fs to use for the open command).
-			//			if(0 == m_currFileDriver)
-			//				m_queuedError = ErrDriveNotReady;
-			//			else
-			//				m_queuedError = m_currFileDriver->cmdChannel(cmd);
+	Log(FAC_IFACE, info, QString("processOpenCommand, cmd: %1").arg(QString(cmd)));
+
+	// Are we addressing the command channel?
+	switch(channel) {
+		case CBM::CMD_CHANNEL:
+			// command channel command, or request for status if empty.
 			if(cmd.isEmpty()) {
 				// Response: ><code><CR>
 				// The code return is according to the values of the IOErrorMessage enum.
 				// send back m_queuedError to uno.
 				sendOpenResponse((char)m_queuedError);
+				Log(FAC_IFACE, info, QString("CmdChannel Status Response code: %1 = '%2'").arg(QString::number(m_queuedError)).arg(errorStringFromCode(m_queuedError)));
+				// go back to OK state, we have dispatched the error to IEC host now. Error will only show once.
+				m_queuedError = CBM::ErrOK;
 			}
 			else {
+				// it's a DOS command, so execute it.
 				m_queuedError = CBMDos::Command::execute(cmd, *this);
+				Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("CmdChannel_Response code: %1 = '%2'")
+						.arg(QString::number(m_queuedError)).arg(errorStringFromCode(m_queuedError)));
 			}
-			Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("CmdChannel_Response code: %1").arg(QString::number(m_queuedError)));
-		}
-		else if(CBM::READPRG_CHANNEL == chan) {
+			break;
+
+		case CBM::READPRG_CHANNEL:
 			// ...it was a open file for reading (load) command.
 			m_openState = O_NOTHING;
 			if(localImageSelectionMode) {// for this we have to fall back to nativeFS driver first.
-				m_currFileDriver->closeHostFile();
+				m_currFileDriver->unmountHostImage();
 				m_currFileDriver = &m_native;
 			}
-			m_queuedError = openFile(cmd);
+			m_queuedError = openFile(QString(cmd));
 			// if it was not only a local "UI" operation, we need to return some response to client.
 			if(not localImageSelectionMode) {
 				// Remember last cmd string.
@@ -389,9 +404,9 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 				if(O_FILE == m_openState and 0 not_eq m_pListener)
 					m_pListener->fileLoading(m_currFileDriver->openedFileName(), m_currFileDriver->openedFileSize());
 			}
+			break;
 
-		}
-		else if(CBM::WRITEPRG_CHANNEL == chan) {
+		case CBM::WRITEPRG_CHANNEL:
 			// it was an open file for writing (save) command.
 			m_openState = O_NOTHING;
 			if(0 not_eq m_currFileDriver) {
@@ -417,10 +432,12 @@ void Interface::processOpenCommand(const QString& cmd, bool localImageSelectionM
 			// The code return is according to the values of the IOErrorMessage enum.
 			sendOpenResponse((char)m_queuedError);
 			Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("Open WritePRG Response code: %1").arg(QString::number(m_queuedError)));
-		}
-		else { // some other channel.
-			Log(FAC_IFACE, warning, QString("processOpenCommand: got open for channel: %1, not implemented.").arg(chan));
-		}
+			break;
+
+		default:
+			// some other channel.
+			Log(FAC_IFACE, warning, QString("processOpenCommand: got open for channel: %1, not yet implemented.").arg(channel));
+			break;
 	}
 } // processOpenCommand
 
@@ -509,23 +526,25 @@ void Interface::processWriteFileRequest(const QByteArray& theBytes)
 } // processWriteFileRequest
 
 
+QString Interface::errorStringFromCode(CBM::IOErrorMessage code)
+{
+	// Assume not found by pre-assigning the unknown message.
+	foreach(const QString& msg, s_IOErrorMessages)
+		if(code == msg.split(',', QString::KeepEmptyParts).first().toInt())	// found it!
+			return msg;
+
+	return s_unknownMessage;
+} // errorStringFromCode
+
+
 // For a specific error code, we are supposed to return the corresponding error string.
 void Interface::processErrorStringRequest(CBM::IOErrorMessage code)
 {
 	// the return message begins with ':' for sync.
 	QByteArray retStr(1, ':');
-	// Assume not found by pre-assigning the unknown message.
-	QString messageString(s_unknownMessage);
-	foreach(const QString& msg, s_IOErrorMessages) {
-		if(msg.split(',', QString::KeepEmptyParts).first().toInt() == code) {
-			// found it!
-			messageString = msg;
-			break;
-		}
-	}
 
 	// append message and the common ending and terminate with CR.
-	write(retStr.append(messageString + s_errorEnding + '\r'));
+	write(retStr.append(errorStringFromCode(code) + s_errorEnding + '\r'));
 } // processErrorStringRequest
 
 
@@ -580,9 +599,6 @@ bool Interface::changeNativeFSDirectory(const QString& newDir)
 
 void Interface::write(const QByteArray& data, bool flush) const
 {
-	if(m_port.isOpen()) {
-		m_port.write(data);
-		if(flush)
-			m_port.flush();
-	}
+	if(0 not_eq m_pListener)
+		m_pListener->writePort(data, flush);
 } // write

@@ -21,8 +21,8 @@ public:
 	} // extension
 
 	// method below performs init of the driver with the given ATN command string.
-	bool openHostFile(const QString& fileName);
-	void closeHostFile();
+	bool mountHostImage(const QString& fileName);
+	void unmountHostImage();
 
 	bool supportsListing() const
 	{
@@ -47,12 +47,12 @@ public:
 	// close file
 	bool close(void);
 
-	// new disk, creates empty M2I file with diskname and opens it
-	uchar newDisk(char* diskName);
-
 	bool deleteFile(const QString& fileName);
 
 	CBM::IOErrorMessage renameFile(const QString& oldName, const QString& newName);
+
+	// new disk, creates empty M2I file with diskname and opens it
+	CBM::IOErrorMessage newDisk(const QString& name, const QString& id, bool mount);
 
 private:
 	// The M2I file records represtented in internal form.

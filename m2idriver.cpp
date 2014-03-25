@@ -43,9 +43,9 @@ const int CBMNAME_SIZE = 16;
 M2I::M2I()
 {}
 
-bool M2I::openHostFile(const QString& fileName)
+bool M2I::mountHostImage(const QString& fileName)
 {
-	closeHostFile();
+	unmountHostImage();
 
 	// Interface has just opened the m2i file, save filename
 	m_hostFile.setFileName(fileName);
@@ -103,7 +103,8 @@ bool M2I::openHostFile(const QString& fileName)
 			break;
 		default:
 			success = false;
-			Log("M2I", error, QString("Parsing file %1 at line %2 failed, illegal file type: '%3'").arg(fileName, QString::number(lineNbr), strColumn));
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, illegal file type: '%3'").arg(fileName
+				, QString::number(lineNbr), strColumn));
 			break;
 		}
 		if(not success)
@@ -111,7 +112,8 @@ bool M2I::openHostFile(const QString& fileName)
 		fe.nativeName = params.takeFirst();
 		// Being strict here: we stick to DOS 8.3 length, no more than that.
 		if(fe.nativeName.length() > 12) {
-			Log("M2I", error, QString("Parsing file %1 at line %2 failed, '%3' not DOS 8.3 length (max 12 chars)").arg(fileName, QString::number(lineNbr), fe.nativeName));
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, '%3' not DOS 8.3 length (max 12 chars)").arg(fileName
+				, QString::number(lineNbr), fe.nativeName));
 			success = false;
 			continue;
 		}
@@ -121,23 +123,26 @@ bool M2I::openHostFile(const QString& fileName)
 			m_entries.append(fe);
 		else {
 			success = false;
-			Log("M2I", error, QString("Parsing file %1 at line %2 failed, '%3' not CBM length (max 16 chars)").arg(fileName, QString::number(lineNbr), fe.cbmName));
+			Log("M2I", error, QString("Parsing file %1 at line %2 failed, '%3' not CBM length (max 16 chars)").arg(fileName
+				, QString::number(lineNbr), fe.cbmName));
 		}
 		++lineNbr;
 	} // while
+	// We close immediately, host file (.M2I) is only open during parsing.
 	m_hostFile.close();
 	m_status = success ? IMAGE_OK : NOT_READY;
+
 	return success;
-} // openHostFile
+} // mountHostImage
 
 
-void M2I::closeHostFile()
+void M2I::unmountHostImage()
 {
 	m_entries.clear();
 	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	m_status = NOT_READY;
-} // closeHostFile
+} // unmountHostImage
 
 
 bool M2I::sendListing(ISendLine &cb)
@@ -217,9 +222,26 @@ CBM::IOErrorMessage M2I::renameFile(const QString& oldName, const QString& newNa
 } // rename
 
 
-uchar M2I::newDisk(char* diskName)
+CBM::IOErrorMessage M2I::newDisk(const QString& name, const QString& id, bool mount)
 {
-	Q_UNUSED(diskName);
+	// disk id not supported.
+	Q_UNUSED(id);
+	unmountHostImage();
+	m_hostFile.setFileName(name);
+	if(m_hostFile.exists())
+		return CBM::ErrFileExists;
+
+	m_diskTitle = name.toUpper(); // TODO: Strip to disk name length
+	bool success = m_hostFile.open(QFile::WriteOnly);
+	if(not success)
+		return CBM::ErrWriteProtectOn;
+
+	m_hostFile.write(QByteArray().append(generateFile()));
+	m_hostFile.close();
+	if(mount)
+		mountHostImage(name);
+	return CBM::ErrOK;
+
 	/*
 				char dosName[13];
 				uchar i,j;
@@ -289,30 +311,40 @@ bool M2I::fopen(const QString& fileName)
 //
 CBM::IOErrorMessage M2I::fopenWrite(const QString& fileName, bool replaceMode)
 {
-	Q_UNUSED(fileName);
-	Q_UNUSED(replaceMode);
-	/*
-				char dirName[16];
-				char dosName[12];
+	if(m_status bitand FILE_OPEN)
+		close();
+	QFileInfo f(m_hostFile);
+	m_nativeFile.setFileName(f.absolutePath() + fileName.trimmed());
+	FileEntry e;
+	// if it exists already, only accept if we're in replace mode.
+	if((m_nativeFile.exists() or findEntry(fileName, e, false)) and not replaceMode)
+		return CBM::ErrFileExists;
 
-				m_status = NOT_READY;
+	bool success = m_nativeFile.open(QIODevice::WriteOnly bitor QIODevice::Truncate);
+	m_status = success ? FILE_OPEN : NOT_READY;
+	CBM::IOErrorMessage retCode;
+	if(success) {
+		success = m_hostFile.open(QFile::WriteOnly);
+		if(success) {
+			e.cbmName = fileName.toUpper();
+			e.fileType = FileEntry::TypePrg;
+			e.nativeName = fileName;
+			m_entries.append(e);
+			m_hostFile.write(QByteArray().append(generateFile()));
+			m_hostFile.close();
+		}
+		else
+			close();
+		retCode = success ? CBM::ErrOK : CBM::ErrFileNotOpen;
+	}
+	else {
+		if(m_hostFile.error() == QFile::PermissionsError or m_hostFile.error() == QFile::OpenError)
+			retCode = CBM::ErrWriteProtectOn;
+		else
+			retCode = CBM::ErrFileNotOpen;
+	}
 
-				// Look for filename
-				if(seekFile(dosName, dirName, fileName, true)) {
-								// File exists, delete it
-								fatRemove(dosName);
-								// And create empty
-								fatFcreate(dosName);
-								m_status or_eq FILE_OPEN;
-
-				}
-				else {
-								// File does not exist, create it
-								createFile(fileName);
-				}
-				return 0 not_eq (m_status bitand FILE_OPEN);
-*/
-	return CBM::ErrNotImplemented;
+	return retCode;
 } // fopenWrite
 
 
@@ -363,7 +395,7 @@ bool M2I::isEOF(void) const
 bool M2I::close(void)
 {
 	m_status and_eq compl FILE_OPEN;
-	closeHostFile();
+	m_nativeFile.close();
 
 	return true;
 } // close

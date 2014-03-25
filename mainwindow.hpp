@@ -36,25 +36,26 @@ class MainWindow : public QMainWindow, public Logging::ILogTransport, public Int
 	typedef QMap<QString, QFileInfo> QFileInfoMap;
 public:
 
-	explicit MainWindow(QWidget *parent = 0);
+	explicit MainWindow(QWidget* parent = 0);
 	~MainWindow();
 
 	void writeTextToDirList(const QString& text, bool atCursor = true);
 	void processAddNewFacility(const QString &str);
 	void checkVersion();
-	void closeEvent(QCloseEvent *event);
+	void closeEvent(QCloseEvent* event);
 
 	// IMountNotifyListener interface implementation
 	void directoryChanged(const QString& newPath);
 	void imageMounted(const QString& imagePath, FileDriverBase* pFileSystem);
 	void imageUnmounted();
-	void fileLoading(const QString &fileName, ushort fileSize);
+	void fileLoading(const QString& fileName, ushort fileSize);
 	void fileSaving(const QString& fileName);
 	void bytesRead(uint numBytes);
 	void bytesWritten(uint numBytes);
 	void fileClosed(const QString &lastFileName);
 	bool isWriteProtected() const;
 	void deviceReset();
+	void writePort(const QByteArray& data, bool flush);
 
 	// ISendLine interface implementation.
 	void send(short lineNo, const QString &text);
@@ -89,6 +90,7 @@ private slots:
 	void on_dirList_doubleClicked(const QModelIndex &index);
 	void on_directoryChanged(const QString& path);
 	void on_filterSetup_clicked();
+	void simTimerExpired();
 
 private:
 	bool checkConnectRequest();
@@ -108,9 +110,6 @@ private:
 	void getMachineAndPaletteTheme(CbmMachineTheme*& pMachine, const QRgb *&pEmulatorPalette);
 	void cbmCursorVisible(bool visible = true);
 
-	void simulateData(const QByteArray& data);
-	void processData(void);
-
 	Ui::MainWindow *ui;
 	QextSerialPort m_port;
 	QByteArray m_pendingBuffer;
@@ -127,6 +126,24 @@ private:
 	ushort m_totalReadWritten;
 	QString m_loadSaveName;
 	QFileSystemWatcher m_fsWatcher;
+#ifdef QT_DEBUG
+	QByteArray m_delayedData;
+#endif
+
+	enum ProcessingState {
+		simsOff,					// No simulation, a REAL command.
+		simsDriveStat,
+		simsDriveStatString,
+		simsDisplayDir,
+		simsDisplayDirEntry,
+		simsDriveCmd,
+		simsLoadCmd,
+		simsSaveCmd
+	} m_simulatedState;
+
+	void simulateData(const QByteArray& data);
+	void processData(void);
+	void delayedSimulate(ProcessingState newState, const QByteArray &data);
 };
 
 #endif // MAINWINDOW_HPP

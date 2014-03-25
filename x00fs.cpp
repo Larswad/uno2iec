@@ -5,7 +5,6 @@
 using namespace Logging;
 
 ////////////////////////////////////////////////////////////////////////////////
-//
 // X00 (P00,S00,R00) file format implementation
 // Reusing most of native format, only overrides opening to handle the file header.
 ////////////////////////////////////////////////////////////////////////////////
@@ -15,9 +14,9 @@ const QString X00MAGIC_STR("C64File");
 }
 
 
-void x00FS::closeHostFile()
+void x00FS::unmountHostImage()
 {
-	NativeFS::closeHostFile();
+	NativeFS::unmountHostImage();
 	// Leave no junk in header when closing file (will be done before open as well.)
 	memset(&m_header, 1, sizeof(m_header));
 } // closeHostFile
@@ -31,7 +30,7 @@ bool x00FS::fopen(const QString& fileName)
 		if(m_hostFile.read((char*)&m_header, sizeof(m_header)) not_eq sizeof(m_header) or QString::compare(QString(m_header.x00Magic), X00MAGIC_STR)) {
 			Log("X00FS", warning, QString("Couldn't open file %1, it is not of P00/R00/S00 format.").arg(fileName));
 			success = false;
-			closeHostFile();
+			unmountHostImage();
 		}
 		else
 			Log("X00FS", warning, QString("Opened x00 file %1, original CBM name is: %2.").arg(fileName, m_header.originalFileName));

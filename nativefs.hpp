@@ -20,8 +20,8 @@ public:
 	void setListingFilters(const QString& filters, bool listDirectories);
 
 	// method below performs init of the driver with the given ATN command string.
-	bool openHostFile(const QString& fileName);
-	void closeHostFile();
+	bool mountHostImage(const QString& fileName);
+	void unmountHostImage();
 
 	// Send realistic $ file basic listing, line by line (returning false means not supported).
 	bool sendListing(ISendLine& cb);
@@ -50,6 +50,8 @@ public:
 	bool isEOF() const;
 	bool putc(char c);
 	bool close();
+	CBM::IOErrorMessage copyFiles(const QStringList& sourceNames, const QString &destName);
+
 	// Command to the command channel.
 	CBM::IOErrorMessage cmdChannel(const QString& cmd);
 

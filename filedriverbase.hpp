@@ -35,14 +35,17 @@ public:
 
 	// The three letter extension this file format represents (DOS style) Empty string returned means 'any' and is in default fs mode.
 	virtual const QStringList& extension() const = 0;
+	// Returns true if the file system in question is supporting the given extension type.
+	bool supportsType(const QString& fileName) const;
+
 	// Returns a print-friendly version of the supported extensions as a pipe separated (single) string.
 	virtual const QString extFriendly() const
 	{
 		return extension().join(QChar('|'));
 	}
 	// method below performs init of the driver with the given ATN command string.
-	virtual bool openHostFile(const QString& fileName) = 0;
-	virtual void closeHostFile() = 0;
+	virtual bool mountHostImage(const QString& fileName) = 0;
+	virtual void unmountHostImage() = 0;
 	// returns true if the file system supports directory listing (t64 for instance doesn't).
 	virtual bool supportsListing() const;
 	// Send realistic $ file basic listing, line by line (returning false means there was some error, but that there is a listing anyway).
@@ -87,6 +90,10 @@ public:
 	// This method is not relevant for any CBM side file systems (unless future one support such).
 	// It sets the current directory on the native fs. Optionally implemented for a specific file system, base returns false.
 	virtual bool setCurrentDirectory(const QString& dir);
+
+	// Initialize (format) a disk with the given name and id (id can be empty). The extension can be used to further
+	// determine the actual image type.
+	virtual CBM::IOErrorMessage newDisk(const QString& name, const QString& id, bool mount = true);
 
 protected:
 	// Status of the driver:

@@ -1,20 +1,32 @@
+// TODO: The send line request/answer 'L' can be factored out into a regular read 'R' request/answer. All special things for preparation
+// like basic address and all lines can be put into one single QByteArray that is transferred in chunks for each request. There is no
+// meaning in making this a special command.
+// TODO: The error channel can be factored into a regular read-return of a buffer. The buffer is always by the result of the last command
+// executed, which might either be resulting error message or some result from a dos command, like M-R and so on.
+
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
 // TODO: Finalize x00fs handling (P00, S00, R00)
-// TODO: Support x64 format.
-// TODO: Support ZIP archives. Use "osdab" library for zip handling: https://code.google.com/p/osdab/downloads/detail?name=OSDaB-Zip-20130623.tar.bz2&can=2&q=
+// TODO: Support x64 format, it should in fact be the preferred format today before D64, D71, D81.
+// TODO: Support of images in ZIP archives. Use "osdab" library for zip handling:
+//			https://code.google.com/p/osdab/downloads/detail?name=OSDaB-Zip-20130623.tar.bz2&can=2&q=
 // TODO: Finalize Native FS routines.
 // TODO: Finalize ALL doscommands (pretty huge job!)
 // TODO: Handle all data channel stuff. TALK, UNTALK, and so on.
-// TODO: Display the error channel status on the UI!
+// TODO: Display the current error channel status on the UI!
 // TODO: T64 / D64 formats could/should read out entire disk into memory for caching (network performance).
 // TODO: T64 / D64 write support!
 // TODO: Finalize handling of write protected disk.
-// TODO: If arduino is reset with a physical button on the board and it tries to resync, the PC-host application should automatically resync without having to press the 'Reset Arduino' button, meaning listen to connect even in connected mode.
-// TODO: Rename openHostFile() and closeHostFile() to "mount"/"unmount" respectively on all file systems?
+// TODO: If arduino is reset with a physical button on the board and it tries to resync, the PC-host application should automatically resync without having to press the 'Reset Arduino' button, meaning: listen to unexpecte "connect-request" even in connected mode.
 // TODO: When loading directories or media list, the dirlist view doesn't reflect this status.
 // TODO: When a file/directory is attempted for loading or saving and this fails for some reason this isn't reflected on the dirlist view.
 // TODO: When executing the command channel this isn't reflected on the dirlist view.
-// TODO: Native/D64/T64: Show true blocks free. Will be nice with all the space available on a harddisk or network share!
+// TODO: Native/D64/T64: Show TRUE (actual) blocks free. Will be nice with all the space available on a harddisk or network share!
+
+
+// DONE: Rename openHostFile() and closeHostFile() to "mount"/"unmount" respectively on all file systems?
+// DONE: Needs to be verified/tested: Need to refactor the open command 'O' so that it is not passed as a CR terminated string. This will never
+// work when issued for the CBMDOS command buffer where there can be zeroes and any other character in the buffer that could be
+// treated as a termination character. Therefore the 'O' command has to be transferred with a length character in second position.
 
 #include <QString>
 #include <QFileDialog>
@@ -22,6 +34,7 @@
 #include <QDate>
 #include <QDebug>
 #include <QSettings>
+#include <QTimer>
 
 #include "mainwindow.hpp"
 #include "ui_mainwindow.h"
@@ -115,14 +128,15 @@ const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 } // unnamed namespace
 
 
-MainWindow::MainWindow(QWidget *parent) :
+MainWindow::MainWindow(QWidget* parent) :
 	QMainWindow(parent)
-, ui(new Ui::MainWindow)
-, m_port(QextSerialPort::EventDriven, this)
-, m_isConnected(false)
-, m_iface(m_port)
-, m_isInitialized(false)
-,	m_fsWatcher(this)
+	, ui(new Ui::MainWindow)
+	, m_port(QextSerialPort::EventDriven, this)
+	, m_isConnected(false)
+	, m_iface()
+	, m_isInitialized(false)
+	,	m_fsWatcher(this)
+	, m_simulatedState(simsOff)
 {
 	ui->setupUi(this);
 
@@ -410,6 +424,7 @@ void MainWindow::writeSettings() const
 	sets.setValue("atnPin", QString::number(m_appSettings.atnPin));
 	sets.setValue("clockPin", QString::number(m_appSettings.clockPin));
 	sets.setValue("dataPin", QString::number(m_appSettings.dataPin));
+	sets.setValue("resetPin", QString::number(m_appSettings.resetPin));
 	//	settings.setValue("srqInPin", QString::number(m_appSettings.srqInPin));
 	sets.setValue("imageFilters", m_appSettings.imageFilters);
 	sets.setValue("showDirectories", m_appSettings.showDirectories);
@@ -457,7 +472,8 @@ bool MainWindow::checkConnectRequest()
 		Log("MAIN", warning, "Got reconnection attempt from Arduino for unknown reason. Accepting new connection.");
 
 	// give the client current date and time in the response string.
-	m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin) + '|' + QString::number(m_appSettings.clockPin)
+	m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin)
+								+ '|' + QString::number(m_appSettings.clockPin)
 								+ '|' + QString::number(m_appSettings.dataPin) + '|' + QString::number(m_appSettings.resetPin) /*+ '|' + QString::number(m_appSettings.srqInPin)*/
 								+ '\r').toLatin1().data());
 	// client is supposed to send it's facilities each start.
@@ -486,12 +502,88 @@ void MainWindow::simulateData(const QByteArray& data)
 	m_pendingBuffer.append(data);
 	processData();
 } // simulateData
-#else
-void MainWindow::simulateData(const QByteArray& data)
+
+
+void MainWindow::delayedSimulate(ProcessingState newState, const QByteArray& data)
 {
-	Q_UNUSED(data);
+	m_simulatedState = newState;
+	m_delayedData = data;
+	QTimer::singleShot(20, Qt::CoarseTimer, this, SLOT(simTimerExpired()));
+} // delayedSimulate
+
+
+void MainWindow::simTimerExpired()
+{
+	simulateData(m_delayedData);
 }
+
+#else
+void MainWindow::simulateData(const QByteArray&) {}
+void MainWindow::delayedSimulate(ProcessingState, const QByteArray&) {}
+void MainWindow::simTimerExpired() {}
 #endif
+
+void MainWindow::writePort(const QByteArray &data, bool flush)
+{
+	if(simsOff == m_simulatedState) {
+		if(m_port.isOpen()) {
+			m_port.write(data);
+			if(flush)
+				m_port.flush();
+		}
+	}
+	else {
+		LogHexData(data, "W#%1:");
+		switch(m_simulatedState) {
+
+			case simsDriveStat:
+				delayedSimulate(simsDriveStatString, QByteArray().append('E').append(data.at(1)));
+				break;
+
+			case simsDriveStatString:
+				m_simulatedState = simsOff;
+				// Write out the drive status.
+				writeTextToDirList(QString(data.data()) + "\nREADY.\n");
+				break;
+
+			case simsDisplayDir:
+				if('>' == data.at(0) and O_DIR == data.at(1))
+					delayedSimulate(simsDisplayDirEntry, QByteArray().append('L'));
+				break;
+
+			case simsDisplayDirEntry:
+				if('L' == data.at(0)) {
+					uint fSize = (((ushort)data.at(3)) << 8) + (uchar)data.at(2);
+					writeTextToDirList(QString::number(fSize) + ' ' + data.mid(4).data());
+					delayedSimulate(simsDisplayDirEntry, QByteArray().append('L'));
+				}
+				else {
+					if('l' == data.at(0))
+						writeTextToDirList("READY.\n");
+					else
+						writeTextToDirList("ERROR.\n");
+					m_simulatedState = simsOff;
+				}
+				break;
+
+			case simsDriveCmd:
+				// Note: This doesn't return anything and isn't supposed to.
+				writeTextToDirList("READY.\n");
+				m_simulatedState = simsOff;
+				break;
+
+			case simsLoadCmd:
+				break;
+
+			case simsSaveCmd:
+				break;
+
+			default:
+				Log("SIM", error, QString("Unexpected simulation state: %1").arg(QString::number(uint(m_simulatedState))));
+				break;
+		}
+	}
+} // writePort
 
 
 void MainWindow::processData(void)
@@ -526,16 +618,23 @@ void MainWindow::processData(void)
 			case 'S': // request for file size in bytes before sending file to CBM
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processGetOpenFileSize();
-//				hasDataToProcess = not buffer.isEmpty();
 				break;
 
 			case 'O': // open command
-				if(-1 == crIndex)
-					hasDataToProcess = false; // escape from here, command is incomplete.
-				else {// Open was issued, string goes from 1 to CRpos - 1
-					m_iface.processOpenCommand(cmdString.mid(1, crIndex - 1));
-					m_pendingBuffer.remove(0, crIndex + 1);
+				if(m_pendingBuffer.size() > 1) {
+					uchar length = (uchar)m_pendingBuffer.at(1);
+					if(length < 3) // sanity: can't be a valid command if total length is less than first control chars.
+						m_pendingBuffer.remove(0, 2); // remove strange garbage and keep processing.
+					else if(m_pendingBuffer.size() >= length) { // only if we got at least as much as length specifies.
+						// Open was issued, string goes from m_pendingBuffer[2] with length - 2
+						m_iface.processOpenCommand((uchar)m_pendingBuffer.at(2), m_pendingBuffer.mid(3, length - 3));
+						m_pendingBuffer.remove(0, length);
+					}
+					else
+						hasDataToProcess = false; // not all chars yet
 				}
+				else
+					hasDataToProcess = false; // not all chars yet
 				break;
 
 			case 'R': // read byte(s) from current file system driver, note that this command needs no termination, it needs to be short.
@@ -555,16 +654,18 @@ void MainWindow::processData(void)
 				break;
 
 			case 'W': // write single character to file in current file system mode.
-				hasDataToProcess = false; // assume we may need to wait for additional data.
 				if(m_pendingBuffer.size() > 1) {
 					uchar length = (uchar)m_pendingBuffer.at(1);
 					if(m_pendingBuffer.size() >= length) {
 						m_iface.processWriteFileRequest(m_pendingBuffer.mid(2, length - 2));
 						// discard all processed (written) bytes from buffer.
 						m_pendingBuffer.remove(0, length);
-//						hasDataToProcess = not buffer.isEmpty();
 					}
+					else
+						hasDataToProcess = false; // not all chars yet
 				}
+				else
+					hasDataToProcess = false; // not all chars yet
 				break;
 
 			case 'L': // directory/media info Line request:
@@ -579,13 +680,12 @@ void MainWindow::processData(void)
 				break;
 
 			case 'E': // Ask for translation of error string from error code
-				if(cmdString.size() < 2) // must have both characters, otherwise request is incomplete.
+				if(m_pendingBuffer.size() < 2) // must have both characters, otherwise request is incomplete.
 					hasDataToProcess = false;
 				else {
 					m_iface.processErrorStringRequest(static_cast<CBM::IOErrorMessage>(m_pendingBuffer.at(1)));
 					m_pendingBuffer.remove(0, 2);
 				}
-//				hasDataToProcess = not buffer.isEmpty();
 				break;
 
 			default:
@@ -681,35 +781,44 @@ void MainWindow::on_filterSetup_clicked()
 
 void MainWindow::onCommandIssued(const QString& cmd)
 {
-	writeTextToDirList("READY.\n");
-
 	//	QByteArray request;
 	if(cmd.isEmpty())
 		return;
 	QString params(cmd.mid(1));
 
+	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
 	// simulate dos-wedge like commands.
 	if('@' == cmd[0]) {
 		if(params.isEmpty()) {
 			// Display (and clear) the disk drive status
-			simulateData(QByteArray().append(QString("O%1|\r").arg(CBM::CMD_CHANNEL)));
+			m_simulatedState = simsDriveStat;
+			simulateData(QByteArray().append(QChar('O')).append(3).append(CBM::CMD_CHANNEL));
 		}
 		else if("$" == params) {
 			// "Display the disk directory without overwriting the BASIC program in memory"
-			// TODO:
-			simulateData(QByteArray().append(QString("O%1|$\r").arg(CBM::READPRG_CHANNEL)));
+			m_simulatedState = simsDisplayDir;
+			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::READPRG_CHANNEL).append(params.toLocal8Bit()));
 		}
 		else {
 			// Execute a disk drive command (e.g. S0:filename, V0:, I0:)
-			simulateData(QByteArray().append(QString("O%1|%2\r").arg(CBM::CMD_CHANNEL).arg(params)));
+			m_simulatedState = simsDriveCmd;
+			if(params.startsWith("M-W")) {
+				params.append(0xF0);
+				params.append(0x17);
+				params.append(0x30);
+				params.append("ARNE BJARNE_    0123456789ABCDEFG");
+			}
+			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::CMD_CHANNEL).append(params.toLocal8Bit()));
 		}
 	}
 	else if((cmd[0] == '/' or cmd[0] == '%')) {
 		// Load a basic program into ram.
-		 if(params.isEmpty()) {
-			 // send syntax error.
+		 if(params.isEmpty())
+			 writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
+		 else {
+			 m_simulatedState = simsLoadCmd;
+			 simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::READPRG_CHANNEL).append(params.toLocal8Bit()));
 		 }
-		// TODO:
 	}
 	else if(cmd[0] == CBM_BACK_ARROW) {
 		// Save a BASIC program to disk
@@ -717,15 +826,15 @@ void MainWindow::onCommandIssued(const QString& cmd)
 			// send syntax error.
 			writeTextToDirList("?SYNTAX ERROR.\nREADY.\n");
 		}
-		// TODO:
+		else {
+			m_simulatedState = simsSaveCmd;
+			// TODO:
+		}
 	}
 	else {
-
 		// unknown command, send syntax error.
 		writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
 	}
-
-	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
 } // on_filterSetup_clicked
 
 
@@ -935,13 +1044,14 @@ void MainWindow::on_mountSelected_clicked()
 		return;
 	QString name = selected.first().data(Qt::DisplayRole).toString();
 
-	m_iface.processOpenCommand(QString("0|") + name, true);
+	m_iface.processOpenCommand(CBM::READPRG_CHANNEL, name.toLocal8Bit(), true);
 } // on_mountSelected_clicked
 
 
 void MainWindow::on_browseSingle_clicked()
 {
-	QString file = QFileDialog::getOpenFileName(this, tr("Please choose image to mount."), ui->singleImageName->text(), tr("CBM Images (*.d64 *.t64 *.m2i);;All files (*)"));
+	QString file = QFileDialog::getOpenFileName(this, tr("Please choose image to mount."), ui->singleImageName->text()
+																							, tr("CBM Images (*.d64 *.t64 *.m2i);;All files (*)"));
 	if(not file.isEmpty())
 		ui->singleImageName->setText(file);
 } // on_browseSingle_clicked
@@ -949,13 +1059,15 @@ void MainWindow::on_browseSingle_clicked()
 
 void MainWindow::on_mountSingle_clicked()
 {
-	m_iface.processOpenCommand(QString("0|") + ui->singleImageName->text(), true);
+	m_iface.processOpenCommand(CBM::READPRG_CHANNEL, ui->singleImageName->text().toLocal8Bit()
+														 , true);
 } // on_mountSingle_clicked
 
 
 void MainWindow::on_unmountCurrent_clicked()
 {
-	m_iface.processOpenCommand(QString("0|") + QChar(CBM_BACK_ARROW) + QChar(CBM_BACK_ARROW), true);
+	m_iface.processOpenCommand(CBM::READPRG_CHANNEL, QByteArray().append(QChar(CBM_BACK_ARROW))
+														 .append(QChar(CBM_BACK_ARROW)), true);
 } // on_unmountCurrent_clicked
 
 
@@ -1007,18 +1119,22 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 		m_imageDirListing.clear();
 	}
 	ui->unmountCurrent->setEnabled(true);
-	//	ui->imageDirList->setFocus();
 
 	int ix = 0;
 	// select the image name in the directory file list!
 	foreach(QFileInfo finfo, m_filteredInfoList) {
 		if(not finfo.fileName().compare(imagePath, Qt::CaseInsensitive)) {
 			ui->dirList->setFocus();
-			ui->dirList->selectionModel()->setCurrentIndex(m_dirListItemModel->index(ix ,0), QItemSelectionModel::Rows bitor QItemSelectionModel::SelectCurrent);
+			ui->dirList->selectionModel()->setCurrentIndex(m_dirListItemModel->index(ix ,0),
+																										 QItemSelectionModel::Rows bitor QItemSelectionModel::SelectCurrent);
 			break;
 		}
 		++ix;
 	}
+	// Note: Doing this depends whether user really want to:
+	// 1. Keep focus on the last clicked image, more clear when it is shown in active blue color.
+	// 2. Or keep the Image's directory listing active meaning that the cursor blinks.
+	ui->imageDirList->setFocus();
 } // imageMounted
 
 
@@ -1075,6 +1191,8 @@ void MainWindow::bytesWritten(uint numBytes)
 
 void MainWindow::writeTextToDirList(const QString& text, bool atCursorPos)
 {
+	QColor bgColor, frColor, fgColor;
+	getBgFrAndFgColors(bgColor, frColor, fgColor);
 	QTextCursor c = ui->imageDirList->textCursor();
 	QStringList lines = text.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
 	if(not atCursorPos)
@@ -1082,7 +1200,25 @@ void MainWindow::writeTextToDirList(const QString& text, bool atCursorPos)
 	foreach(QString line, lines) {
 //		c.deleteChar();
 		c.select(QTextCursor::LineUnderCursor);
-		c.insertText(line);
+
+		// handle parts of string: Might have reverse video chars!
+		QStringList lineInverses = line.split('\x12', QString::SkipEmptyParts);
+		bool rvs = false;
+		foreach(QString linePart, lineInverses) {
+			QTextCharFormat fmt(c.charFormat());
+			if(rvs) {
+				fmt.setForeground(bgColor);
+				fmt.setBackground(fgColor);
+			}
+			else {
+				fmt.setForeground(fgColor);
+				fmt.setBackground(bgColor);
+			}
+			c.setCharFormat(fmt);
+			c.insertText(linePart);
+			rvs xor_eq true;
+		}
+
 		if(not c.atEnd()) {
 			c.movePosition(QTextCursor::Down);
 			c.movePosition(QTextCursor::StartOfLine);
@@ -1209,4 +1345,3 @@ void MainWindow::updateDirListColors()
 	// TODO: Do we really need to issue reset here. Might just well remember the contents and then restore it.
 	deviceReset();
 } // updateDirListColors
-

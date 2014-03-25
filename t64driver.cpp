@@ -33,19 +33,19 @@ T64::T64(const QString& fileName)
 		m_fileOffset(0), m_fileLength(0)
 {
 	if(not fileName.isEmpty())
-		openHostFile(fileName);
+		mountHostImage(fileName);
 } // dtor
 
 
 T64::~T64()
 {
-	closeHostFile();
+	unmountHostImage();
 } // dtor
 
 
-bool T64::openHostFile(const QString& fileName)
+bool T64::mountHostImage(const QString& fileName)
 {
-	closeHostFile();
+	unmountHostImage();
 	m_hostFile.setFileName(fileName);
 	// Analyse the file open in host file system and if it is a valid t64, set up
 	// variables
@@ -73,16 +73,16 @@ bool T64::openHostFile(const QString& fileName)
 
 	// yikes.
 	return false;
-} // openHostFile
+} // mountHostImage
 
 
-void T64::closeHostFile()
+void T64::unmountHostImage()
 {
 	if(not m_hostFile.fileName().isEmpty() and m_hostFile.isOpen())
 		m_hostFile.close();
 	// Reset status
 	m_status = NOT_READY;
-} // closeHostFile
+} // unmountHostImage
 
 
 uchar T64::hostReadByte(uint length)
