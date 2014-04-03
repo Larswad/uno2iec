@@ -39,6 +39,7 @@
 #include "mainwindow.hpp"
 #include "ui_mainwindow.h"
 #include "aboutdialog.hpp"
+#include "mountspecificfile.h"
 #include "version.h"
 
 #ifdef HAS_WIRINGPI
@@ -204,7 +205,7 @@ MainWindow::MainWindow(QWidget* parent) :
 	updateDirListColors();
 	// We want notifications when the local file system changes so that we can update the image directory list.
 	connect(&m_fsWatcher, SIGNAL(directoryChanged(const QString&)), this, SLOT(on_directoryChanged(const QString&)));
-	watchDirectory(ui->imageDir->text());
+	watchDirectory(m_appSettings.imageDirectory);
 	Log("MAIN", success, "Application Initialized.");
 } // ctor
 
@@ -326,8 +327,11 @@ void MainWindow::on_actionSettings_triggered()
 	SettingsDialog settings(m_ports, m_appSettings);
 	if(QDialog::Accepted == settings.exec()) { // user pressed Ok?
 		if(m_appSettings.imageFilters not_eq oldSettings.imageFilters
-			 or m_appSettings.showDirectories not_eq oldSettings.showDirectories) {
+			 or m_appSettings.showDirectories not_eq oldSettings.showDirectories
+			 or m_appSettings.imageDirectory not_eq oldSettings.imageDirectory) {
 			m_iface.setImageFilters(m_appSettings.imageFilters, m_appSettings.showDirectories);
+			m_iface.changeNativeFSDirectory(m_appSettings.imageDirectory);
+			watchDirectory(m_appSettings.imageDirectory);
 			updateImageList();
 		}
 		if(m_appSettings.baudRate not_eq oldSettings.baudRate)
@@ -344,6 +348,16 @@ void MainWindow::on_actionSettings_triggered()
 		}
 	}
 } // on_actionSettings_triggered
+
+
+void MainWindow::on_actionSingle_file_mount_triggered()
+{
+	MountSpecificFile mountDialog(m_appSettings.lastSpecificMounted, this);
+	if(QDialog::Accepted == mountDialog.exec()) {
+		m_appSettings.lastSpecificMounted = mountDialog.chosenFile();
+		m_iface.processOpenCommand(CBM::READPRG_CHANNEL, m_appSettings.lastSpecificMounted.toLocal8Bit(), true);
+	}
+} // on_actionSingle_file_mount_triggered
 
 
 void MainWindow::checkVersion()
@@ -370,9 +384,9 @@ void MainWindow::readSettings()
 {
 	QSettings sets;
 
-	ui->imageDir->setText(sets.value("imageDirectory", QDir::currentPath()).toString());
-	ui->singleImageName->setText(sets.value("singleImageName").toString());
-	QDir::setCurrent(ui->imageDir->text());
+	m_appSettings.imageDirectory = sets.value("imageDirectory", QDir::currentPath()).toString();
+	m_appSettings.lastSpecificMounted = sets.value("singleImageName").toString();
+	QDir::setCurrent(m_appSettings.imageDirectory);
 	ui->imageFilter->setText(sets.value("imageFilter", QString()).toString());
 	m_appSettings.portName = sets.value("portName", m_ports.isEmpty() ? "COM1" : m_ports.first().friendName).toString();
 	m_appSettings.baudRate = sets.value("baudRate", QString::number(DEFAULT_BAUDRATE)).toUInt();
@@ -415,8 +429,8 @@ void MainWindow::writeSettings() const
 	}
 	sets.setValue("lastProgramVersion", m_appSettings.programVersion);
 
-	sets.setValue("imageDirectory", ui->imageDir->text());
-	sets.setValue("singleImageName", ui->singleImageName->text());
+	sets.setValue("imageDirectory", m_appSettings.imageDirectory);
+	sets.setValue("singleImageName", m_appSettings.lastSpecificMounted);
 	sets.setValue("imageFilter", ui->imageFilter->text());
 	sets.setValue("portName", m_appSettings.portName);
 	sets.setValue("baudRate", QString::number(m_appSettings.baudRate));
@@ -914,18 +928,6 @@ void MainWindow::appendMessage(const QString& msg)
 } // appendMessage
 
 
-void MainWindow::on_browseImageDir_clicked()
-{
-	QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG/SID images"), ui->imageDir->text());
-	if(not dirPath.isEmpty()) {
-		ui->imageDir->setText(dirPath);
-		m_iface.changeNativeFSDirectory(dirPath);
-	}
-	watchDirectory(ui->imageDir->text());
-	updateImageList();
-} // on_browseImageDir_clicked()
-
-
 void MainWindow::watchDirectory(const QString& dir)
 {
 	// If the directory is not already under monitoring, we remove all present ones and start monitoring it.
@@ -937,15 +939,6 @@ void MainWindow::watchDirectory(const QString& dir)
 } // watchDirectory
 
 
-void MainWindow::on_imageDir_editingFinished()
-{
-	if(not m_iface.changeNativeFSDirectory(ui->imageDir->text()))
-		ui->imageDir->setText(QDir::currentPath());
-	updateImageList();
-	watchDirectory(ui->imageDir->text());
-} // on_imageDir_editingFinished
-
-
 void MainWindow::updateImageList(bool reloadDirectory)
 {
 	if(not m_isInitialized)
@@ -954,7 +947,7 @@ void MainWindow::updateImageList(bool reloadDirectory)
 	QStringList filterList = m_appSettings.imageFilters.split(',', QString::SkipEmptyParts);
 
 	if(reloadDirectory) {
-		m_infoList = QDir(ui->imageDir->text()).entryInfoList(filterList, QDir::NoDot bitor QDir::Files
+		m_infoList = QDir(m_appSettings.imageDirectory).entryInfoList(filterList, QDir::NoDot bitor QDir::Files
 																													bitor (m_appSettings.showDirectories ? QDir::AllDirs : QDir::Files),
 																													QDir::DirsFirst bitor QDir::Name);
 	}
@@ -1032,7 +1025,7 @@ void MainWindow::on_dirList_doubleClicked(const QModelIndex &index)
 
 void MainWindow::on_directoryChanged(const QString& path)
 {
-	if(0 == path.compare(ui->imageDir->text(), Qt::CaseInsensitive))
+	if(0 == path.compare(m_appSettings.imageDirectory, Qt::CaseInsensitive))
 		updateImageList();
 } // on_directoryChanged
 
@@ -1046,22 +1039,6 @@ void MainWindow::on_mountSelected_clicked()
 
 	m_iface.processOpenCommand(CBM::READPRG_CHANNEL, name.toLocal8Bit(), true);
 } // on_mountSelected_clicked
-
-
-void MainWindow::on_browseSingle_clicked()
-{
-	QString file = QFileDialog::getOpenFileName(this, tr("Please choose image to mount."), ui->singleImageName->text()
-																							, tr("CBM Images (*.d64 *.t64 *.m2i);;All files (*)"));
-	if(not file.isEmpty())
-		ui->singleImageName->setText(file);
-} // on_browseSingle_clicked
-
-
-void MainWindow::on_mountSingle_clicked()
-{
-	m_iface.processOpenCommand(CBM::READPRG_CHANNEL, ui->singleImageName->text().toLocal8Bit()
-														 , true);
-} // on_mountSingle_clicked
 
 
 void MainWindow::on_unmountCurrent_clicked()
@@ -1085,7 +1062,7 @@ void MainWindow::send(short lineNo, const QString& text)
 //////////////////////////////////////////////////////////////////////////////
 void MainWindow::directoryChanged(const QString& newPath)
 {
-	ui->imageDir->setText(newPath);
+	m_appSettings.imageDirectory = newPath;
 	updateImageList();
 } // directoryChanged
 

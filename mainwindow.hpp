@@ -77,12 +77,8 @@ private slots:
 	void on_saveLog_clicked();
 	void on_saveHtml_clicked();
 	void on_resetArduino_clicked();
-	void on_browseImageDir_clicked();
-	void on_imageDir_editingFinished();
 	void on_imageFilter_textChanged(const QString &filter);
 	void on_mountSelected_clicked();
-	void on_browseSingle_clicked();
-	void on_mountSingle_clicked();
 	void on_actionAbout_triggered();
 	void on_unmountCurrent_clicked();
 	void on_actionSettings_triggered();
@@ -91,6 +87,8 @@ private slots:
 	void on_directoryChanged(const QString& path);
 	void on_filterSetup_clicked();
 	void simTimerExpired();
+
+	void on_actionSingle_file_mount_triggered();
 
 private:
 	bool checkConnectRequest();

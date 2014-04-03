@@ -21,6 +21,8 @@ struct AppSettings {
 	uint dataPin;
 	uint resetPin;
 	QString imageFilters;
+	QString imageDirectory;
+	QString lastSpecificMounted;
 	bool showDirectories;
 	QString programVersion;
 	QString cbmMachine;
@@ -38,6 +40,8 @@ public:
 
 private slots:
 	void on_Ok_clicked();
+
+	void on_browseImageDir_clicked();
 
 private:
 	Ui::SettingsDialog* ui;

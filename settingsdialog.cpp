@@ -1,7 +1,9 @@
+#include <QFileDialog>
+
 #include "settingsdialog.hpp"
 #include "ui_settingsdialog.h"
 
-SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings &settings, QWidget *parent) :
+SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings& settings, QWidget *parent) :
 	QDialog(parent), ui(new Ui::SettingsDialog), m_settings(settings)
 {
 	ui->setupUi(this);
@@ -18,6 +20,7 @@ SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings &settings, Q
 	ui->resetPin->setCurrentIndex(ui->resetPin->findText(QString::number(m_settings.resetPin)));
 	ui->imageFilters->setText(m_settings.imageFilters);
 	ui->showDirs->setChecked(m_settings.showDirectories);
+	ui->imageDir->setText(m_settings.imageDirectory);
 } // ctor
 
 
@@ -38,6 +41,15 @@ void SettingsDialog::on_Ok_clicked()
 	m_settings.resetPin = ui->resetPin->currentText().toUInt();
 	m_settings.imageFilters = ui->imageFilters->text();
 	m_settings.showDirectories = ui->showDirs->isChecked();
+	m_settings.imageDirectory = ui->imageDir->text();
 
 	accept();
 } // on_Ok_clicked
+
+
+void SettingsDialog::on_browseImageDir_clicked()
+{
+	const QString dirPath = QFileDialog::getExistingDirectory(this, tr("Folder for your D64/T64/PRG/SID images"), ui->imageDir->text());
+	if(not dirPath.isEmpty())
+		ui->imageDir->setText(dirPath);
+} // on_browseImageDir_clicked()
