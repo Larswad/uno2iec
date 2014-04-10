@@ -222,9 +222,9 @@ bool NativeFS::sendMediaInfo(ISendLine &cb)
 {
 	// TODO: Improve this with information about the file system type AND, usage and free data.
 	Log("NATIVEFS", info, "sendMediaInfo.");
-	cb.send(0, QString("NATIVE FS ACTIVE -> XXX.")); // TODO: File system type instead of xxx.
+	cb.send(0, QString("NATIVE FS ACTIVE."));
 	cb.send(1, QString("CURRENT DIR: %1").arg(QDir::currentPath().toUpper()));
-	cb.send(2, "HELLO FROM ARDUINO UNO!");
+	cb.send(2, "HELLO FROM ARDUINO!");
 
 	return true;
 } // sendMediaInfo

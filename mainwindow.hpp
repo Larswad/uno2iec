@@ -126,17 +126,19 @@ private:
 	QFileSystemWatcher m_fsWatcher;
 #ifdef QT_DEBUG
 	QByteArray m_delayedData;
+	QFile m_simFile;
 #endif
 
 	enum ProcessingState {
 		simsOff,					// No simulation, a REAL command.
 		simsDriveStat,
 		simsDriveStatString,
-		simsDisplayDir,
+		simsOpenResponse,
 		simsDisplayDirEntry,
 		simsDriveCmd,
 		simsLoadCmd,
-		simsSaveCmd
+		simsSaveCmd,
+		simsCloseCmd
 	} m_simulatedState;
 
 	void simulateData(const QByteArray& data);

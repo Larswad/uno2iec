@@ -278,8 +278,8 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 				if(0 not_eq m_pListener) // notify UI listener of change.
 					m_pListener->directoryChanged(QDir::currentPath());
 				m_openState = O_DIR;
-				if(0 not_eq m_pListener)
-					m_pListener->imageMounted(cmd, m_currFileDriver);
+//				if(0 not_eq m_pListener)
+//					m_pListener->imageMounted(cmd, m_currFileDriver);
 			}
 			else if(m_native.mountHostImage(cmd)) {
 				// File opened, investigate filetype
@@ -304,8 +304,8 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 						else {
 							// otherwise we're in directory mode now on this selected file system image.
 							m_openState = O_DIR;
-							// Notify UI listener if attached.
 						}
+						// Notify UI listener if attached.
 						if(0 not_eq m_pListener)
 							m_pListener->imageMounted(cmd, m_currFileDriver);
 						Log(FAC_IFACE, success, QString("Mount OK of image: %1").arg(m_currFileDriver->openedFileName()));
@@ -446,7 +446,7 @@ void Interface::processCloseCommand()
 {
 	QString name = m_currFileDriver->openedFileName();
 	QByteArray data;
-	// TODO: return proper response here: small 'n' means last operation was a save operation.
+	// Small 'n' means last operation was a save operation.
 	data.append(m_openState == O_SAVE or m_openState == O_SAVE_REPLACE ? 'n' : 'N').append((char)name.length()).append(name);
 	write(data);
 	if(0 not_eq m_pListener) // notify UI listener of change.

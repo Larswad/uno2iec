@@ -21,7 +21,7 @@
 // TODO: When a file/directory is attempted for loading or saving and this fails for some reason this isn't reflected on the dirlist view.
 // TODO: When executing the command channel this isn't reflected on the dirlist view.
 // TODO: Native/D64/T64: Show TRUE (actual) blocks free. Will be nice with all the space available on a harddisk or network share!
-
+// TODO: Add icons for disk images in image list view (T64, D64, x64, .PRG, normal folders). This make it much easier to distinguish cbm related files from each other.
 
 // DONE: Rename openHostFile() and closeHostFile() to "mount"/"unmount" respectively on all file systems?
 // DONE: Needs to be verified/tested: Need to refactor the open command 'O' so that it is not passed as a CR terminated string. This will never
@@ -35,16 +35,15 @@
 #include <QDebug>
 #include <QSettings>
 #include <QTimer>
+#ifdef HAS_WIRINGPI
+#include <wiringPi.h>
+#endif
 
 #include "mainwindow.hpp"
 #include "ui_mainwindow.h"
 #include "aboutdialog.hpp"
 #include "mountspecificfile.h"
 #include "version.h"
-
-#ifdef HAS_WIRINGPI
-#include <wiringPi.h>
-#endif
 
 using namespace Logging;
 
@@ -70,9 +69,9 @@ QStringList LOG_LEVELS = (QStringList()
 													<< QObject::tr("info   ")
 													<< QObject::tr("success"));
 
-const uint DEFAULT_BAUDRATE = BAUD115200;
 
 // Default Device and Arduino PIN configuration.
+const uint DEFAULT_BAUDRATE = BAUD115200;
 const uint DEFAULT_DEVICE_NUMBER = 8;
 const uint DEFAULT_RESET_PIN = 7;
 const uint DEFAULT_CLOCK_PIN = 4;
@@ -196,7 +195,7 @@ MainWindow::MainWindow(QWidget* parent) :
 	setupActionGroups();
 
 	m_isInitialized = true;
-	updateImageList();
+	directoryChanged(m_appSettings.imageDirectory);
 
 	// register ourselves to listen for all CBM events from the Arduino so that we can reflect this on UI controls.
 	m_iface.setMountNotifyListener(this);
@@ -560,9 +559,24 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 				writeTextToDirList(QString(data.data()) + "\nREADY.\n");
 				break;
 
-			case simsDisplayDir:
-				if('>' == data.at(0) and O_DIR == data.at(1))
-					delayedSimulate(simsDisplayDirEntry, QByteArray().append('L'));
+			case simsOpenResponse:
+				if('>' == data.at(0)) {
+					if(O_DIR == data.at(1) or O_INFO == data.at(1))
+						delayedSimulate(simsDisplayDirEntry, QByteArray().append('L'));
+					else if(O_FILE == data.at(1))
+						delayedSimulate(simsLoadCmd, QByteArray().append('r').append(64));
+					else if(O_NOTHING == data.at(1)) {
+						writeTextToDirList("?FILE NOT FOUND\n");
+						writeTextToDirList("READY.\n");
+						m_simulatedState = simsOff;
+					}
+					else if(O_FILE_ERR == data.at(1)) {
+						writeTextToDirList("?FILE ERROR\n");
+						writeTextToDirList("READY.\n");
+						m_simulatedState = simsOff;
+					}
+					// TODO: check more return codes!
+				}
 				break;
 
 			case simsDisplayDirEntry:
@@ -575,7 +589,7 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 					if('l' == data.at(0))
 						writeTextToDirList("READY.\n");
 					else
-						writeTextToDirList("ERROR.\n");
+						writeTextToDirList("LOADING ERROR.\n");
 					m_simulatedState = simsOff;
 				}
 				break;
@@ -587,9 +601,36 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 				break;
 
 			case simsLoadCmd:
+				if('B' == data.at(0)) {
+					// TODO: Write data.at(1) number of bytes starting at data.at(2) to simulated result binary file!
+					// Still got bytes to read.
+					m_simFile.write(data.mid(2, (int)(uchar)data.at(1)));
+					delayedSimulate(simsLoadCmd, QByteArray().append('R'));
+				}
+				else {
+					if('E' == data.at(0)) { // Last chunk
+						m_simFile.write(data.mid(2, (int)(uchar)data.at(1)));
+						// simulate closing.
+						delayedSimulate(simsCloseCmd, QByteArray().append('C'));
+					}
+					else {
+						writeTextToDirList("LOADING ERROR.\n");
+						m_simulatedState = simsOff;
+						m_simFile.close();
+					}
+				}
 				break;
 
 			case simsSaveCmd:
+				// TODO: Implement saving responses.
+				break;
+
+			case simsCloseCmd:
+					Log("SIM", success, QString("Got close response of file: %1, last operation was: %2").arg(QString(data.mid(2, data.at(1))))
+							.arg(data.at(0) == 'n' ? "SAVE" : data.at(0) == 'N' ? "LOAD" : "Unknown"));
+					// TODO: Close the simulated result binary file.
+					m_simFile.close();
+					m_simulatedState = simsOff;
 				break;
 
 			default:
@@ -598,6 +639,67 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 		}
 	}
 } // writePort
+
+
+void MainWindow::onCommandIssued(const QString& cmd)
+{
+	//	QByteArray request;
+	if(cmd.isEmpty())
+		return;
+	QString params(cmd.mid(1));
+
+	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
+	// simulate dos-wedge like commands.
+	if('@' == cmd[0]) {
+		if(params.isEmpty()) {
+			// Display (and clear) the disk drive status
+			m_simulatedState = simsDriveStat;
+			simulateData(QByteArray().append(QChar('O')).append(3).append(CBM::CMD_CHANNEL));
+		}
+		else if("$" == params) {
+			// "Display the disk directory without overwriting the BASIC program in memory"
+			m_simulatedState = simsOpenResponse;
+			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::READPRG_CHANNEL).append(params.toLocal8Bit()));
+		}
+		else {
+			// Execute a disk drive command (e.g. S0:filename, V0:, I0:)
+			m_simulatedState = simsDriveCmd;
+			if(params.startsWith("M-W")) {
+				params.append(0xF0);
+				params.append(0x17);
+				params.append(0x30);
+				params.append("ARNE BJARNE_    0123456789ABCDEFG");
+			}
+			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::CMD_CHANNEL).append(params.toLocal8Bit()));
+		}
+	}
+	else if((cmd[0] == '/' or cmd[0] == '%')) {
+		// Load a basic program into ram.
+		 if(params.isEmpty())
+			 writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
+		 else {
+			 m_simulatedState = simsOpenResponse;
+			 m_simFile.setFileName("simulated.prg");
+			 m_simFile.open(QIODevice::WriteOnly);
+			 simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::READPRG_CHANNEL).append(params.toLocal8Bit()));
+		 }
+	}
+	else if(cmd[0] == CBM_BACK_ARROW) {
+		// Save a BASIC program to disk
+		if(params.isEmpty()) {
+			// send syntax error.
+			writeTextToDirList("?SYNTAX ERROR.\nREADY.\n");
+		}
+		else {
+			m_simulatedState = simsSaveCmd;
+			// TODO:
+		}
+	}
+	else {
+		// unknown command, send syntax error.
+		writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
+	}
+} // onCommandIssued
 
 
 void MainWindow::processData(void)
@@ -790,65 +892,6 @@ void MainWindow::on_clearLog_clicked()
 void MainWindow::on_filterSetup_clicked()
 {
 	Logging::loggerInstance().configureFilters(this);
-}
-
-
-void MainWindow::onCommandIssued(const QString& cmd)
-{
-	//	QByteArray request;
-	if(cmd.isEmpty())
-		return;
-	QString params(cmd.mid(1));
-
-	Log("MAIN", info, QString("Command issued: %1").arg(cmd));
-	// simulate dos-wedge like commands.
-	if('@' == cmd[0]) {
-		if(params.isEmpty()) {
-			// Display (and clear) the disk drive status
-			m_simulatedState = simsDriveStat;
-			simulateData(QByteArray().append(QChar('O')).append(3).append(CBM::CMD_CHANNEL));
-		}
-		else if("$" == params) {
-			// "Display the disk directory without overwriting the BASIC program in memory"
-			m_simulatedState = simsDisplayDir;
-			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::READPRG_CHANNEL).append(params.toLocal8Bit()));
-		}
-		else {
-			// Execute a disk drive command (e.g. S0:filename, V0:, I0:)
-			m_simulatedState = simsDriveCmd;
-			if(params.startsWith("M-W")) {
-				params.append(0xF0);
-				params.append(0x17);
-				params.append(0x30);
-				params.append("ARNE BJARNE_    0123456789ABCDEFG");
-			}
-			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::CMD_CHANNEL).append(params.toLocal8Bit()));
-		}
-	}
-	else if((cmd[0] == '/' or cmd[0] == '%')) {
-		// Load a basic program into ram.
-		 if(params.isEmpty())
-			 writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
-		 else {
-			 m_simulatedState = simsLoadCmd;
-			 simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::READPRG_CHANNEL).append(params.toLocal8Bit()));
-		 }
-	}
-	else if(cmd[0] == CBM_BACK_ARROW) {
-		// Save a BASIC program to disk
-		if(params.isEmpty()) {
-			// send syntax error.
-			writeTextToDirList("?SYNTAX ERROR.\nREADY.\n");
-		}
-		else {
-			m_simulatedState = simsSaveCmd;
-			// TODO:
-		}
-	}
-	else {
-		// unknown command, send syntax error.
-		writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
-	}
 } // on_filterSetup_clicked
 
 
@@ -1025,8 +1068,10 @@ void MainWindow::on_dirList_doubleClicked(const QModelIndex &index)
 
 void MainWindow::on_directoryChanged(const QString& path)
 {
-	if(0 == path.compare(m_appSettings.imageDirectory, Qt::CaseInsensitive))
+	if(0 == path.compare(m_appSettings.imageDirectory, Qt::CaseInsensitive)) {
 		updateImageList();
+		Log("MAIN", info, "Directory of monitored CBM image list was changed, updated all items in view.");
+	}
 } // on_directoryChanged
 
 
@@ -1063,6 +1108,7 @@ void MainWindow::send(short lineNo, const QString& text)
 void MainWindow::directoryChanged(const QString& newPath)
 {
 	m_appSettings.imageDirectory = newPath;
+	ui->nowMounted->setText("None, Local FS: " + newPath);
 	updateImageList();
 } // directoryChanged
 
@@ -1118,7 +1164,7 @@ void MainWindow::imageMounted(const QString& imagePath, FileDriverBase* pFileSys
 void MainWindow::imageUnmounted()
 {
 	ui->imageDirList->clear();
-	ui->nowMounted->setText("None, Local FS");
+	ui->nowMounted->setText("None, Local FS: " + m_appSettings.imageDirectory);
 	ui->unmountCurrent->setEnabled(false);
 } // imageUnmounted
 

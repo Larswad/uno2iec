@@ -18,15 +18,27 @@
     <property name="spacing">
      <number>0</number>
     </property>
+    <property name="leftMargin">
+     <number>9</number>
+    </property>
+    <property name="topMargin">
+     <number>1</number>
+    </property>
+    <property name="bottomMargin">
+     <number>1</number>
+    </property>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_9">
+      <property name="spacing">
+       <number>6</number>
+      </property>
       <property name="topMargin">
-       <number>5</number>
+       <number>0</number>
       </property>
       <item>
        <widget class="QLabel" name="label_9">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -39,7 +51,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
