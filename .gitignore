@@ -16,4 +16,7 @@ Makefile*
 *pro.user*
 qrc_resources.cpp
 
+# the simulation output file in debug mode.
+received.txt
+
 /rpi2iec_plugin_import.cpp
