@@ -1,6 +1,12 @@
 #ifndef GLOBAL_DEFINES_HPP
 #define GLOBAL_DEFINES_HPP
 
+#ifdef UNDER_QT
+// Reason for defining this is only that Qt Creator should understand the define when browsing the source files
+// It won't be defined like this when compiling under arduino tools.
+#define PROGMEM
+#endif
+
 typedef unsigned long ulong;
 
 // Define this if you want no logging to host enabled at all. Saves valuable space in flash.

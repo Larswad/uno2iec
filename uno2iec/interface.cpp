@@ -187,9 +187,9 @@ void Interface::sendFile()
 #endif
 
 	bool success = true;
-	// Initial request for a bunch of bytes, here we specify the read size for every subsequent 'r' command.
+	// Initial request for a bunch of bytes, here we specify the read size for every subsequent 'R' command.
 	// This begins the transfer "game".
-	Serial.write('r');											// ask for a byte/bunch of bytes
+	Serial.write('N');											// ask for a byte/bunch of bytes
 	Serial.write(MAX_BYTES_PER_REQUEST);		// specify the arduino serial library buffer limit for best performance / throughput.
 	do {
 		len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
@@ -360,6 +360,81 @@ byte Interface::handler(void)
 } // handler
 
 
+void Interface::setDateTime(word year, byte month, byte day, byte hour, byte minute, byte second)
+{
+	// Querying the time after this moment will be limited to almost 50-day runtime (after that it will wrap around),
+	// thats a limitation that we accept. If querying once between this day interval another 50 day limit is given
+	// since time will be recalculated between each moment of query.
+	m_timeOfSet = millis();
+	m_year = year;
+	m_month = month;
+	m_day = day;
+	m_hour = hour;
+	m_minute = minute;
+	m_second = second;
+} // setDateTime
+
+
+void Interface::updateDateTime()
+{
+	static const byte daysMonths[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+	ulong now = millis();
+	ulong diff =  now - m_timeOfSet;
+	// reset time stamp from this moment.
+	m_timeOfSet = now;
+
+	// now we have to count up (offset) the time with the elapsed millis since it was set last time.
+	diff /= 1000; // get rid of millis, making it seconds
+	m_second += diff % 60;
+	if(m_second >= 60) {
+		++m_minute;
+		m_second -= 60;
+	}
+	diff /= 60; // get rid of seconds, making it minutes
+	m_minute += diff % 60;
+	if(m_minute >= 60) {
+		++m_hour;
+		m_minute -= 60;
+	}
+	diff /= 60; // get rid of minutes, making it hours
+	m_hour += diff % 60;
+	if(m_hour >= 24) {
+		++m_day;
+		m_hour -= 60;
+	}
+	diff /= 24; // get rid of hours, making it days
+	m_day += diff;
+	byte daysInMonth = daysMonths[m_month];
+	if(0 == (m_year % 4))
+		++daysInMonth;	 // it's a leap year
+	if(m_day > daysInMonth) {
+		++m_month;
+		m_day -= daysInMonth;
+	}
+	if(m_month > 12) {
+		++m_year;
+		m_month -= 12;
+	}
+} // updateDateTime
+
+
+char* Interface::dateTimeString(char* dest, bool timeOnly)
+{
+	updateDateTime();
+
+	// format the string(s).
+	if(not timeOnly)
+		sprintf_P(dest, (PGM_P)F("%04u02u02u "), m_year, (word)m_month, (word)m_day);
+	else
+		dest[0] = '\0';
+	byte timePos = strlen(dest);
+	sprintf_P(&dest[timePos], (PGM_P)F("%02u02u02u"), (word)m_hour, (word)m_minute, (word)m_second);
+
+	return dest;
+} // dateTimeString
+
+
 #ifdef USE_LED_DISPLAY
 void Interface::setMaxDisplay(Max7219 *pDisplay)
 {
@@ -497,7 +572,7 @@ void Interface::handleATNCmdClose()
 	Serial.print("C");
 	Serial.readBytes(serCmdIOBuf, 2);
 	byte resp = serCmdIOBuf[0];
-	if('N' == resp or 'n' == resp) { // N indicates we have a name.
+	if('N' == resp or 'n' == resp) { // N indicates we have a name. Case determines whether we loaded or saved data.
 		// get the length of the name as one byte.
 		byte len = serCmdIOBuf[1];
 		byte actual = Serial.readBytes(serCmdIOBuf, len);

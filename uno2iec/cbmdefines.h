@@ -16,6 +16,10 @@ namespace CBM {
 // Largest Serial byte buffer request from / to arduino.
 #define MAX_BYTES_PER_REQUEST 256
 
+// For every change of the serial protocol that makes a difference enough for incompatability, this number
+// should be increased. That way the host side can detect whether the peers are compatible or not.
+#define CURRENT_UNO2IEC_PROTOCOL_VERSION 1
+
 // Device OPEN channels.
 // Special channels.
 enum IECChannels {

@@ -16,9 +16,8 @@ static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 // Pin 13 has a LED connected on most Arduino boards.
 const byte ledPort = 13;
 const byte numBlinks = 4;
-const char connectionString[] PROGMEM = "connect\r";
+const char connectionString[] PROGMEM = "connect_arduino:%u\r";
 const char okString[] PROGMEM = "OK>";
-
 
 static void waitForPeer();
 
@@ -113,7 +112,8 @@ void loop()
 static void waitForPeer()
 {
 	char tempBuffer[80];
-	unsigned deviceNumber, atnPin, clockPin, dataPin, resetPin;
+	unsigned deviceNumber, atnPin, clockPin, dataPin, resetPin, srqInPin,
+			hour, minute, second, year, month, day;
 
 	// initialize the digital LED pin as an output.
 	pinMode(ledPort, OUTPUT);
@@ -123,7 +123,8 @@ static void waitForPeer()
 		// empty all avail. in buffer.
 		while(Serial.available())
 			Serial.read();
-		strcpy_P(tempBuffer, connectionString);
+		sprintf_P(tempBuffer, connectionString, CURRENT_UNO2IEC_PROTOCOL_VERSION);
+		//strcpy_P(tempBuffer, connectionString);
 		Serial.print(tempBuffer);
 		Serial.flush();
 		// Indicate to user we are waiting for connection.
@@ -137,12 +138,16 @@ static void waitForPeer()
 		connected = Serial.find(tempBuffer);
 	} // while(not connected)
 
-	// Now read whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
+	// Now read the whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
-		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u"), &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin);
+		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u|%u|%u:%u:%u.%u-%u-%u"),
+						 &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin, &srqInPin,
+						 &year, &month, &day, &hour, &minute, &second);
+
 		// we got the config from the HOST.
 		iec.setDeviceNumber(deviceNumber);
-		iec.setPins(atnPin, clockPin, dataPin, resetPin);
+		iec.setPins(atnPin, clockPin, dataPin, srqInPin, resetPin);
+		iface.setDateTime(year, month, day, hour, minute, second);
 	}
 	registerFacilities();
 

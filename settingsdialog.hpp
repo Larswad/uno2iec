@@ -20,6 +20,7 @@ struct AppSettings {
 	uint clockPin;
 	uint dataPin;
 	uint resetPin;
+	uint srqInPin;
 	QString imageFilters;
 	QString imageDirectory;
 	QString lastSpecificMounted;

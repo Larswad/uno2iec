@@ -55,8 +55,8 @@ namespace {
 EmulatorPaletteMap emulatorPalettes;
 CbmMachineThemeMap machineThemes;
 
-
-const QString OkString = "OK>";
+const QString OkString = "OK>%1|%2|%3|%4|%5|%6|%7.%8\r";
+const QString ConnectionString = "connect_arduino:";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
 
 QStringList IMAGE_LIST_HEADERS = (QStringList()
@@ -77,7 +77,7 @@ const uint DEFAULT_RESET_PIN = 7;
 const uint DEFAULT_CLOCK_PIN = 4;
 const uint DEFAULT_DATA_PIN = 3;
 const uint DEFAULT_ATN_PIN = 5;
-//const uint DEFAULT_SRQIN_PIN = 2;
+const uint DEFAULT_SRQIN_PIN = 2;
 
 
 const QString PROGRAM_VERSION_HISTORY = qApp->tr(
@@ -394,7 +394,7 @@ void MainWindow::readSettings()
 	m_appSettings.clockPin = sets.value("clockPin", QString::number(DEFAULT_CLOCK_PIN)).toUInt();
 	m_appSettings.dataPin = sets.value("dataPin", QString::number(DEFAULT_DATA_PIN)).toUInt();
 	m_appSettings.resetPin = sets.value("resetPin", QString::number(DEFAULT_RESET_PIN)).toUInt();
-	//	ui->srqInPin = settings.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toUInt();
+	m_appSettings.srqInPin = sets.value("srqInPin", QString::number(DEFAULT_SRQIN_PIN)).toUInt();
 
 	m_appSettings.imageFilters = sets.value("imageFilters", "*.D64,*.T64,*.M2I,*.PRG,*.P00,*.SID").toString();
 	m_appSettings.showDirectories = sets.value("showDirectories", false).toBool();
@@ -438,7 +438,7 @@ void MainWindow::writeSettings() const
 	sets.setValue("clockPin", QString::number(m_appSettings.clockPin));
 	sets.setValue("dataPin", QString::number(m_appSettings.dataPin));
 	sets.setValue("resetPin", QString::number(m_appSettings.resetPin));
-	//	settings.setValue("srqInPin", QString::number(m_appSettings.srqInPin));
+	sets.setValue("srqInPin", QString::number(m_appSettings.srqInPin));
 	sets.setValue("imageFilters", m_appSettings.imageFilters);
 	sets.setValue("showDirectories", m_appSettings.showDirectories);
 
@@ -472,8 +472,22 @@ void LogHexData(const QByteArray& bytes, const QString& header = QString("R#%1:"
 
 bool MainWindow::checkConnectRequest()
 {
-	if(not m_pendingBuffer.contains("connect"))
+	int connectPos = m_pendingBuffer.indexOf(ConnectionString);
+	if(-1 == connectPos)
 		return false;
+	int crPos = m_pendingBuffer.indexOf('\r', connectPos);
+	if(-1 == connectPos)
+		return false;
+
+	// extract version number.
+	ushort receivedProtoVersion = m_pendingBuffer.mid(connectPos + ConnectionString.length(), crPos - connectPos).toInt();
+	if(CURRENT_UNO2IEC_PROTOCOL_VERSION not_eq receivedProtoVersion) {
+		Log("MAIN", error, QString("Received connection string from arduino, but the protocol version (%1) mismatched our "
+				"version (%2). Please upgrade arduino!")
+				.arg(receivedProtoVersion).arg(CURRENT_UNO2IEC_PROTOCOL_VERSION));
+		return false;
+	}
+
 	m_pendingBuffer.clear();
 	// Assume connected, maybe a real ack sequence is needed here from the client?
 	// Are we already connected? If so,
@@ -484,11 +498,17 @@ bool MainWindow::checkConnectRequest()
 	else
 		Log("MAIN", warning, "Got reconnection attempt from Arduino for unknown reason. Accepting new connection.");
 
-	// give the client current date and time in the response string.
-	m_port.write((OkString + QString::number(m_appSettings.deviceNumber) + '|' + QString::number(m_appSettings.atnPin)
-								+ '|' + QString::number(m_appSettings.clockPin)
-								+ '|' + QString::number(m_appSettings.dataPin) + '|' + QString::number(m_appSettings.resetPin) /*+ '|' + QString::number(m_appSettings.srqInPin)*/
-								+ '\r').toLatin1().data());
+	// give the client the version, pin configuration, current date and time in the response string.
+	const QString response = OkString.arg(QString::number(m_appSettings.deviceNumber))
+			.arg(QString::number(m_appSettings.atnPin))
+			.arg(QString::number(m_appSettings.clockPin))
+			.arg(QString::number(m_appSettings.dataPin))
+			.arg(QString::number(m_appSettings.resetPin))
+			.arg(QString::number(m_appSettings.srqInPin))
+			.arg(QTime::currentTime().toString("hh:mm:ss"))
+			.arg(QDate::currentDate().toString("yyyy-MM-dd"));
+
+	m_port.write(response.toLatin1().data());
 	// client is supposed to send it's facilities each start.
 	m_clientFacilities.clear();
 	return true;
@@ -501,11 +521,12 @@ bool MainWindow::checkConnectRequest()
 void MainWindow::onDataAvailable()
 {
 	m_pendingBuffer.append(m_port.readAll());
-	if(not m_isConnected) {
+//	if(not m_isConnected) {
 		checkConnectRequest();
-		return;
-	}
-	processData();
+//		return;
+//	}
+	if(m_isConnected)
+		processData();
 } // onDataAvailable
 
 
@@ -753,13 +774,16 @@ void MainWindow::processData(void)
 					hasDataToProcess = false; // not all chars yet
 				break;
 
-			case 'R': // read byte(s) from current file system driver, note that this command needs no termination, it needs to be short.
-				// The size given back is the current size, it is default MAX_BYTES_PER_REQUEST but may be changed with 'r' command.
+			case 'R':
+				// read byte(s) from current file system driver, note that this command needs no termination char,
+				// because it needs to be short.
+				// The payload given back will be the current size, it is by default MAX_BYTES_PER_REQUEST (or as many left to
+				// read) but may be changed with 'N' command.
 				m_pendingBuffer.remove(0, 1);
 				m_iface.processReadFileRequest();
 				break;
 
-			case 'r': // same as 'R', but we are also given the expected read size. All succeeding 'R' will be with this size.
+			case 'N': // same as 'N', but we are also given the expected read size. All succeeding 'R' will be with this size.
 				if(m_pendingBuffer.size() < 2)
 					hasDataToProcess = false;
 				else {

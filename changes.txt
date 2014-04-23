@@ -1,5 +1,20 @@
                               UNO2IEC Change Log
 ================================================================================
+2014-04-23:
+* Readded the srqIn pin number to be transferred in answer upon connection and made it persistent in settings again.
+* Modified connection answer string so that it contains date and time, arduino scans the string and stores the date
+  and time when receiving it.
+* Host side check whether the protocol version matches when connect request is received. Refuse connection if mismatch
+  and issues error in application log. Current (first) protocol version is 1. The connection request string is now
+  changed to 'connect_arduino:<version>\r'
+* Only capital letters in protocol control characters are allowed. This is to differentiate the connection request
+  string from other control characters. This meant that the 'r'<size> sequence was changed to 'N'<size>.
+* The connection request string can now be issued and is checked for even if it host side thinks it is connected.
+  This will cause reconnection if the arduino suddenly crashes or resets for unknown reason while connected and then
+  tries to reconnect.
+* The arduino interface class now handles date and time, it is prepared for serving date and time if requested by the CBM.
+  The IEC protocol part of this is not finished yet.
+
 2014-04-03:
 * Refined user interface to that minimum of control are shown leaving much more space for image list,
 and directory list. Much more efficient in space. New dialog for mounting specific file at given location.

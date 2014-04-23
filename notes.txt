@@ -1,7 +1,10 @@
-use following guide for disabling COM port on PI:
+--------------------------------------------------------
+Raspberry PI specific Stuff, if used as host system.
+--------------------------------------------------------
+Use the following guide for disabling COM port on PI under raspbian:
 http://www.hobbytronics.co.uk/raspberry-pi-serial-port
 
-basically do:
+Basically do:
 disable login:
 sudo nano /etc/inittab
 
@@ -39,6 +42,7 @@ REBOOT!
 test that this works with minicom:
 minicom -b 9600 -o -D /dev/ttyAMA0
 
+
 --------------------------------------------------
 qt support for serial port:
 --------------------------------------------------
@@ -47,6 +51,7 @@ qextserialport is found here:
 git clone https://code.google.com/p/qextserialport/
 
 (simply build with qmake)
+TODO: QT5 has specific class for serial port support. Future versions may preferably use this instead!
 
 ------------------------------------------------------
 How to test the ATN, CLOCK, DATA lines from CBM basic:
@@ -68,10 +73,15 @@ sudo usermod -a -G dialout yourUserName
 Arduino to Host command protocol description:
 ----------------------------------------------------------------------------------------------
 At bootup, Arduino tries continuously to connect to host with:
-CONNECT
-response should from host when ready then be:
-OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<resetpin>(|<srqinpin>)<CR>
+connect_arduino:<protocol_version><CR>
+
+response should from host when ready then be (if protocol matches):
+OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<srqinpin>|<resetpin>|yyyy-mm-dd.hh:mm:ss<CR>
 Whereupon client could set the pin configuration according to the returned string.
+But if protocol mismatch the host should return:
+NOK><CR>
+
+The control characters may ONLY be capital letters A-Z or special characters like '!'.
 
 Send debug string to host
 D<severityId><facilityId><debug msg string><CR>
@@ -93,12 +103,19 @@ The host returns 'B' followed by the byte(s) being read, or answers with 'E' if 
 Request: 'R'
 Response: B<BYTE NumBytes><Byte 0..n>
 Or Response: E<BYTE NumBytes><Byte 0..n>
+Request: 'N'<buffer size>
+Response: Same as for 'B' request but changes the returned payload count (and also for subsequent 'B' requests).
 
-Write byte(s) to current file of current (last selected) file system type. Current byte read/write byte number size determines number of bytes in sequence.
+Write byte(s) to current file of current (last selected) file system type.
+Current byte read/write byte number size determines number of bytes in sequence.
 Request: W<BYTE NumBytes><BYTE 0..n>
+(no response expected, full speed transfer and host side is expected to accept all data received).
 
-'C'
-Close file for current file system
+Close file for current file system on host side. Host will return name string of last loaded or saved file.
+If responding with 'N' last operation was load, if responding with 'n' it was a save oepration.
+Request:'C'
+Response: 'N'<BYTE NumBytes><BYTE 0..n of name>
+or: 'n'<length><name>
 
 'L' request for sending next directory / information line.
 Response: 'L'<BYTE length><line data>
