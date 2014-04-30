@@ -1,12 +1,12 @@
 //
-// Title        : RPI2UNO2IEC - interface implementation, arduino side.
+// Title        : UNO2IEC - interface implementation, arduino side.
 // Author       : Lars Wadefalk
 // Version      : 0.1
 // Target MCU   : Arduino Uno AtMega328(H, 5V) at 16 MHz, 2KB SRAM, 32KB flash, 1KB EEPROM.
 //
 // CREDITS:
 // --------
-// The RPI2UNO2IEC application is inspired by Lars Pontoppidan's MMC2IEC project.
+// The UNO2IEC application is inspired by Lars Pontoppidan's MMC2IEC project.
 // It has been ported to C++.
 // The MMC2IEC application is inspired from Jan Derogee's 1541-III project for
 // PIC: http://jderogee.tripod.com/
@@ -17,7 +17,7 @@
 // This "interface" class is the main driving logic for the IEC command handling.
 //
 // Commands from the IEC communication are interpreted, and the appropriate data
-// from either Native, a D64 or T64 image is sent back.
+// from either Native, D64, T64, M2I, x00 image formats is sent back.
 //
 // DISCLAIMER:
 // The author is in no way responsible for any problems or damage caused by
@@ -135,7 +135,7 @@ void Interface::sendListing()
 		Serial.write('L'); // initiate request.
 		Serial.readBytes(serCmdIOBuf, 2);
 		resp = serCmdIOBuf[0];
-		if('L' == resp) { // PI will give us something else if we're at last line to send.
+		if('L' == resp) { // Host system will give us something else if we're at last line to send.
 			// get the length as one byte: This is kind of specific: For listings we allow 256 bytes length. Period.
 			byte len = serCmdIOBuf[1];
 			// WARNING: Here we might need to read out the data in portions. The serCmdIOBuf might just be too small
@@ -228,6 +228,7 @@ void Interface::sendFile()
 				++bytesDone;
 
 #ifdef USE_LED_DISPLAY
+				// Every xx bytes received, update the percentage.
 				if(not (bytesDone % 32) and 0 not_eq m_pDisplay)
 					m_pDisplay->showPercentage(bytesDone);
 #endif
@@ -502,7 +503,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 				break;
 
 			case O_FILE_ERR:
-				// FIXME: interface with pi for error info.
+				// FIXME: interface with Host for error info.
 				//sendListing(/*&send_file_err*/);
 				m_iec.sendFNF();
 				break;
@@ -568,7 +569,7 @@ void Interface::handleATNCmdCodeDataListen()
 
 void Interface::handleATNCmdClose()
 {
-	// handle close of file. PI will return the name of the last loaded file to us.
+	// handle close of file. Host system will return the name of the last loaded file to us.
 	Serial.print("C");
 	Serial.readBytes(serCmdIOBuf, 2);
 	byte resp = serCmdIOBuf[0];
@@ -588,7 +589,6 @@ void Interface::handleATNCmdClose()
 			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);
 #endif
-
 		}
 		else {
 			sprintf_P(serCmdIOBuf, (PGM_P)F("Exp: %d chars, got %d."), len, actual);

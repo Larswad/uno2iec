@@ -19,8 +19,11 @@
 #include <QTextStream>
 #include <QFileInfo>
 #include <QRegExp>
+#include <QDir>
+
 #include "m2idriver.hpp"
 #include "logger.hpp"
+#include "utils.hpp"
 
 using namespace Logging;
 
@@ -33,6 +36,7 @@ const QString strDEL("DEL");
 const QString strDotPRG("PRG");
 const QString strDotM2I("M2I");
 const QString strM2IEnd("M2I END.");
+
 const int TITLE_SIZE = 16;
 const int NATIVENAME_SIZE = 12;
 const int CBMNAME_SIZE = 16;
@@ -76,6 +80,7 @@ bool M2I::mountHostImage(const QString& fileName)
 			}
 			else
 				m_diskTitle = line;
+			++lineNbr;
 			continue;
 		}
 		QStringList params(line.split(QChar(':')));
@@ -128,7 +133,8 @@ bool M2I::mountHostImage(const QString& fileName)
 		}
 		++lineNbr;
 	} // while
-	// We close immediately, host file (.M2I) is only open during parsing.
+
+	// We close immediately as we're done, host file (.M2I) is only kept open during parsing (or writing).
 	m_hostFile.close();
 	m_status = success ? IMAGE_OK : NOT_READY;
 
@@ -173,10 +179,6 @@ bool M2I::sendListing(ISendLine &cb)
 } // sendListing
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-/// Private helpers
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 bool M2I::deleteFile(const QString& fileName)
 {
 	FileEntry e;
@@ -184,23 +186,30 @@ bool M2I::deleteFile(const QString& fileName)
 	if(result) {
 		// only try removing native fs file if it is a prg.
 		if(FileEntry::TypePrg == e.fileType) {
-			QFile	f(QFileInfo(m_hostFile).absolutePath() + e.nativeName.trimmed());
-			result = f.remove();
-		}
-		if(result) {
-			// remove from entry list as well.
-			// NOTE: Here we can possible mark the entry as 'deleted' instead with FileEntry::Erased, but...why?
-			result = m_entries.removeOne(e);
-			// succeeded, so rewrite the updated M2I index file.
+			QFile	f(QDir(QFileInfo(m_hostFile).absolutePath()).filePath(e.nativeName.trimmed()));
+			result = f.remove() or !f.exists();
 			if(result) {
-				result = m_hostFile.open(QFile::WriteOnly);
+				// remove from entry list as well.
+				// NOTE: Here we can possible mark the entry as 'deleted' instead with FileEntry::Erased, but...why?
+				result = m_entries.removeOne(e);
+				// succeeded, so rewrite the updated M2I index file.
 				if(result) {
-					m_hostFile.write(QByteArray().append(generateFile()));
-					m_hostFile.close();
+					result = m_hostFile.open(QFile::WriteOnly);
+					if(result) {
+						m_hostFile.write(QByteArray().append(generateFile()));
+						m_hostFile.close();
+					}
+					else
+						Log("M2I", error, "Failed opening m2i container for writing.");
 				}
+				else
+					Log("M2I", error, "Failed removing entry");
 			}
 		}
+		else
+			result = false;
 	}
+
 	return result;
 } // deleteFile
 
@@ -208,83 +217,59 @@ bool M2I::deleteFile(const QString& fileName)
 CBM::IOErrorMessage M2I::renameFile(const QString& oldName, const QString& newName)
 {
 	FileEntry e;
-	bool result = findEntry(oldName, e, false);
 	CBM::IOErrorMessage ret = CBM::ErrFileNotFound;
+	bool result = findEntry(oldName, e, false);
 	if(result and FileEntry::TypePrg == e.fileType) {
 		// modify in-place instead of deleting and creating new entry.
 		FileEntry& modEntry(m_entries[m_entries.indexOf(e)]);
-		QFile	f(QFileInfo(m_hostFile).absolutePath() + modEntry.nativeName.trimmed());
+		QFile	f(QDir(QFileInfo(m_hostFile).absolutePath()).filePath(modEntry.nativeName.trimmed()));
+
 		modEntry.nativeName = newName.trimmed().left(NATIVENAME_SIZE);
-		modEntry.cbmName = newName.trimmed().left(CBMNAME_SIZE);
-		f.rename(modEntry.nativeName);
+		modEntry.cbmName = withoutExtension(newName.trimmed().left(CBMNAME_SIZE));
+		// Do the physical renaming of the native file system file.
+		if(f.rename(modEntry.nativeName)) {
+			// operation succeeded, so rewrite the updated M2I index file.
+			if(m_hostFile.open(QFile::WriteOnly)) {
+				m_hostFile.write(QByteArray().append(generateFile()));
+				m_hostFile.close();
+				ret = CBM::ErrOK;
+			}
+			else
+				ret = CBM::ErrFileNotOpen;
+		}
 	}
 	return ret;
 } // rename
 
 
-CBM::IOErrorMessage M2I::newDisk(const QString& name, const QString& id, bool mount)
+bool M2I::fileExists(const QString& filePath)
 {
+	FileEntry e;
+	return findEntry(filePath, e, false) and QFile(e.nativeName.trimmed().left(NATIVENAME_SIZE)).exists();
+} // fileExists
+
+
+CBM::IOErrorMessage M2I::newDisk(const QString& name, const QString& id)
+{
+	QFile file;
 	// disk id not supported.
 	Q_UNUSED(id);
 	unmountHostImage();
-	m_hostFile.setFileName(name);
-	if(m_hostFile.exists())
-		return CBM::ErrFileExists;
+	file.setFileName(name + ".M2I");
+	// comment out to prevent overwrite existing m2i files.
+//	if(file.exists())
+//		return CBM::ErrFileExists;
 
 	m_diskTitle = name.toUpper(); // TODO: Strip to disk name length
-	bool success = m_hostFile.open(QFile::WriteOnly);
+	bool success = file.open(QFile::WriteOnly);
 	if(not success)
 		return CBM::ErrWriteProtectOn;
 
-	m_hostFile.write(QByteArray().append(generateFile()));
-	m_hostFile.close();
-	if(mount)
-		mountHostImage(name);
-	return CBM::ErrOK;
-
-	/*
-				char dosName[13];
-				uchar i,j;
-
-				m_status and_eq compl FILE_OPEN;
-
-				// Find new .m2i filename
-				// Take starting 8 chars padded with space ending with .m2i
-				strncpy(dosName, diskName, 8);
-				i = strnlen(dosName, 8);
-				if (i < 8)
-								memset(dosName + i, ' ', 8 - i);
-				memcpy(dosName + 8, pstr_dot_m2i, 5);
-
-				// Is this filename free
-				if(fatFopen(dosName)) {
-								fatFclose();
-								return ErrFileExists;
-				}
-
-				// It is free, create new file
-				if(!fatFcreate(dosName))
-								return ErrWriteProtectOn;
-
-				// Write m2i header with the diskname
-				j = diskName[0];
-				for(i = 0; i < 16; i++) {
-								if(j) {
-												fatFputc(j);
-												j = diskName[i + 1];
-								}
-								else
-												fatFputc(' ');
-				}
-
-				// Write newline
-				fatFputc(13);
-				fatFputc(10);
-				fatFclose();
-
-				// Now this is the open m2i
-				memcpy(m2i_filename, dosName, 13);
-*/
+	file.write(QByteArray().append(generateFile()));
+	file.close();
+	// remount if the file we have mounted is this one!
+	if(not file.fileName().compare(m_hostFile.fileName(), Qt::CaseInsensitive))
+		return mountHostImage(file.fileName()) ? CBM::ErrOK : CBM::ErrDriveNotReady;
 	return CBM::ErrOK;
 } // newDisk
 
@@ -295,7 +280,7 @@ bool M2I::fopen(const QString& fileName)
 	FileEntry e;
 	if(findEntry(fileName, e) and FileEntry::TypePrg == e.fileType) {
 		QFileInfo f(m_hostFile);
-		m_nativeFile.setFileName(f.absolutePath() + e.nativeName.trimmed());
+		m_nativeFile.setFileName(QDir(f.absolutePath()).filePath(e.nativeName.trimmed()));
 		// open the corresponding native name (dos 8.3 name).
 		if(m_nativeFile.open(QFile::ReadOnly)) {
 			m_status or_eq FILE_OPEN;
@@ -314,19 +299,20 @@ CBM::IOErrorMessage M2I::fopenWrite(const QString& fileName, bool replaceMode)
 	if(m_status bitand FILE_OPEN)
 		close();
 	QFileInfo f(m_hostFile);
-	m_nativeFile.setFileName(f.absolutePath() + fileName.trimmed());
+	m_nativeFile.setFileName(QDir(f.absolutePath()).filePath(fileName.trimmed()));
 	FileEntry e;
-	// if it exists already, only accept if we're in replace mode.
+	// if file exists already, only accept if we're in replace mode.
 	if((m_nativeFile.exists() or findEntry(fileName, e, false)) and not replaceMode)
 		return CBM::ErrFileExists;
 
 	bool success = m_nativeFile.open(QIODevice::WriteOnly bitor QIODevice::Truncate);
-	m_status = success ? FILE_OPEN : NOT_READY;
-	CBM::IOErrorMessage retCode;
+	if(success)
+		m_status or_eq FILE_OPEN;
+	CBM::IOErrorMessage ret;
 	if(success) {
 		success = m_hostFile.open(QFile::WriteOnly);
 		if(success) {
-			e.cbmName = fileName.toUpper();
+			e.cbmName = withoutExtension(fileName.toUpper());
 			e.fileType = FileEntry::TypePrg;
 			e.nativeName = fileName;
 			m_entries.append(e);
@@ -335,16 +321,16 @@ CBM::IOErrorMessage M2I::fopenWrite(const QString& fileName, bool replaceMode)
 		}
 		else
 			close();
-		retCode = success ? CBM::ErrOK : CBM::ErrFileNotOpen;
+		ret = success ? CBM::ErrOK : CBM::ErrFileNotOpen;
 	}
 	else {
 		if(m_hostFile.error() == QFile::PermissionsError or m_hostFile.error() == QFile::OpenError)
-			retCode = CBM::ErrWriteProtectOn;
+			ret = CBM::ErrWriteProtectOn;
 		else
-			retCode = CBM::ErrFileNotOpen;
+			ret = CBM::ErrFileNotOpen;
 	}
 
-	return retCode;
+	return ret;
 } // fopenWrite
 
 
@@ -374,12 +360,7 @@ char M2I::getc(void)
 // write char to open file, returns false if failure
 bool M2I::putc(char c)
 {
-	Q_UNUSED(c);
-	/*
-				if(m_status bitand FILE_OPEN)
-								return fatFputc(c);
-								*/
-	return false;
+	return 1 == (m_status bitand FILE_OPEN) ? m_nativeFile.write(&c, 1) : 0;
 } // putc
 
 
@@ -401,19 +382,23 @@ bool M2I::close(void)
 } // close
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Private helpers
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// Seek through M2I index.
 /// findName: Name of the entry to search for (may contain ? or * wildcard character(s)).
 /// entry: If found the entry will be placed in this reference.
 /// return bool: true if entry was found.
 bool M2I::findEntry(const QString& findName, FileEntry& entry, bool allowWildcards) const
 {
-	const QString trimmedFind = findName.trimmed();
+	const QString trimmedFind(findName.trimmed());
 	// trimming here is mostly for disregarding any ending blanks.
 	QRegExp matcher(trimmedFind, Qt::CaseInsensitive, QRegExp::Wildcard);
 	bool found = false;
 	foreach(const FileEntry& e, m_entries) {
 		if(/*FileEntry::TypePrg == e.fileType and */allowWildcards ? matcher.exactMatch(e.cbmName.trimmed())
-			 : trimmedFind.compare(e.cbmName, Qt::CaseInsensitive)) {
+			 : 0 == trimmedFind.compare(e.cbmName, Qt::CaseInsensitive)) {
 			entry = e;
 			found = true;
 			break;
@@ -427,9 +412,9 @@ bool M2I::findEntry(const QString& findName, FileEntry& entry, bool allowWildcar
 /// Returns the file as a single QString, can be converted to QByteArray for writing to file.
 const QString M2I::generateFile()
 {
-	QString result;
 	// generate disktitle on first line.
-	result.append(m_diskTitle + "\r\n");
+	QString result(m_diskTitle + "\r\n");
+
 	// generate file entries.
 	foreach(const FileEntry& e, m_entries) {
 		QChar typeChar;
@@ -445,136 +430,10 @@ const QString M2I::generateFile()
 			break;
 		}
 		// pad both native file name and cbm dos name with spaces.
-		result.append(QString("%1:%2:%3\r\n").arg(typeChar)
+		result += QString("%1:%2:%3\r\n").arg(typeChar)
 									.arg(e.nativeName, -NATIVENAME_SIZE, QChar(' '))
-									.arg(e.cbmName, -CBMNAME_SIZE, QChar(' ')));
+									.arg(e.cbmName, -CBMNAME_SIZE, QChar(' '));
 	} // foreach
 
 	return result;
 } // generateFile
-
-
-// Get first line of m2i file, writes 16 chars in dest
-// Returns FALSE if there is a problem in the file
-/*
-bool M2I::readFirstLine(QString* dest)
-{
-				bool res = false;
-				char data[18];
-				if(sizeof(data) == m_hostFile.read(data, sizeof(data))) {
-								QByteArray qdata(data, sizeof(data));
-								if(0 not_eq dest)
-												*dest = qdata.left(sizeof(data) - 2);
-								res = qdata.endsWith("\r");
-				}
-
-				return res;
-} // readFirstLine
-*/
-
-// Parses one line from the .m2i file.
-// File pos must be after reading the initial status char
-/*
-uchar M2I::parseLine(QString* dosName, QString* cbmName)
-{
-				if(m_hostFile.atEnd())
-								return 0;  // no more records
-				// ftype + fsName + cbmName + separators + LF
-				QList<QByteArray> qData = m_hostFile.read(1 + 256 + 16 + 3 + 1).split(':');
-				// must be three splits.
-				if(qData.count() < 3)
-								return 0;
-
-				// first one ONLY the fs type.
-				if(qData.at(0).count() not_eq 1)
-								return 0;
-				uchar fsType(qData.at(0).at(0));
-
-				if(qData.at(1).isEmpty())
-								return 0;
-				if(0 not_eq dosName)
-								*dosName = qData.at(1);
-
-				// must be ending with a CR, the cbm string must be 16 chars long.
-				if(!qData.at(2).endsWith("\r") or qData.at(2).length() not_eq 17)
-								return 0;
-				QString cbmStr(qData.at(2));
-				cbmStr.chop(1);
-				if(0 not_eq cbmName)
-								*cbmName = cbmStr;
-
-				return fsType;
-} // parseLine
-*/
-
-bool M2I::createFile(char* fileName)
-{
-	Q_UNUSED(fileName);
-	// TODO: Implement
-	m_status = NOT_READY;
-	/*
-				// Find dos filename
-				char dosName[13];
-				uchar i,j;
-
-				// Initial guess is starting 8 chars padded with space ending with .prg
-				strncpy(dosName, fileName, 8);
-				i = strnlen(dosName, 8);
-				if(i < 8)
-								memset(dosName + i, ' ', 8 - i);
-				memcpy(dosName + 8, pstr_dot_prg, 5);
-
-				// Is this filename free?
-				i = 0;
-				while(fatFopen(dosName)) {
-								if(i > 99)
-												return false;
-
-								// No, modify it
-								j = i % 10;
-								dosName[6] = i - j + '0';
-								dosName[7] = j + '0';
-
-								i++;
-				}
-
-				// Now we have a suitable dos filename, create entry in m2i index
-				if(!fatFopen(m2i_filename))
-								return false;
-
-				if(!read_first_line(NULL))
-								return false;
-
-				fatFseek(0,SEEK_END);
-
-				fatFputc('P');
-				fatFputc(':');
-
-				for(i = 0; i < 12; i++)
-								fatFputc(dosName[i]);
-
-				fatFputc(':');
-
-				j = fileName[0];
-				for(i = 0; i < 16; i++) {
-								if(j) {
-												fatFputc(j);
-												j = fileName[i + 1];
-								}
-								else
-												fatFputc(' ');
-				}
-
-				fatFputc(13);
-				fatFputc(10);
-				fatFclose();
-
-				// Finally, create the target file
-				fatFcreate(dosName);
-
-				m_status or_eq FILE_OPEN;
-*/
-	return true;
-} // createFile
-
-

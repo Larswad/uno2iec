@@ -51,8 +51,10 @@ public:
 
 	CBM::IOErrorMessage renameFile(const QString& oldName, const QString& newName);
 
+	bool fileExists(const QString &filePath);
+
 	// new disk, creates empty M2I file with diskname and opens it
-	CBM::IOErrorMessage newDisk(const QString& name, const QString& id, bool mount);
+	CBM::IOErrorMessage newDisk(const QString& name, const QString& id);
 
 private:
 	// The M2I file records represtented in internal form.
@@ -62,13 +64,14 @@ private:
 			TypeDel,
 			TypeErased
 		} fileType;
+
 		QString nativeName; // 12 chars (8.3 format) padded with spaces
 		QString cbmName;		// 16 chars padded with spaces.
 
 		// Needed for QList::removeOne
 		bool operator==(const FileEntry& rhs)
 		{
-			return this->fileType == rhs.fileType and this->nativeName == rhs.nativeName and this->cbmName == rhs.nativeName;
+			return this->fileType == rhs.fileType and this->nativeName == rhs.nativeName and this->cbmName == rhs.cbmName;
 		}
 	};
 	typedef QList<FileEntry> EntryList;
@@ -81,6 +84,7 @@ private:
 	EntryList m_entries;
 	// The real host file system M2I index file.
 	QFile m_hostFile;
+	// The current CBM file being read or written from/to the index.
 	QFile m_nativeFile;
 	FileEntry m_openedEntry;
 };

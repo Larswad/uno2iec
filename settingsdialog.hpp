@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <QString>
+#include <QIntValidator>
+
 #include "qextserialenumerator.h"
 
 typedef QList<QextPortInfo> QextPortInfoList;
@@ -28,6 +30,7 @@ struct AppSettings {
 	QString programVersion;
 	QString cbmMachine;
 	QString emulatorPalette;
+	ushort cbmBorderWidth;
 };
 
 
@@ -47,6 +50,7 @@ private slots:
 private:
 	Ui::SettingsDialog* ui;
 	AppSettings& m_settings;
+	QIntValidator m_borderValidator;
 };
 
 #endif // SETTINGSDIALOG_HPP

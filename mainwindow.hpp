@@ -87,7 +87,7 @@ private slots:
 	void on_directoryChanged(const QString& path);
 	void on_filterSetup_clicked();
 	void simTimerExpired();
-
+	void simTimerExpiredNoResp();
 	void on_actionSingle_file_mount_triggered();
 
 private:
@@ -137,6 +137,7 @@ private:
 		simsDisplayDirEntry,
 		simsDriveCmd,
 		simsLoadCmd,
+		simsOpenSaveResponse,
 		simsSaveCmd,
 		simsCloseCmd
 	} m_simulatedState;
@@ -144,6 +145,7 @@ private:
 	void simulateData(const QByteArray& data);
 	void processData(void);
 	void delayedSimulate(ProcessingState newState, const QByteArray &data);
+	void delayedSimNoResponse(ProcessingState newState, const QByteArray& data);
 };
 
 #endif // MAINWINDOW_HPP

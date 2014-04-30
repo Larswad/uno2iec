@@ -4,7 +4,7 @@
 #include "ui_settingsdialog.h"
 
 SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings& settings, QWidget *parent) :
-	QDialog(parent), ui(new Ui::SettingsDialog), m_settings(settings)
+	QDialog(parent), ui(new Ui::SettingsDialog), m_settings(settings), m_borderValidator(0, 100, this)
 {
 	ui->setupUi(this);
 
@@ -21,6 +21,8 @@ SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings& settings, Q
 	ui->imageFilters->setText(m_settings.imageFilters);
 	ui->showDirs->setChecked(m_settings.showDirectories);
 	ui->imageDir->setText(m_settings.imageDirectory);
+	ui->borderWidth->setValidator(&m_borderValidator);
+	ui->borderWidth->setText(QString::number(m_settings.cbmBorderWidth));
 } // ctor
 
 
@@ -42,6 +44,7 @@ void SettingsDialog::on_Ok_clicked()
 	m_settings.imageFilters = ui->imageFilters->text();
 	m_settings.showDirectories = ui->showDirs->isChecked();
 	m_settings.imageDirectory = ui->imageDir->text();
+	m_settings.cbmBorderWidth = ui->borderWidth->text().toUShort();
 
 	accept();
 } // on_Ok_clicked

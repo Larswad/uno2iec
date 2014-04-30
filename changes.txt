@@ -1,5 +1,17 @@
                               UNO2IEC Change Log
 ================================================================================
+2014-04-30:
+* Added setting for specifying the border size (frame) in the CBM simulated list view. It is added in the
+  settings dialog and is an integer between 0 and 100. Useful if you don't want that frame to take up screen
+  estate. Nostalgic feeling however recommends a setting of 60 here (ehm, or even 64).
+* Added a utility.hpp header for placing very general helper functions, definitions (macros) or class(es).
+* Automounting of disk image when creating a new image through the new command is removed. It doesn't really work
+  in a nice way to propagate the mounting events when it comes indirectly like this.
+* Added disk write protect handling for dos commands new, scratch, rename.
+* Fixed/improved directory path parsing at beginning of path like slashes, colons, root specification etc.
+* Finalized M2I handling, newdisk, delete, rename, open for writing new/existing.
+* Simulation mode of saving file.
+
 2014-04-23:
 * Readded the srqIn pin number to be transferred in answer upon connection and made it persistent in settings again.
 * Modified connection answer string so that it contains date and time, arduino scans the string and stores the date

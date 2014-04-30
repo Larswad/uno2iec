@@ -122,7 +122,6 @@ bool NativeFS::isEOF() const
 bool NativeFS::putc(char c)
 {
 	qint64 written = m_hostFile.write(&c, 1);
-	// TODO: Implement.
 	return 1 == written;
 } // putc
 

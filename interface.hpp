@@ -53,6 +53,11 @@ public:
 	void priocessWriteFileRequest(const QByteArray &theBytes);
 	CBM::IOErrorMessage reset(bool informUnmount = false);
 
+	bool isDiskWriteProtected() const
+	{
+		return NULL == m_pListener or m_pListener->isWriteProtected();
+	}
+
 	// State specific: CBM requests a single directory line from us.
 	void processLineRequest();
 	void buildDirectoryOrMediaList();
@@ -68,6 +73,7 @@ public:
 	void setImageFilters(const QString &filters, bool showDirs);
 	void processWriteFileRequest(const QByteArray &theBytes);
 	void writePort(const QByteArray& data, bool flush = true);
+	FileDriverBase* driverForFile(const QString& name) const;
 	FileDriverBase* currentFileDriver()
 	{
 		return m_currFileDriver;
@@ -81,8 +87,9 @@ private:
 	bool removeFilePrefix(QString &cmd) const;
 	void sendOpenResponse(char code) const;
 	void write(const QByteArray &data, bool flush = true) const;
-	QString errorStringFromCode(CBM::IOErrorMessage code);
+	QString errorStringFromCode(CBM::IOErrorMessage code) const;
 
+	// Instantiation of implemented file system handlers. They will be added to the FileDriverList.
 	D64 m_d64;
 	T64 m_t64;
 	M2I m_m2i;
@@ -98,6 +105,7 @@ private:
 	QByteArray m_lastCmdString;
 	QList<QByteArray> m_dirListing;
 	IFileOpsNotify* m_pListener;
+
 	// The ROM file for the 1541 drive (16 KB).
 	QByteArray m_driveROM;
 	// The RAM memory for the 1541 drive.

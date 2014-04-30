@@ -5,7 +5,7 @@
 // executed, which might either be resulting error message or some result from a dos command, like M-R and so on.
 
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
-// TODO: Finalize x00fs handling (P00, S00, R00)
+// TODO: Finalize x00fs handling (P00, S00, R00). The x00fs format can actually handle multiple files as a sort of container to replace M2I. This should be supported.
 // TODO: Support x64 format, it should in fact be the preferred format today before D64, D71, D81.
 // TODO: Support of images in ZIP archives. Use "osdab" library for zip handling:
 //			https://code.google.com/p/osdab/downloads/detail?name=OSDaB-Zip-20130623.tar.bz2&can=2&q=
@@ -325,6 +325,8 @@ void MainWindow::on_actionSettings_triggered()
 	AppSettings oldSettings = m_appSettings;
 	SettingsDialog settings(m_ports, m_appSettings);
 	if(QDialog::Accepted == settings.exec()) { // user pressed Ok?
+		if(m_appSettings.cbmBorderWidth not_eq oldSettings.cbmBorderWidth)
+			updateDirListColors();
 		if(m_appSettings.imageFilters not_eq oldSettings.imageFilters
 			 or m_appSettings.showDirectories not_eq oldSettings.showDirectories
 			 or m_appSettings.imageDirectory not_eq oldSettings.imageDirectory) {
@@ -402,7 +404,7 @@ void MainWindow::readSettings()
 
 	m_appSettings.emulatorPalette = sets.value("emulatorPalette", "ccs64").toString();
 	m_appSettings.cbmMachine = sets.value("cbmMachine", "C 64").toString();
-
+	m_appSettings.cbmBorderWidth = sets.value("cbmBorderWidth", 60).toUInt();
 	ui->actionDisk_Write_Protected->setChecked(sets.value("diskWriteProtected", false).toBool());
 
 	restoreGeometry(sets.value("mainWindowGeometry").toByteArray());
@@ -444,6 +446,7 @@ void MainWindow::writeSettings() const
 
 	sets.setValue("emulatorPalette", m_appSettings.emulatorPalette);
 	sets.setValue("cbmMachine", m_appSettings.cbmMachine);
+	sets.setValue("cbmBorderWidth", m_appSettings.cbmBorderWidth);
 
 	sets.setValue("diskWriteProtected", ui->actionDisk_Write_Protected->isChecked());
 	Logging::loggerInstance().saveFilters(sets);
@@ -453,6 +456,8 @@ void MainWindow::writeSettings() const
 // Debugging helper for logging raw recieved serial bytes as HEX strings to file.
 void LogHexData(const QByteArray& bytes, const QString& header = QString("R#%1:"))
 {
+	if(!bytes.length())
+		return;
 	QFile fh("received.txt");
 
 	if(not fh.open(QFile::Append bitor QFile::WriteOnly))
@@ -546,9 +551,22 @@ void MainWindow::delayedSimulate(ProcessingState newState, const QByteArray& dat
 } // delayedSimulate
 
 
+void MainWindow::delayedSimNoResponse(ProcessingState newState, const QByteArray& data)
+{
+	m_simulatedState = newState;
+	if(data.size())
+		simulateData(data);
+	QTimer::singleShot(20, Qt::CoarseTimer, this, SLOT(simTimerExpiredNoResp()));
+} // delayedSimNoResponse
+
 void MainWindow::simTimerExpired()
 {
 	simulateData(m_delayedData);
+}
+
+void MainWindow::simTimerExpiredNoResp()
+{
+	writePort(QByteArray(), false);
 }
 
 #else
@@ -585,7 +603,7 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 					if(O_DIR == data.at(1) or O_INFO == data.at(1))
 						delayedSimulate(simsDisplayDirEntry, QByteArray().append('L'));
 					else if(O_FILE == data.at(1))
-						delayedSimulate(simsLoadCmd, QByteArray().append('r').append(64));
+						delayedSimulate(simsLoadCmd, QByteArray().append('N').append(64));
 					else if(O_NOTHING == data.at(1)) {
 						writeTextToDirList("?FILE NOT FOUND\n");
 						writeTextToDirList("READY.\n");
@@ -611,6 +629,8 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 						writeTextToDirList("READY.\n");
 					else
 						writeTextToDirList("LOADING ERROR.\n");
+					if(m_simFile.isOpen())
+						m_simFile.close();
 					m_simulatedState = simsOff;
 				}
 				break;
@@ -642,8 +662,26 @@ void MainWindow::writePort(const QByteArray &data, bool flush)
 				}
 				break;
 
+			case simsOpenSaveResponse:
+				if('>' == data.at(0) && CBM::ErrOK == (uchar)data.at(1))
+					delayedSimNoResponse(simsSaveCmd, QByteArray());
+				else {
+					writeTextToDirList("?SAVING ERROR.\nREADY.\n");
+					m_simulatedState = simsOff;
+					m_simFile.close();
+				}
+
+			break;
 			case simsSaveCmd:
-				// TODO: Implement saving responses.
+				{
+					QByteArray readBytes = m_simFile.read(qMin(m_simFile.size() - m_simFile.pos(), (qint64)254));
+					readBytes.prepend((uchar)readBytes.size() + 2);
+					readBytes.prepend('W');
+					if(m_simFile.atEnd())
+						delayedSimulate(simsCloseCmd, readBytes.append('C'));
+					else
+						delayedSimNoResponse(simsSaveCmd, readBytes);
+				}
 				break;
 
 			case simsCloseCmd:
@@ -684,14 +722,13 @@ void MainWindow::onCommandIssued(const QString& cmd)
 		}
 		else {
 			// Execute a disk drive command (e.g. S0:filename, V0:, I0:)
-			m_simulatedState = simsDriveCmd;
 			if(params.startsWith("M-W")) {
 				params.append(0xF0);
 				params.append(0x17);
 				params.append(0x30);
 				params.append("ARNE BJARNE_    0123456789ABCDEFG");
 			}
-			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::CMD_CHANNEL).append(params.toLocal8Bit()));
+			delayedSimNoResponse(simsDriveCmd, QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::CMD_CHANNEL).append(params.toLocal8Bit()));
 		}
 	}
 	else if((cmd[0] == '/' or cmd[0] == '%')) {
@@ -707,13 +744,10 @@ void MainWindow::onCommandIssued(const QString& cmd)
 	}
 	else if(cmd[0] == CBM_BACK_ARROW) {
 		// Save a BASIC program to disk
-		if(params.isEmpty()) {
-			// send syntax error.
-			writeTextToDirList("?SYNTAX ERROR.\nREADY.\n");
-		}
-		else {
-			m_simulatedState = simsSaveCmd;
-			// TODO:
+		m_simFile.setFileName("simulated.prg");
+		if(m_simFile.open(QIODevice::ReadOnly)) {
+			m_simulatedState = simsOpenSaveResponse;
+			simulateData(QByteArray().append(QChar('O')).append(3 + params.length()).append(CBM::WRITEPRG_CHANNEL).append(params.toLocal8Bit()));
 		}
 	}
 	else {
@@ -793,7 +827,7 @@ void MainWindow::processData(void)
 				}
 				break;
 
-			case 'W': // write single character to file in current file system mode.
+			case 'W': // write characters to file in current file system mode.
 				if(m_pendingBuffer.size() > 1) {
 					uchar length = (uchar)m_pendingBuffer.at(1);
 					if(m_pendingBuffer.size() >= length) {
@@ -1381,12 +1415,13 @@ void MainWindow::updateDirListColors()
 
 	// Construct and apply a stylesheet that matches the chosen machine type and emulator palette.
 	QString sheet = QString("background-color: rgb(%1);\ncolor: rgb(%2);\n"
-													"border: 60px solid %3;\npadding: -4px;\n"
-													"font: %4;\n").arg(
-				QString::number(bgColor.red()) + "," + QString::number(bgColor.green()) + "," + QString::number(bgColor.blue())).arg(
-				QString::number(fgColor.red()) + "," + QString::number(fgColor.green()) + "," + QString::number(fgColor.blue())).arg(
-				frColor.name()).arg(
-				pMachine->font);
+													"border: %3px solid %4;\npadding: -4px;\n"
+													"font: %5;\n")
+				.arg(QString::number(bgColor.red()) + "," + QString::number(bgColor.green()) + "," + QString::number(bgColor.blue()))
+				.arg(QString::number(fgColor.red()) + "," + QString::number(fgColor.green()) + "," + QString::number(fgColor.blue()))
+				.arg(m_appSettings.cbmBorderWidth)
+				.arg(frColor.name())
+				.arg(pMachine->font);
 	ui->imageDirList->setStyleSheet(sheet);
 	ui->imageDirList->setCursorWidth(pMachine->cursorWidth);
 	// TODO: Do we really need to issue reset here. Might just well remember the contents and then restore it.

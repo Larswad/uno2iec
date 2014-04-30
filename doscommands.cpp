@@ -2,6 +2,7 @@
 #include "interface.hpp"
 #include "d64driver.hpp"
 #include "logger.hpp"
+#include "utils.hpp"
 
 using namespace Logging;
 
@@ -54,20 +55,42 @@ CBM::IOErrorMessage ValidateDisk::process(const QByteArray& params, Interface& i
 
 CBM::IOErrorMessage NewDisk::process(const QByteArray &params, Interface &iface)
 {
+	CBM::IOErrorMessage result;
 	QStringList newParams(QString(params).split(',', QString::SkipEmptyParts));
 
 	if(newParams.empty() or newParams.count() > 2)
 		return CBM::ErrSyntaxError;
-	// TODO: Native file system should here create a new D64 file by using D64 helper, and then CALL that D64 to format/initialize it.
-	// If the current file driver already IS a D64, then it just initializes the current disk, same goes for T64 and M2I.
-	return iface.currentFileDriver()->newDisk(newParams[0], newParams.count() > 1 ? newParams[1] : QString());
+	if(iface.isDiskWriteProtected())
+		return CBM::ErrWriteProtectOn;
+
+	FileDriverBase* driver = NULL;
+	const QString label(newParams[0]);
+	bool hasExt = hasExtension(label);
+	// prefer using current driver...
+	if(NULL not_eq iface.currentFileDriver()) {
+		// ...but only if it supports the extension or the disk label was specified without extension.
+		if(iface.currentFileDriver()->supportsType(label) or not hasExt)
+			driver = iface.currentFileDriver();
+	}
+	if(NULL == driver and hasExt)
+		driver = iface.driverForFile(label);
+
+	if(driver) {
+		// if we got a driver, use that to do the newdisk but without extension.
+		QString id(newParams.count() > 1 ? newParams[1] : QString());
+		result = driver->newDisk(withoutExtension(label), id);
+	}
+	else
+		result = CBM::ErrDriveNotReady;	// Probably best error suitable for this situation.
+	return result;
 } // NewDisk
 
 
 CBM::IOErrorMessage Scratch::process(const QByteArray &params, Interface &iface)
 {
 	const QString file(params);
-	// TODO: check write protect here!
+	if(iface.isDiskWriteProtected())
+		return CBM::ErrWriteProtectOn;
 	// TODO: Check that there is no path stuff in the name, we don't like that here.
 	// TODO: Support drive number (e.g. S0:<file>)
 	Log(FACDOS, info, QString("About to scratch file: %1").arg(file));
@@ -102,6 +125,9 @@ CBM::IOErrorMessage RenameFile::process(const QByteArray& params, Interface& ifa
 	if(not iface.currentFileDriver()->fileExists(oldName))
 		return CBM::ErrFileNotFound;
 
+	if(iface.isDiskWriteProtected())
+		return CBM::ErrWriteProtectOn;
+
 	// NOTE: Need to check here whether the file is renamed across paths or not?
 
 	Log(FACDOS, info, QString("About to rename file: %1 to %2").arg(oldName, newName));
@@ -127,6 +153,8 @@ CBM::IOErrorMessage CopyFiles::process(const QByteArray& params, Interface& ifac
 	if(isIllegalCBMName(destName))
 		return CBM::ErrSyntaxError;
 	Log(FACDOS, info, QString("Reached copy3"));
+	if(iface.isDiskWriteProtected())
+		return CBM::ErrWriteProtectOn;
 
 	// check availability and validity of source file name(s).
 	const QStringList sourceList(paramList[1].split(QChar(',')));
@@ -256,6 +284,7 @@ CBM::IOErrorMessage DeviceAddress::process(const QByteArray& params, Interface& 
 	Q_UNUSED(iface);
 	return CBM::ErrNotImplemented;
 } // DeviceAddress
+
 
 // This is totally f'ed up right now. Fix so that it works as sd2iec.
 // http://sd2iec.de/cgi-bin/gitweb.cgi?p=sd2iec.git;a=blob_plain;f=README

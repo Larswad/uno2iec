@@ -111,11 +111,10 @@ bool FileDriverBase::setCurrentDirectory(const QString& dir)
 } // setCurrentDirectory
 
 
-CBM::IOErrorMessage FileDriverBase::newDisk(const QString& name, const QString& id, bool mount)
+CBM::IOErrorMessage FileDriverBase::newDisk(const QString& name, const QString& id)
 {
 	Q_UNUSED(name);
 	Q_UNUSED(id);
-	Q_UNUSED(mount);
 	// This may also mean it is not applicable to the image type in question.
 	return CBM::ErrNotImplemented;
 } // newDisk

@@ -65,9 +65,9 @@ SOURCES += main.cpp\
         settingsdialog.cpp \
         doscommands.cpp \
         x64driver.cpp \
-    logfiltersetup.cpp \
-    qcmdtextedit.cpp \
-    mountspecificfile.cpp
+        logfiltersetup.cpp \
+        qcmdtextedit.cpp \
+        mountspecificfile.cpp
 
 HEADERS += mainwindow.hpp \
         t64driver.hpp \
@@ -85,15 +85,16 @@ HEADERS += mainwindow.hpp \
         doscommands.hpp \
         uno2iec/cbmdefines.h \
         x64driver.hpp \
-    logfiltersetup.hpp \
-    qcmdtextedit.h \
-    mountspecificfile.h
+        logfiltersetup.hpp \
+        qcmdtextedit.h \
+        mountspecificfile.h \
+        utils.hpp
 
 FORMS += mainwindow.ui \
         aboutdialog.ui \
         settingsdialog.ui \
-    logfiltersetup.ui \
-    mountspecificfile.ui
+        logfiltersetup.ui \
+        mountspecificfile.ui
 
 OTHER_FILES += \
         changes.txt \

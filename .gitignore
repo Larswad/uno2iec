@@ -20,3 +20,6 @@ qrc_resources.cpp
 received.txt
 
 /rpi2iec_plugin_import.cpp
+
+simulated.prg
+

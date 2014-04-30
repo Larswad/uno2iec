@@ -93,7 +93,7 @@ public:
 
 	// Initialize (format) a disk with the given name and id (id can be empty). The extension can be used to further
 	// determine the actual image type.
-	virtual CBM::IOErrorMessage newDisk(const QString& name, const QString& id, bool mount = true);
+	virtual CBM::IOErrorMessage newDisk(const QString& name, const QString& id);
 
 protected:
 	// Status of the driver:

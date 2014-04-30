@@ -246,21 +246,30 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 	// assume fall back result
 	m_openState = O_NOTHING;
 
-	// Either a single back arrow or double slash takes the command relative parent folder or 'up' from the current image.
-	if(not cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1() and cmd not_eq QString("%1%1").arg(CBM_BACK_ARROW)) {
-		moveToParentOrNativeFS();
+	// remove leading ':' as they have no meaning (but do so in sd2iec for separation).
+	while(not cmd.isEmpty() and ':' == cmd.at(0))
 		cmd.remove(0, 1);
-	}
-	else while((cmd.size() >= 2 and "//" == cmd.left(2))) {
-		moveToParentOrNativeFS();
+	// remove leading single '/' as they have no meaning (but do so in sd2iec for separation).
+	if((cmd.size() >= 2 and '/' == cmd.at(0) and '/' not_eq cmd.at(1)) or (cmd.size() == 1 and '/' == cmd.at(0)))
+		cmd.remove(0, 1);
+	// handle root
+	if(cmd.size() >= 2 and cmd.left(2) == "//") {
 		cmd.remove(0, 2);
+		cmd.insert(0, '/');
 	}
 
+	// A single back arrow takes the command relative parent folder or 'up' from the current image.
+	if((not cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) and cmd.toLatin1() not_eq QString() + CBM_BACK_ARROW + CBM_BACK_ARROW) {
+		moveToParentOrNativeFS();
+		cmd.remove(0, 1);
+		m_openState = O_DIR; // Assuming directory change only, might change if rest of command line specifies something else.
+	}
 	// Check double back arrow first, it is a reset state.
-	if(cmd == QString("%1%1").arg(CBM_BACK_ARROW)) {
+	if(cmd.toLatin1() == QString() + CBM_BACK_ARROW + CBM_BACK_ARROW) {
 		// move to reset state of interface and make sure UI does not assume any mounted media as well.
 		reset(true);
 		Log(FAC_IFACE, success, "Resetting, going back to NativeFS and sending media info.");
+		m_openState = O_DIR;
 	}
 	else if(CBM_EXCLAMATION_MARKS == cmd) {
 		// to get the media info for any OTHER media, the '!!' should be used on the CBM side.
@@ -273,7 +282,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 		// open file depending on interface state
 		if(m_currFileDriver == &m_native) {
 			// Try if cd works, then try open as file and if none of these ok...then give up
-			if(QDir(cmd).exists() and m_native.setCurrentDirectory(cmd)) {
+			if(not cmd.isEmpty() and QDir(cmd).exists() and m_native.setCurrentDirectory(cmd)) {
 				Log(FAC_IFACE, success, QString("Changed to native FS directory: %1").arg(cmd));
 				if(0 not_eq m_pListener) // notify UI listener of change.
 					m_pListener->directoryChanged(QDir::currentPath());
@@ -281,18 +290,12 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 //				if(0 not_eq m_pListener)
 //					m_pListener->imageMounted(cmd, m_currFileDriver);
 			}
-			else if(m_native.mountHostImage(cmd)) {
+			else if(not cmd.isEmpty() and m_native.mountHostImage(cmd)) {
 				// File opened, investigate filetype
-				bool fsFound = false;
-				foreach(FileDriverBase* fs, m_fsList) {
-					// if extension matches ending characters in any file systems extension list, then we set that filesystem into use.
-					if((fsFound = fs->supportsType(cmd))) {
-						m_currFileDriver = fs;
-						break;
-					}
-				}
+				// if extension matches ending characters in any file systems extension list, then we set that filesystem into use.
+				m_currFileDriver = driverForFile(cmd);
 				// did we have a match?
-				if(fsFound) {
+				if(NULL not_eq m_currFileDriver) {
 					m_native.unmountHostImage();
 					Log(FAC_IFACE, info, QString("Trying image mount using driver: %1").arg(m_currFileDriver->extFriendly()));
 					// file extension matches, change interface state
@@ -318,15 +321,18 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 						retCode = CBM::ErrDriveNotReady;
 					}
 				}
-				else { // No specific file format for this file, stay in FAT and send as straight .PRG
+				else { // No specific file format for this file, stay in NATIVE fs and send as straight .PRG
+					m_currFileDriver = &m_native;
 					Log(FAC_IFACE, info, QString("No specific file format for the names extension: %1, assuming .PRG in native file mode.").arg(cmd));
 					m_openState = O_FILE;
 				}
 			}
 			else { // File not found, giveup.
-				Log(FAC_IFACE, warning, QString("File %1 not found. Returning FNF to CBM.").arg(cmd));
-				m_openState = O_NOTHING;
-				retCode = CBM::ErrFileNotFound;
+				if(not cmd.isEmpty() or O_NOTHING == m_openState) {
+					Log(FAC_IFACE, warning, QString("File %1 not found. Returning FNF to CBM.").arg(cmd));
+					m_openState = O_NOTHING;
+					retCode = CBM::ErrFileNotFound;
+				}
 			}
 		}
 		else if(0 not_eq m_currFileDriver) {
@@ -414,20 +420,22 @@ void Interface::processOpenCommand(uchar channel, const QByteArray& cmd, bool lo
 				const QString fileName(overWrite ? cmd.mid(1) : cmd);
 				if(fileName.isEmpty())
 					m_queuedError = CBM::ErrNoFileGiven;
-				else if(0 not_eq m_pListener and m_pListener->isWriteProtected())
+				else if(isDiskWriteProtected())
 					m_queuedError = CBM::ErrWriteProtectOn;
 				else {
 					m_queuedError = m_currFileDriver->fopenWrite(fileName, overWrite);
-					if(CBM::ErrOK not_eq m_queuedError)
-						m_openState = O_FILE_ERR;
-					else if(0 not_eq m_pListener) {
-						m_pListener->fileSaving(fileName);
+					if(CBM::ErrOK == m_queuedError) {
+						if(0 not_eq m_pListener)
+							m_pListener->fileSaving(fileName);
 						m_openState = overWrite ? O_SAVE_REPLACE : O_SAVE;
 					}
 				}
 			}
 			else
 				m_queuedError = CBM::ErrDriveNotReady;
+
+			if(CBM::ErrOK not_eq m_queuedError)
+				m_openState = O_FILE_ERR;
 
 			// The code return is according to the values of the IOErrorMessage enum.
 			sendOpenResponse((char)m_queuedError);
@@ -526,7 +534,17 @@ void Interface::processWriteFileRequest(const QByteArray& theBytes)
 } // processWriteFileRequest
 
 
-QString Interface::errorStringFromCode(CBM::IOErrorMessage code)
+FileDriverBase* Interface::driverForFile(const QString& name) const
+{
+	foreach(FileDriverBase* driver, m_fsList)
+		if(driver->supportsType(name))
+			return driver;
+
+	return NULL;
+} // driverForFile
+
+
+QString Interface::errorStringFromCode(CBM::IOErrorMessage code) const
 {
 	// Assume not found by pre-assigning the unknown message.
 	foreach(const QString& msg, s_IOErrorMessages)
