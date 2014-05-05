@@ -485,7 +485,8 @@ bool MainWindow::checkConnectRequest()
 		return false;
 
 	// extract version number.
-	ushort receivedProtoVersion = m_pendingBuffer.mid(connectPos + ConnectionString.length(), crPos - connectPos).toInt();
+	const QString verString(m_pendingBuffer.mid(connectPos + ConnectionString.length(), crPos - connectPos));
+	ushort receivedProtoVersion = verString.toInt();
 	if(CURRENT_UNO2IEC_PROTOCOL_VERSION not_eq receivedProtoVersion) {
 		Log("MAIN", error, QString("Received connection string from arduino, but the protocol version (%1) mismatched our "
 				"version (%2). Please upgrade arduino!")
@@ -510,8 +511,8 @@ bool MainWindow::checkConnectRequest()
 			.arg(QString::number(m_appSettings.dataPin))
 			.arg(QString::number(m_appSettings.resetPin))
 			.arg(QString::number(m_appSettings.srqInPin))
-			.arg(QTime::currentTime().toString("hh:mm:ss"))
-			.arg(QDate::currentDate().toString("yyyy-MM-dd"));
+			.arg(QDate::currentDate().toString("yyyy-MM-dd"))
+			.arg(QTime::currentTime().toString("hh:mm:ss"));
 
 	m_port.write(response.toLatin1().data());
 	// client is supposed to send it's facilities each start.
@@ -573,6 +574,8 @@ void MainWindow::simTimerExpiredNoResp()
 void MainWindow::simulateData(const QByteArray&) {}
 void MainWindow::delayedSimulate(ProcessingState, const QByteArray&) {}
 void MainWindow::simTimerExpired() {}
+void MainWindow::delayedSimNoResponse(ProcessingState, const QByteArray&) {}
+void MainWindow::simTimerExpiredNoResp() {}
 #endif
 
 void MainWindow::writePort(const QByteArray &data, bool flush)

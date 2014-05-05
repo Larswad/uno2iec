@@ -1,12 +1,17 @@
-                              UNO2IEC Change Log
+															UNO2IEC Change Log
 ================================================================================
+2014-05-05:
+* Fixed protocol version parsing in connection string, first try was buggy and didn't match properly.
+* Fixed date/time generation on host side and parsing on ardino side, both were buggy.
+* Removed some compilation errors caused by conditionals when compiling release.
+
 2014-04-30:
 * Added setting for specifying the border size (frame) in the CBM simulated list view. It is added in the
-  settings dialog and is an integer between 0 and 100. Useful if you don't want that frame to take up screen
-  estate. Nostalgic feeling however recommends a setting of 60 here (ehm, or even 64).
+	settings dialog and is an integer between 0 and 100. Useful if you don't want that frame to take up screen
+	estate. Nostalgic feeling however recommends a setting of 60 here (ehm, or even 64).
 * Added a utility.hpp header for placing very general helper functions, definitions (macros) or class(es).
 * Automounting of disk image when creating a new image through the new command is removed. It doesn't really work
-  in a nice way to propagate the mounting events when it comes indirectly like this.
+	in a nice way to propagate the mounting events when it comes indirectly like this.
 * Added disk write protect handling for dos commands new, scratch, rename.
 * Fixed/improved directory path parsing at beginning of path like slashes, colons, root specification etc.
 * Finalized M2I handling, newdisk, delete, rename, open for writing new/existing.
@@ -15,17 +20,17 @@
 2014-04-23:
 * Readded the srqIn pin number to be transferred in answer upon connection and made it persistent in settings again.
 * Modified connection answer string so that it contains date and time, arduino scans the string and stores the date
-  and time when receiving it.
+	and time when receiving it.
 * Host side check whether the protocol version matches when connect request is received. Refuse connection if mismatch
-  and issues error in application log. Current (first) protocol version is 1. The connection request string is now
-  changed to 'connect_arduino:<version>\r'
+	and issues error in application log. Current (first) protocol version is 1. The connection request string is now
+	changed to 'connect_arduino:<version>\r'
 * Only capital letters in protocol control characters are allowed. This is to differentiate the connection request
-  string from other control characters. This meant that the 'r'<size> sequence was changed to 'N'<size>.
+	string from other control characters. This meant that the 'r'<size> sequence was changed to 'N'<size>.
 * The connection request string can now be issued and is checked for even if it host side thinks it is connected.
-  This will cause reconnection if the arduino suddenly crashes or resets for unknown reason while connected and then
-  tries to reconnect.
+	This will cause reconnection if the arduino suddenly crashes or resets for unknown reason while connected and then
+	tries to reconnect.
 * The arduino interface class now handles date and time, it is prepared for serving date and time if requested by the CBM.
-  The IEC protocol part of this is not finished yet.
+	The IEC protocol part of this is not finished yet.
 
 2014-04-03:
 * Refined user interface to that minimum of control are shown leaving much more space for image list,
@@ -60,30 +65,30 @@ that gets new additions for each new thing to test.
 instead of being remembered like in a typical qtextedit control.
 
 
-                              MMC2IEC Change Log
+															MMC2IEC Change Log
 
 ================================================================================
 
 June 9, 2007: Version 0.8 : By Larsp. This version is on mmc2iec batch 1 units
 
 - Huge change to interface.c and d64driver.c and t64driver.c. A function pointer
-  interface is now utilized for the different file formats, cleaning up the code
-  and allowing elegant implementation of multiple file formats.
+	interface is now utilized for the different file formats, cleaning up the code
+	and allowing elegant implementation of multiple file formats.
 
 - Save-With-Replace implemented.
 
 - M2I file format introduced allowing 16 char petscii filenames with read/write
-  access. The file is a simple index with the petscii filenames and
-  corresponding FAT files.
+	access. The file is a simple index with the petscii filenames and
+	corresponding FAT files.
 
 - Command channel commands implemented. Scratch and Rename works in FAT mode and
-  in M2I mode they also work with wildcards. New disk also works and initializes
-  a new M2I file with the given name.
+	in M2I mode they also work with wildcards. New disk also works and initializes
+	a new M2I file with the given name.
 
 - Error channel messages implemented.
 
 - Device 10/8 selection jumper implemented. In conjunction with device 9/8
-  jumper, device 8, 9, 10, 11 is now selectable.
+	jumper, device 8, 9, 10, 11 is now selectable.
 
 - IEC_driver.c now actually uses config.h settings.
 
@@ -92,21 +97,21 @@ June 9, 2007: Version 0.8 : By Larsp. This version is on mmc2iec batch 1 units
 May 13, 2007: Version 0.7 : By Larsp
 
 - config.h introduced. Hardware configuration and other flags are defined in
-  this file. It is also possible to disable v0.7 hardware features, to make
-  hardware requirements equivalent to v0.6.
+	this file. It is also possible to disable v0.7 hardware features, to make
+	hardware requirements equivalent to v0.6.
 
 - IEC protocol has been fixed to allow multiple IEC devices on the bus.
 
 - Mechanical card detect switch is taken advantage of now. When no card is
-  present, ?FILE NOT FOUND occurs. When a card is present, it is repeatedly
-  initialized (BUSY LED flashes) until successful. This feature practically
-  eliminates the need to use load"<<",8 to initialize the card.
+	present, ?FILE NOT FOUND occurs. When a card is present, it is repeatedly
+	initialized (BUSY LED flashes) until successful. This feature practically
+	eliminates the need to use load"<<",8 to initialize the card.
 
 - Mechanical write protect switch implemented. The sdcard module will fail to
-  write sectors if write protect.
+	write sectors if write protect.
 
 - Minor space savings and improvements in FAT driver. If FAT driver fails to
-  write changes back (e.g. write protect), DIRTY LED will simply keep being lit.
+	write changes back (e.g. write protect), DIRTY LED will simply keep being lit.
 
 - Device 9/8 selection jumper implemented.
 
@@ -115,12 +120,12 @@ May 13, 2007: Version 0.7 : By Larsp
 April 24, 2007: Version 0.6.1 : By Spaceman Spiff
 
 - Zapped the hex2char function from util.c. This function is not used, and was
-  not correct.
+	not correct.
 
 - Fixed a lot of string types to signed char instead of unsigned char, since this
-  is the default for the C library functions. This gets rid of the "passing arg xx
-  to function yyyyy differ in signedness" which otherwise happens with newer
-  compilers.
+	is the default for the C library functions. This gets rid of the "passing arg xx
+	to function yyyyy differ in signedness" which otherwise happens with newer
+	compilers.
 
 
 ================================================================================

@@ -140,7 +140,7 @@ static void waitForPeer()
 
 	// Now read the whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(Serial.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
-		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u|%u|%u:%u:%u.%u-%u-%u"),
+		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u|%u|%u-%u-%u.%u:%u:%u"),
 						 &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin, &srqInPin,
 						 &year, &month, &day, &hour, &minute, &second);
 
@@ -155,6 +155,9 @@ static void waitForPeer()
 	sprintf_P(tempBuffer, (PGM_P)F("CONNECTED, READY FOR IEC DATA WITH CBM AS DEV %u."), deviceNumber);
 	Log(Success, 'M', tempBuffer);
 	Serial.flush();
-	sprintf_P(tempBuffer, (PGM_P)F("IEC pins: ATN:%u CLK:%u DATA:%u RST:%u"), atnPin, clockPin, dataPin, resetPin);
+	sprintf_P(tempBuffer, (PGM_P)F("IEC pins: ATN:%u CLK:%u DATA:%u RST:%u SRQIN:%u"), atnPin, clockPin, dataPin,
+						resetPin, srqInPin);
+	Log(Information, 'M', tempBuffer);
+	sprintf_P(tempBuffer, (PGM_P)F("Arduino time set to: %04u-%02u-%02u.%02u:%02u:%02u"), year, month, day, hour, minute, second);
 	Log(Information, 'M', tempBuffer);
 } // waitForPeer

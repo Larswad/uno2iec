@@ -124,10 +124,10 @@ private:
 	ushort m_totalReadWritten;
 	QString m_loadSaveName;
 	QFileSystemWatcher m_fsWatcher;
-#ifdef QT_DEBUG
+//#ifdef QT_DEBUG
 	QByteArray m_delayedData;
 	QFile m_simFile;
-#endif
+//#endif
 
 	enum ProcessingState {
 		simsOff,					// No simulation, a REAL command.
