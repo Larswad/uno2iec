@@ -54,7 +54,7 @@ const QStringList s_IOErrorMessages = QStringList()
 		<< "72,DISK FULL"
 		<< "73,UNO2IEC DOS V0.2"
 		<< "74,DRIVE NOT READY"
-		<< "97,RPI SERIAL ERR."	// Specific error to this emulated device, serial communication has gone out of sync.
+		<< "97,UNO SERIAL ERR."	// Specific error to this emulated device, serial communication has gone out of sync.
 		<< "98,NOT IMPLEMENTED";
 
 const QString s_unknownMessage = "99,UNKNOWN ERROR";
@@ -368,7 +368,7 @@ void Interface::processOpenCommand(uchar channel, const QByteArray& cmd, bool lo
 	switch(channel) {
 		case CBM::CMD_CHANNEL:
 			// command channel command, or request for status if empty.
-			if(cmd.isEmpty()) {
+			if(cmd.isEmpty() or (cmd.length() == 1 and cmd.at(0) == '\r')) {
 				// Response: ><code><CR>
 				// The code return is according to the values of the IOErrorMessage enum.
 				// send back m_queuedError to uno.
@@ -383,6 +383,8 @@ void Interface::processOpenCommand(uchar channel, const QByteArray& cmd, bool lo
 				Log(FAC_IFACE, m_queuedError == CBM::ErrOK ? success : error, QString("CmdChannel_Response code: %1 = '%2'")
 						.arg(QString::number(m_queuedError)).arg(errorStringFromCode(m_queuedError)));
 			}
+			// Note: This MAY be actually an OPEN file instead so that close should return file name in this case too.
+			m_openState = O_CMD;
 			break;
 
 		case CBM::READPRG_CHANNEL:
@@ -454,20 +456,24 @@ void Interface::processCloseCommand()
 {
 	QString name = m_currFileDriver->openedFileName();
 	QByteArray data;
-	// Small 'n' means last operation was a save operation.
-	data.append(m_openState == O_SAVE or m_openState == O_SAVE_REPLACE ? 'n' : 'N').append((char)name.length()).append(name);
-	write(data);
-	if(0 not_eq m_pListener) // notify UI listener of change.
-		m_pListener->fileClosed(name);
-	Log(FAC_IFACE, info, QString("Close: Returning last opened file name: %1").arg(name));
-	if(not m_currFileDriver->close()) {
-		m_currFileDriver = &m_native;
-		if(0 not_eq m_pListener)
-			m_pListener->imageUnmounted();
+	if(m_openState == O_SAVE or m_openState == O_SAVE_REPLACE or m_openState == O_FILE) {
+		// Small 'n' means last operation was a save operation.
+		data.append(m_openState == O_SAVE or m_openState == O_SAVE_REPLACE ? 'n' : 'N').append((char)name.length()).append(name);
+		if(0 not_eq m_pListener) // notify UI listener of change.
+			m_pListener->fileClosed(name);
+		Log(FAC_IFACE, info, QString("Close: Returning last opened file name: %1").arg(name));
+		if(not m_currFileDriver->close()) {
+			m_currFileDriver = &m_native;
+			if(0 not_eq m_pListener)
+				m_pListener->imageUnmounted();
+		}
 	}
-	// FIXME: Maybe this should not be set to ok here, it is up to the last processRead/Write operation to set that?
-	// That is depending on whether reading failed or writing failed (e.g. full disk).
-	m_queuedError = CBM::ErrOK;
+	else {
+		// Means CLOSED and the drive number (that MAY have changed due to a comamnd).
+		data.append('C').append(deviceNumber());
+	}
+	write(data);
+	m_openState = O_NOTHING;
 } // processCloseCommand
 
 

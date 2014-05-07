@@ -19,7 +19,8 @@ enum OpenState {
 	O_DIR,					// A listing is requested
 	O_FILE_ERR,			// Incorrect file format opened
 	O_SAVE,					// A program file is opened for writing
-	O_SAVE_REPLACE	// "---", but Save-with-replace is requested
+	O_SAVE_REPLACE,	// "---", but Save-with-replace is requested
+	O_CMD						//  Command channel was opened
 };
 
 
@@ -39,6 +40,8 @@ public:
 		virtual void bytesWritten(uint numBytes) = 0;
 		virtual void fileClosed(const QString& lastFileName) = 0;
 		virtual bool isWriteProtected() const = 0;
+		virtual ushort deviceNumber() const = 0;
+		virtual void setDeviceNumber(ushort deviceNumber) = 0;
 		virtual void deviceReset() = 0;
 		/// Write AND flush the data to the serial port, IF open.
 		virtual void writePort(const QByteArray& data, bool flush = true) = 0;
@@ -56,6 +59,18 @@ public:
 	bool isDiskWriteProtected() const
 	{
 		return NULL == m_pListener or m_pListener->isWriteProtected();
+	}
+
+	ushort deviceNumber() const
+	{
+		return NULL == m_pListener ? 8 : m_pListener->deviceNumber();
+	}
+
+
+	void setDeviceNumber(ushort deviceNumber)
+	{
+		if(NULL not_eq m_pListener)
+			m_pListener->setDeviceNumber(deviceNumber);
 	}
 
 	// State specific: CBM requests a single directory line from us.

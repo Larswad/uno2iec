@@ -280,9 +280,15 @@ CBM::IOErrorMessage VC20ModeOnOff::process(const QByteArray& params, Interface& 
 
 CBM::IOErrorMessage DeviceAddress::process(const QByteArray& params, Interface& iface)
 {
-	Q_UNUSED(params);
-	Q_UNUSED(iface);
-	return CBM::ErrNotImplemented;
+	bool status;
+	int newDriveNum(QString(params).toInt(&status));
+	// only allow the valid range for this.
+	if(not status or newDriveNum < 4 or newDriveNum > 30)
+		return CBM::ErrSyntaxError;
+	Log(FACDOS, success, QString("Now changing device adress from #%1 to #%2").arg(iface.deviceNumber()).arg(newDriveNum));
+	iface.setDeviceNumber(newDriveNum);
+
+	return CBM::ErrOK;
 } // DeviceAddress
 
 

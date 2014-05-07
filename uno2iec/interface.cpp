@@ -561,8 +561,8 @@ void Interface::handleATNCmdCodeDataListen()
 
 		if(ErrOK == m_queuedError)
 			saveFile();
-		else // FIXME: Check what the drive does here when saving goes wrong. FNF is probably not right. Dummyread entire buffer from CBM?
-			m_iec.sendFNF();
+//		else // FIXME: Check what the drive does here when saving goes wrong. FNF is probably not right. Dummyread entire buffer from CBM?
+//			m_iec.sendFNF();
 	}
 } // handleATNCmdCodeDataListen
 
@@ -594,5 +594,9 @@ void Interface::handleATNCmdClose()
 			sprintf_P(serCmdIOBuf, (PGM_P)F("Exp: %d chars, got %d."), len, actual);
 			Log(Error, FAC_IFACE, serCmdIOBuf);
 		}
+	}
+	else if('C' == resp) {
+		if(m_iec.deviceNumber() not_eq serCmdIOBuf[1])
+			m_iec.setDeviceNumber(serCmdIOBuf[1]);
 	}
 } // handleATNCmdClose

@@ -87,7 +87,7 @@ public:
 	//
 	byte receive();
 
-	inline byte deviceNumber() const;
+	byte deviceNumber() const;
 	void setDeviceNumber(const byte deviceNumber);
 	void setPins(byte atn, byte clock, byte data, byte srqIn, byte reset);
 	IECState state() const;

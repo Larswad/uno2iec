@@ -1,5 +1,17 @@
 															UNO2IEC Change Log
 ================================================================================
+2014-05-08:
+* Understanding the device number change command U0>n Changes on the fly if the close command comes.
+	Will need to detect this with the M-W command too.
+* Protocol change to version #2 since close command now returns 'C' if last command was not LOAD/SAVE file.
+* Fixed the detection of the version string (again), the problem was that the pendingBuffer was not cleared.
+* Splitting string will keep empty when adding to dirlist window: This might cause some string to have some
+	unexpected extra line endings.
+* Not sending FNF when save fails. Not sure if SAVE can detect errors???
+* NOT clearing the queuedError when getting the close command. This would wrongly clear code before the error
+	channel has been read out.
+* Settings dialog now accepts drive number 4-30.
+
 2014-05-05:
 * Fixed protocol version parsing in connection string, first try was buggy and didn't match properly.
 * Fixed date/time generation on host side and parsing on ardino side, both were buggy.

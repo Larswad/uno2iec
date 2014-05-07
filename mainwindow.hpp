@@ -54,6 +54,8 @@ public:
 	void bytesWritten(uint numBytes);
 	void fileClosed(const QString &lastFileName);
 	bool isWriteProtected() const;
+	ushort deviceNumber() const;
+	void setDeviceNumber(ushort deviceNumber);
 	void deviceReset();
 	void writePort(const QByteArray& data, bool flush);
 

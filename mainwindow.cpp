@@ -491,6 +491,7 @@ bool MainWindow::checkConnectRequest()
 		Log("MAIN", error, QString("Received connection string from arduino, but the protocol version (%1) mismatched our "
 				"version (%2). Please upgrade arduino!")
 				.arg(receivedProtoVersion).arg(CURRENT_UNO2IEC_PROTOCOL_VERSION));
+		m_pendingBuffer.clear();
 		return false;
 	}
 
@@ -737,7 +738,7 @@ void MainWindow::onCommandIssued(const QString& cmd)
 	else if((cmd[0] == '/' or cmd[0] == '%')) {
 		// Load a basic program into ram.
 		 if(params.isEmpty())
-			 writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
+			 writeTextToDirList("?SYNTAX ERROR\nREADY.");
 		 else {
 			 m_simulatedState = simsOpenResponse;
 			 m_simFile.setFileName("simulated.prg");
@@ -755,7 +756,7 @@ void MainWindow::onCommandIssued(const QString& cmd)
 	}
 	else {
 		// unknown command, send syntax error.
-		writeTextToDirList("?SYNTAX ERROR\nREADY.\n");
+		writeTextToDirList("?SYNTAX ERROR\nREADY.");
 	}
 } // onCommandIssued
 
@@ -1240,7 +1241,7 @@ void MainWindow::fileLoading(const QString& fileName, ushort fileSize)
 	ui->loadProgress->show();
 	m_totalReadWritten = 0;
 	ui->loadProgress->setValue(m_totalReadWritten);
-	writeTextToDirList(QString("LOAD\"%1\",%2\nSEARCHING FOR %1\nLOADING\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
+	writeTextToDirList(QString("LOAD\"%1\",%2\n\nSEARCHING FOR %1\nLOADING").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 	cbmCursorVisible(false);
 } // fileLoading
 
@@ -1251,7 +1252,7 @@ void MainWindow::fileSaving(const QString& fileName)
 	ui->loadProgress->hide();
 	ui->progressInfoText->clear();
 	ui->progressInfoText->setEnabled(true);
-	writeTextToDirList(QString("SAVE\"%1\",%2\n\nSAVING %1\n").arg(fileName, QString::number(m_appSettings.deviceNumber)));
+	writeTextToDirList(QString("SAVE\"%1\",%2\n\nSAVING %1").arg(fileName, QString::number(m_appSettings.deviceNumber)));
 	QTextCursor cursor = ui->imageDirList->textCursor();
 	m_totalReadWritten = 0;
 	cbmCursorVisible(false);
@@ -1278,7 +1279,7 @@ void MainWindow::writeTextToDirList(const QString& text, bool atCursorPos)
 	QColor bgColor, frColor, fgColor;
 	getBgFrAndFgColors(bgColor, frColor, fgColor);
 	QTextCursor c = ui->imageDirList->textCursor();
-	QStringList lines = text.split(QRegExp("[\r\n]"), QString::SkipEmptyParts);
+	QStringList lines = text.split(QRegExp("[\r\n]"), QString::KeepEmptyParts);
 	if(not atCursorPos)
 		c.movePosition(QTextCursor::End);
 	foreach(QString line, lines) {
@@ -1331,7 +1332,7 @@ void MainWindow::fileClosed(const QString& lastFileName)
 	ui->loadProgress->setEnabled(false);
 	ui->loadProgress->setValue(0);
 	ui->loadProgress->show();
-	writeTextToDirList("READY.\n");
+	writeTextToDirList("READY.");
 	cbmCursorVisible();
 } // fileClosed
 
@@ -1340,6 +1341,18 @@ bool MainWindow::isWriteProtected() const
 {
 	return ui->actionDisk_Write_Protected->isChecked();
 } // isWriteProtected
+
+
+ushort MainWindow::deviceNumber() const
+{
+	return m_appSettings.deviceNumber;
+} // deviceNumber
+
+
+void MainWindow::setDeviceNumber(ushort deviceNumber)
+{
+	m_appSettings.deviceNumber = deviceNumber;
+} // setDeviceNumber
 
 
 void MainWindow::deviceReset()
