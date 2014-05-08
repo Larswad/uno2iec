@@ -149,11 +149,11 @@ bool Interface::removeFilePrefix(QString& cmd) const
 } // removeFilePrefix
 
 
-void Interface::moveToParentOrNativeFS()
+void Interface::moveToParentOrNativeFS(bool toRoot)
 {
 	// Exit current file format or cd..
 	if(m_currFileDriver == &m_native) {
-		m_currFileDriver->setCurrentDirectory("..");
+		m_native.setCurrentDirectory(toRoot ? "/" : "..");
 		if(0 not_eq m_pListener) // notify UI listener of change.
 			m_pListener->directoryChanged(QDir::currentPath());
 		m_openState = O_DIR;
@@ -164,6 +164,11 @@ void Interface::moveToParentOrNativeFS()
 		m_openState = O_DIR;
 		if(0 not_eq m_pListener)
 			m_pListener->imageUnmounted();
+		if(toRoot) {
+			m_native.setCurrentDirectory("/");
+			if(0 not_eq m_pListener) // notify UI listener of change.
+				m_pListener->directoryChanged(QDir::currentPath());
+		}
 	}
 } // moveToParentOrNativeFS
 
@@ -246,6 +251,7 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 	// assume fall back result
 	m_openState = O_NOTHING;
 
+	cmd.replace("/:", "/");
 	// remove leading ':' as they have no meaning (but do so in sd2iec for separation).
 	while(not cmd.isEmpty() and ':' == cmd.at(0))
 		cmd.remove(0, 1);
@@ -255,14 +261,13 @@ CBM::IOErrorMessage Interface::openFile(const QString& cmdString)
 	// handle root
 	if(cmd.size() >= 2 and cmd.left(2) == "//") {
 		cmd.remove(0, 2);
-		cmd.insert(0, '/');
+		moveToParentOrNativeFS(true);
 	}
 
 	// A single back arrow takes the command relative parent folder or 'up' from the current image.
 	if((not cmd.isEmpty() and CBM_BACK_ARROW == cmd.at(0).toLatin1()) and cmd.toLatin1() not_eq QString() + CBM_BACK_ARROW + CBM_BACK_ARROW) {
-		moveToParentOrNativeFS();
+		moveToParentOrNativeFS(false);
 		cmd.remove(0, 1);
-		m_openState = O_DIR; // Assuming directory change only, might change if rest of command line specifies something else.
 	}
 	// Check double back arrow first, it is a reset state.
 	if(cmd.toLatin1() == QString() + CBM_BACK_ARROW + CBM_BACK_ARROW) {

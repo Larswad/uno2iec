@@ -1,15 +1,24 @@
-															UNO2IEC Change Log
+                              UNO2IEC Change Log
 ================================================================================
 2014-05-08:
+* Answering with a negative string if the protocol version mismatch. This is to prevent the Arduino to keep asking
+  the host for connection repeatedly. Note: Support for negative answer string not yet added to Arduino side!
+* Added all binary files to project in the .pro file into the 'other files' category.
+* The cbm dirlist view now converts the underscore and circumflex characters to display the CBM font left and up
+  arrows. This makes it look more correct when entering (testing with) dos-wedge commands.
+* The macro for declaration of dos command class in the header now makes it much more compact to declare a new command.
+* Allowing unlimited amount of aliases (abbreviations) for a dos command.
+* Further improved the parsing of leading characters in a command string (directory backslashes should EITHER move
+  up from an image or to the parent directory level
 * Understanding the device number change command U0>n Changes on the fly if the close command comes.
-	Will need to detect this with the M-W command too.
+  Will need to detect this with the M-W command too.
 * Protocol change to version #2 since close command now returns 'C' if last command was not LOAD/SAVE file.
 * Fixed the detection of the version string (again), the problem was that the pendingBuffer was not cleared.
 * Splitting string will keep empty when adding to dirlist window: This might cause some string to have some
-	unexpected extra line endings.
+  unexpected extra line endings.
 * Not sending FNF when save fails. Not sure if SAVE can detect errors???
 * NOT clearing the queuedError when getting the close command. This would wrongly clear code before the error
-	channel has been read out.
+  channel has been read out.
 * Settings dialog now accepts drive number 4-30.
 
 2014-05-05:
@@ -19,11 +28,11 @@
 
 2014-04-30:
 * Added setting for specifying the border size (frame) in the CBM simulated list view. It is added in the
-	settings dialog and is an integer between 0 and 100. Useful if you don't want that frame to take up screen
-	estate. Nostalgic feeling however recommends a setting of 60 here (ehm, or even 64).
+  settings dialog and is an integer between 0 and 100. Useful if you don't want that frame to take up screen
+  estate. Nostalgic feeling however recommends a setting of 60 here (ehm, or even 64).
 * Added a utility.hpp header for placing very general helper functions, definitions (macros) or class(es).
 * Automounting of disk image when creating a new image through the new command is removed. It doesn't really work
-	in a nice way to propagate the mounting events when it comes indirectly like this.
+  in a nice way to propagate the mounting events when it comes indirectly like this.
 * Added disk write protect handling for dos commands new, scratch, rename.
 * Fixed/improved directory path parsing at beginning of path like slashes, colons, root specification etc.
 * Finalized M2I handling, newdisk, delete, rename, open for writing new/existing.
@@ -32,75 +41,75 @@
 2014-04-23:
 * Readded the srqIn pin number to be transferred in answer upon connection and made it persistent in settings again.
 * Modified connection answer string so that it contains date and time, arduino scans the string and stores the date
-	and time when receiving it.
+  and time when receiving it.
 * Host side check whether the protocol version matches when connect request is received. Refuse connection if mismatch
-	and issues error in application log. Current (first) protocol version is 1. The connection request string is now
-	changed to 'connect_arduino:<version>\r'
+  and issues error in application log. Current (first) protocol version is 1. The connection request string is now
+  changed to 'connect_arduino:<version>\r'
 * Only capital letters in protocol control characters are allowed. This is to differentiate the connection request
-	string from other control characters. This meant that the 'r'<size> sequence was changed to 'N'<size>.
+  string from other control characters. This meant that the 'r'<size> sequence was changed to 'N'<size>.
 * The connection request string can now be issued and is checked for even if it host side thinks it is connected.
-	This will cause reconnection if the arduino suddenly crashes or resets for unknown reason while connected and then
-	tries to reconnect.
+  This will enable reconnection even if the arduino suddenly crashes or resets for unknown reason while connected and
+  then tries to reconnect.
 * The arduino interface class now handles date and time, it is prepared for serving date and time if requested by the CBM.
-	The IEC protocol part of this is not finished yet.
+  The IEC protocol part of this is not finished yet.
 
 2014-04-03:
 * Refined user interface to that minimum of control are shown leaving much more space for image list,
-and directory list. Much more efficient in space. New dialog for mounting specific file at given location.
-Added to settings dialog the image directory path instead of main dialog.
+  and directory list. Much more efficient in space. New dialog for mounting specific file at given location.
+  Added to settings dialog the image directory path instead of main dialog.
 * Added new icons for menus and some other buttons that was missing icons.
 
 2014-03-25:
 * In both the arduino and Qt application the open command 'O' has changed
-the format so that it is counted with a length specifier instead of CR or zero termination.
-Reason is that commands may contain any byte, for instance if is writing data to 1541 memory or raw.
+  the format so that it is counted with a length specifier instead of CR or zero termination.
+  Reason is that commands may contain any byte, for instance if is writing data to 1541 memory or raw.
 * In FileDriverBase added virtual method supportsType where a file system can be inquired whether
-it supports the given file by checking its extension.
-The method default implementation uses the extension() method to enumerate all file extension
-and find out whether it is available.
+  it supports the given file by checking its extension.
+  The method default implementation uses the extension() method to enumerate all file extension
+  and find out whether it is available.
 * Added virtual newDisk (format) method in filedriverbase. Only M2I format supports this as of now.
-This should be added support for T64, D64, G64 further on. Only skeleton in D64 exists,
-unsure how to call it as an instance method though.
+  This should be added support for T64, D64, G64 further on. Only skeleton in D64 exists,
+  unsure how to call it as an instance method though.
 * Renamed openHostFile and closeHostFile to mountHostImage and unmountHostImage as more suitful names.
 * dos copy command implemented parsing for, but only implemented for nativefs.
 * Memory Write command implemented to some extent, but must be tested still!
 * All dos commands are now parsed as byte arrays and not as qstrings because they must be terminated
-with a container that uses length specifier and not zero terminations.
+  with a container that uses length specifier and not zero terminations.
 * Made some code refactoring and tidying in the interface class on the Qt side.
 * File writing/creation in M2I-container added. But this is still needed to be tested, probably not working yet.
 * Added simulation of dos commands (in 'wedge' style) entered in the cbm-view. This is only added for debug
-builds and is used to test implementations without having to rig the complete system with hardware and all.
-Testing is added with parsing of command and results by using a simulated state-machine controlled with an enum
-that gets new additions for each new thing to test.
+  builds and is used to test implementations without having to rig the complete system with hardware and all.
+  Testing is added with parsing of command and results by using a simulated state-machine controlled with an enum
+  that gets new additions for each new thing to test.
 * BUGFIX: The resetPin assignment was not made persistent with QSettings, only read out with default value.
 * NEW: CBM-view now simulates a more true to the nature scrolling cbm screen where text at top and bottom disappears
-instead of being remembered like in a typical qtextedit control.
+  instead of being remembered like in a typical qtextedit control.
 
 
-															MMC2IEC Change Log
+                              MMC2IEC Change Log
 
 ================================================================================
 
 June 9, 2007: Version 0.8 : By Larsp. This version is on mmc2iec batch 1 units
 
 - Huge change to interface.c and d64driver.c and t64driver.c. A function pointer
-	interface is now utilized for the different file formats, cleaning up the code
-	and allowing elegant implementation of multiple file formats.
+  interface is now utilized for the different file formats, cleaning up the code
+  and allowing elegant implementation of multiple file formats.
 
 - Save-With-Replace implemented.
 
 - M2I file format introduced allowing 16 char petscii filenames with read/write
-	access. The file is a simple index with the petscii filenames and
-	corresponding FAT files.
+  access. The file is a simple index with the petscii filenames and
+  corresponding FAT files.
 
 - Command channel commands implemented. Scratch and Rename works in FAT mode and
-	in M2I mode they also work with wildcards. New disk also works and initializes
-	a new M2I file with the given name.
+  in M2I mode they also work with wildcards. New disk also works and initializes
+  a new M2I file with the given name.
 
 - Error channel messages implemented.
 
 - Device 10/8 selection jumper implemented. In conjunction with device 9/8
-	jumper, device 8, 9, 10, 11 is now selectable.
+  jumper, device 8, 9, 10, 11 is now selectable.
 
 - IEC_driver.c now actually uses config.h settings.
 
@@ -109,21 +118,21 @@ June 9, 2007: Version 0.8 : By Larsp. This version is on mmc2iec batch 1 units
 May 13, 2007: Version 0.7 : By Larsp
 
 - config.h introduced. Hardware configuration and other flags are defined in
-	this file. It is also possible to disable v0.7 hardware features, to make
-	hardware requirements equivalent to v0.6.
+  this file. It is also possible to disable v0.7 hardware features, to make
+  hardware requirements equivalent to v0.6.
 
 - IEC protocol has been fixed to allow multiple IEC devices on the bus.
 
 - Mechanical card detect switch is taken advantage of now. When no card is
-	present, ?FILE NOT FOUND occurs. When a card is present, it is repeatedly
-	initialized (BUSY LED flashes) until successful. This feature practically
-	eliminates the need to use load"<<",8 to initialize the card.
+  present, ?FILE NOT FOUND occurs. When a card is present, it is repeatedly
+  initialized (BUSY LED flashes) until successful. This feature practically
+  eliminates the need to use load"<<",8 to initialize the card.
 
 - Mechanical write protect switch implemented. The sdcard module will fail to
-	write sectors if write protect.
+  write sectors if write protect.
 
 - Minor space savings and improvements in FAT driver. If FAT driver fails to
-	write changes back (e.g. write protect), DIRTY LED will simply keep being lit.
+  write changes back (e.g. write protect), DIRTY LED will simply keep being lit.
 
 - Device 9/8 selection jumper implemented.
 
@@ -132,12 +141,12 @@ May 13, 2007: Version 0.7 : By Larsp
 April 24, 2007: Version 0.6.1 : By Spaceman Spiff
 
 - Zapped the hex2char function from util.c. This function is not used, and was
-	not correct.
+  not correct.
 
 - Fixed a lot of string types to signed char instead of unsigned char, since this
-	is the default for the C library functions. This gets rid of the "passing arg xx
-	to function yyyyy differ in signedness" which otherwise happens with newer
-	compilers.
+  is the default for the C library functions. This gets rid of the "passing arg xx
+  to function yyyyy differ in signedness" which otherwise happens with newer
+  compilers.
 
 
 ================================================================================

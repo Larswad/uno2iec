@@ -56,6 +56,7 @@ EmulatorPaletteMap emulatorPalettes;
 CbmMachineThemeMap machineThemes;
 
 const QString OkString = "OK>%1|%2|%3|%4|%5|%6|%7.%8\r";
+const QString NOkString = "NOK>\r";
 const QString ConnectionString = "connect_arduino:";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
 
@@ -489,9 +490,11 @@ bool MainWindow::checkConnectRequest()
 	ushort receivedProtoVersion = verString.toInt();
 	if(CURRENT_UNO2IEC_PROTOCOL_VERSION not_eq receivedProtoVersion) {
 		Log("MAIN", error, QString("Received connection string from arduino, but the protocol version (%1) mismatched our "
-				"version (%2). Please upgrade arduino!")
+				"version (%2). Not accepting connection, please upgrade the Arduino!")
 				.arg(receivedProtoVersion).arg(CURRENT_UNO2IEC_PROTOCOL_VERSION));
 		m_pendingBuffer.clear();
+		// Negative response, make it stop connection attempts.
+		m_port.write(NOkString.toLatin1().data());
 		return false;
 	}
 

@@ -15,7 +15,7 @@ DEFINES += CONSOLE_DEBUG
 
 #CONFIG += extserialport
 #LIBS += -L../debug/qextserialport -lqextserialport1
-LIBS += -L../qextserialport/release -lQt5ExtSerialPort1
+#LIBS += -L../qextserialport/release -lQt5ExtSerialPort1
 INCLUDEPATH += ../qextserialport/src
 #QMAKE_LIBDIR += ../qextserialport/src/build
 include(../qextserialport/src/qextserialport.pri)
@@ -100,7 +100,27 @@ OTHER_FILES += \
         changes.txt \
         notes.txt \
         README.TXT \
-        rpi2iec.rc
+        rpi2iec.rc \
+        icons/ok.png \
+        icons/arrow_refresh.png \
+        icons/browse.png \
+        icons/cancel.png \
+        icons/clear.png \
+        icons/exit.png \
+        icons/filter.png \
+        icons/floppy_mount.png \
+        icons/floppy_unmount.png \
+        icons/html.png \
+        icons/pause.png \
+        icons/restart.png \
+        icons/save.png \
+        icons/settings.png \
+        icons/theme.png \
+        icons/1541.ico \
+        other/dos1541 \
+        fonts/PetMe2X.ttf \
+        fonts/PetMe64.ttf \
+        fonts/PetMe1282Y.ttf
 
 RESOURCES += \
         resources.qrc

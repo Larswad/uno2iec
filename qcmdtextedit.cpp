@@ -30,12 +30,12 @@ void QCmdTextEdit::keyPressEvent(QKeyEvent* e)
 	QString command;
 	bool processKey = true;
 
-	switch (e->key()) {
+	switch(e->key()) {
 
 		case Qt::Key_Enter:
 		case Qt::Key_Return:
 			// grab the line where the cursor is. This will be our command.
-			command = c.block().text().trimmed().toLatin1().toUpper();
+			command = c.block().text().trimmed().replace(0xe01f, Qt::Key_Underscore).replace(0xe01e, Qt::Key_AsciiCircum).toLatin1().toUpper();
 
 			if(not c.atEnd()) {
 				// Don't insert the newline character if we're not at the end of text buffer, just move to beginning of next line and issue the command.
@@ -73,6 +73,12 @@ void QCmdTextEdit::keyPressEvent(QKeyEvent* e)
 				setTextCursor(c);
 				processKey = false;
 			}
+			break;
+
+		case Qt::Key_AsciiCircum:
+		case Qt::Key_Underscore:
+			c.insertText(QChar(0xe000 + e->key() - 0x40));
+			processKey = false;
 			break;
 	}
 

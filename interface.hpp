@@ -98,7 +98,7 @@ public:
 	void writeDriveMemory(ushort address, const QByteArray &bytes);
 
 private:
-	void moveToParentOrNativeFS();
+	void moveToParentOrNativeFS(bool toRoot);
 	bool removeFilePrefix(QString &cmd) const;
 	void sendOpenResponse(char code) const;
 	void write(const QByteArray &data, bool flush = true) const;

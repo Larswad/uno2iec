@@ -21,14 +21,8 @@ typedef QList<Command*> CommandList;
 class Command
 {
 public:
-	// The full command string, case doesn't matter. It is mandatory.
+	// The full command string, case doesn't matter. It is mandatory. Variants separated by pipe characters.
 	virtual const QString full() = 0;
-	// alternate command string (or abbreviation, returns empty string if the command has no abbreviation).
-	virtual const QString abbrev()
-	{
-		return QString();
-	}
-
 	// If this one returns a normal character, like ':', it specifies the ending of the command and
 	// where the actual parameters begin. If is returns zero (base default) the command has NO parameters.
 	// If it returns a QChar in the valuerange 1 - 31 it specifies the number of expected raw parameter
@@ -52,35 +46,45 @@ public:
 		return s_attached;
 	}
 
-	// find a command implementation that matches the given command string either by full name or abbreviation
-	// and return it. The command will be stripped by leading command identifier and delimeter and returned in params.
+	// find a command implementation that matches the given command string either by full name or abbreviation variants
+	// and return it. The command will be stripped by leading command identifier, delimeter and returned in params.
 	static Command* find(const QByteArray& cmdArray, QByteArray& params)
 	{
-		bool found = false;
+		bool found = false; // be pessimistic
 
 		// Get an instance as a string to make it easier to compare with.
 		const QString cmdString(cmdArray);
 		foreach(Command* cmd, s_attached) {
+			QStringList variants(cmd->full().split('|'));
 			if(cmd->delimeter().isNull()) {
-				if(cmdString.startsWith(cmd->full(), Qt::CaseSensitive)) {
-					params = cmdArray.mid(cmd->full().length());
-					found = true;
-				}
-				else if(not cmd->abbrev().isEmpty() and cmdString.startsWith(cmd->abbrev(), Qt::CaseInsensitive)) {
-					params = cmdArray.mid(cmd->abbrev().length());
-					found = true;
+				bool isFirst = true;
+				foreach (const QString& v, variants) {
+					if(cmdString.startsWith(v, isFirst ? Qt::CaseSensitive : Qt::CaseInsensitive)) {
+						params = cmdArray.mid(v.length());
+						found = true;
+						break;
+					}
+					isFirst = false;
 				}
 			}
 			else {
 				QList<QByteArray> splits(cmdArray.split(cmd->delimeter().toLatin1()));
-				if(not splits.isEmpty() and (splits.first() == cmd->full() or splits.first() == cmd->abbrev())) {
-					splits.removeFirst();
-					foreach(const QByteArray& split, splits) {
-						if(not params.isEmpty())
-							params.append(cmd->delimeter());
-						params.append(split);
+				if(not splits.isEmpty()) {
+					foreach (const QString& v, variants) {
+						if(splits.first() == v) {
+							found = true;
+							break;
+						}
 					}
-					found = true;
+					if(found) {
+						splits.removeFirst();
+						// join the parts again, wbut without first command part and its delimeter.
+						foreach(const QByteArray& split, splits) {
+							if(not params.isEmpty())
+								params.append(cmd->delimeter());
+							params.append(split);
+						}
+					}
 				}
 			}
 			if(found)
@@ -96,7 +100,7 @@ public:
 	static CBM::IOErrorMessage execute(const QByteArray& cmdString, Interface& iface)
 	{
 		QByteArray params, stripped(cmdString);
-		// Strip of trailing whitespace (in fact, CR for e.g. OPEN 1,8,15,"I:" which generates a CR.
+		// Strip off any trailing whitespace (in fact, CR for e.g. OPEN 1,8,15,"I:" which generates a CR.
 		while(stripped.endsWith(QChar('\r').toLatin1()) or stripped.endsWith(QChar(' ').toLatin1()))
 			stripped.chop(1);
 		Command* dosCmd = find(stripped, params);
@@ -119,154 +123,60 @@ private:
 	static CommandList s_attached;
 };
 
-#define DECLARE_DOSCMD_IMPL(NAME, FULL) \
-	public:NAME() { attach(this); } \
-	const QString full() { return FULL; } \
-	CBM::IOErrorMessage process(const QByteArray& params, Interface& iface); \
-	protected: void attachMeB() {	attach(this); }
+#define DECLARE_DOSCMD_IMPL(NAME, FULL, DELIM) \
+	class NAME : public Command { \
+		public:NAME() { attach(this); } \
+		const QString full() { return FULL; } \
+		const QChar delimeter() { return DELIM; } \
+		CBM::IOErrorMessage process(const QByteArray& params, Interface& iface); \
+	}
 
 
 // Reset the 1541 to power-up condition.
 // Syntax: "INITIALIZE"
-class InitDrive : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "I"; // or "UJ"
-	}
-
-	DECLARE_DOSCMD_IMPL(InitDrive, "INITIALIZE")
-};
-
+DECLARE_DOSCMD_IMPL(InitDrive, "INITIALIZE|I|UJ|I0", QChar());
 
 // Reset the 1541 to power-up condition.
 // Syntax: "VALIDATE"
 // Validate will fix inconsistencies that can be caused by files that where opened but never closed.
 // Beware: Validate also erases all random files!
-class ValidateDisk : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "V";
-	}
-
-	DECLARE_DOSCMD_IMPL(ValidateDisk, "VALIDATE")
-};
+DECLARE_DOSCMD_IMPL(ValidateDisk, "VALIDATE|V|V0", QChar());
 
 
 // Format a floppy disk
 // Syntax: "NEW:<diskname>,<id>"
 // Where <diskname> can be up to 16 characters long and <id> can either be omitted
 // (only the directory is erased on a pre-formatted disk) or must be exactly 2 characters long.
-class NewDisk : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "N";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(NewDisk, "NEW")
-};
+DECLARE_DOSCMD_IMPL(NewDisk, "NEW|N|N0", ':');
 
 
 // Delete files
 // Syntax: "SCRATCH:<file>"
 // You can use the wild cards '?' and '*' to delete several files at once.
-class Scratch : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "S";
-	}
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(Scratch, "SCRATCH")
-};
+DECLARE_DOSCMD_IMPL(Scratch, "SCRATCH|S|S0", ':');
 
 
 // Rename a file
 // Syntax: "RENAME:<newname>=<oldname>"
-class RenameFile : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "R";
-	}
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(RenameFile, "RENAME")
-};
+DECLARE_DOSCMD_IMPL(RenameFile, "RENAME|R|R0", ':');
 
 
 // Rename a file
 // Syntax: "COPY:<destfile>=<sourcefile>" or "COPY:<destfile>=<sourcefile1>, <sourcefile2>, ..."
 // If several source files are listed, than the destination file will contain the concatenated contents of all source files.
-class CopyFiles : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "C";
-	}
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(CopyFiles, "COPY")
-};
+DECLARE_DOSCMD_IMPL(CopyFiles, "COPY|C|C0", ':');
 
 
 // Set Position - Change the Read/Write Position in a Relative File
 // Syntax: "P"+CHR$(Channel)+CHR$(RecLow)+CHR$(RecHi)+CHR$(Pos)
-class SetPosition : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "P";
-	}
-
-	DECLARE_DOSCMD_IMPL(SetPosition, "POSITION")
-};
-
+DECLARE_DOSCMD_IMPL(SetPosition, "POSITION|P", QChar());
 
 // BLOCK-READ - Read a Disk Block into the internal floppy RAM
 // Abbreviation: U1 (superseded by USER1, U1)
 // USER1 works like BLOCK-READ with the exception that U1 considers the link to the next block to be part of the data.
 // Thus a block read with U1 will be 256 (rather than max. 254) bytes long.
 // Syntax: "B-R:"+STR$(Channel)+STR$(Drive)+STR$(Track)+STR$(Sector)
-class BlockRead : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "U1";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(BlockRead, "B-R")
-};
+DECLARE_DOSCMD_IMPL(BlockRead, "B-R|U1", ':');
 
 
 
@@ -275,119 +185,41 @@ public:
 // USER2 works like BLOCK-WRITE with the exception that U2 considers the link to the next block to be part of the data.
 // Thus a block written with U2 has to be 256 (rather than max. 254) bytes long.
 // Syntax: "B-W:"+STR$(Channel)+STR$(Drive)+STR$(Track)+STR$(Sector)
-class BlockWrite : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "U2";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(BlockWrite, "B-W")
-};
+DECLARE_DOSCMD_IMPL(BlockWrite, "B-W|U2", ':');
 
 
 // MEMORY-READ - Read Data from the floppy RAM
 // Abbreviation: M-R (You must use the abbreviation, the full form is not legal).
 // Syntax: "M-R"+CHR$(LowAddress)+CHR$(HighAddress)+CHR$(Size)
-class MemoryRead : public Command
-{
-public:
-	DECLARE_DOSCMD_IMPL(MemoryRead, "M-R")
-};
+DECLARE_DOSCMD_IMPL(MemoryRead, "M-R", QChar());
 
 
 // MEMORY-WRITE - Write Data to the floppy RAM
 // Abbreviation: M-W (You must use the abbreviation, the full form is not legal).
 // Syntax: "M-W"+CHR$(LowAddress)+CHR$(HighAddress)+CHR$(Size)+payload[Size]
-class MemoryWrite : public Command
-{
-public:
-	DECLARE_DOSCMD_IMPL(MemoryWrite, "M-W")
-};
+DECLARE_DOSCMD_IMPL(MemoryWrite, "M-W", QChar());
 
 
 // BUFFER-POINTER - Set the pointer for a buffered block
 // Abbreviation: B-P
 // Syntax: "B-P:"+STR$(Channel)+STR$(Pos)
-class BufferPointer : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "B-P";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(BufferPointer, "BUFFER-POINTER")
-};
+DECLARE_DOSCMD_IMPL(BufferPointer, "BUFFER-POINTER|B-P", ':');
 
 // BLOCK-ALLOCATE - Mark a disk block as used
 // Abbreviation: B-A
 // Syntax: "B-A:"+STR$(Drive)+STR$(Track)+STR$(Sector)
-class BlockAllocate : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "B-A";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(BlockAllocate, "BLOCK-ALLOCATE")
-};
+DECLARE_DOSCMD_IMPL(BlockAllocate, "BLOCK-ALLOCATE|B-A", ':');
 
 // BLOCK-FREE - Mark a disk block as unused
 // Abbreviation: B-F
 // Syntax: "B-F:"+STR$(Channel)+STR$(Pos)
-class BlockFree : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "B-F";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(BlockFree, "BLOCK-FREE")
-};
+DECLARE_DOSCMD_IMPL(BlockFree, "BLOCK-FREE|B-F", ':');
 
 // BLOCK-EXECUTE - Read a Disk Block into the internal floppy and execute it. Abbreviation: B-E
 // Syntax: "B-E:"+STR$(Channel)+STR$(Drive)+STR$(Track)+STR$(Sector)
 // Note: Block Execute obviously requires the complete emulation of the MOS 6502 CPU in the 1541.
 // This is the place to check if a turbo loader should be enabled.
-class BlockExecute : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "B-E";
-	}
-
-	const QChar delimeter()
-	{
-		return ':';
-	}
-
-	DECLARE_DOSCMD_IMPL(BlockExecute, "BLOCK-EXECUTE")
-};
+DECLARE_DOSCMD_IMPL(BlockExecute, "BLOCK-EXECUTE|B-E", ':');
 
 
 // MEMORY-EXECUTE - Run a User Program on the Floppy
@@ -397,31 +229,14 @@ public:
 // Syntax: "M-E"+CHR$(LowAddress)+CHR$(HighAddress)
 // Note: Memory Execute obviously requires the complete emulation of the MOS 6502 CPU in the 1541.
 // This is the place to check if a turbo loader should be enabled.
-class MemoryExecute : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "USER3"; // USER3 U3 USER4 U4 USER5 U5 USER6 U6 USER7 U7
-	}
-
-	DECLARE_DOSCMD_IMPL(MemoryExecute, "M-E")
-};
+DECLARE_DOSCMD_IMPL(MemoryExecute, "M-E|USER3|U3|USER4|U4|USER5|U5|USER6|U6|USER7|U7", QChar());
 
 
 // USERI - Switch the C1541 between C64 to VC20 mode
 // Abbreviation: UI
 // Syntax: "UI+" or "UI-"
 // This is a dummy function in Power64. It causes a slight adjustment of transfer speeds on a real C1541.
-class VC20ModeOnOff : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "UI";
-	}
-	DECLARE_DOSCMD_IMPL(VC20ModeOnOff, "USERI")
-};
+DECLARE_DOSCMD_IMPL(VC20ModeOnOff, "USERI|UI", QChar());
 
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -430,11 +245,7 @@ public:
 
 // U0>
 // Syntax: "U0>"+CHR$(new address)
-class DeviceAddress : public Command
-{
-public:
-	DECLARE_DOSCMD_IMPL(DeviceAddress, "U0>")
-};
+DECLARE_DOSCMD_IMPL(DeviceAddress, "U0>", QChar());
 
 
 // CD is also used to mount/unmount image files. Just change into them
@@ -452,44 +263,17 @@ public:
 //  CD//foo      changes into \foo
 //  CD/foo/:bar  changes into foo\bar
 //  CD/foo/bar   dito
-class ChangeDirectory : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "CD";
-	}
-
-	DECLARE_DOSCMD_IMPL(ChangeDirectory, "CHDIR")
-};
+DECLARE_DOSCMD_IMPL(ChangeDirectory, "CHDIR|CD", QChar());
 
 // MD uses a syntax similiar to CD and will create the directory listed
 // after the colon (:) relative to any directory listed before it.
 //  MD/foo/:bar  creates bar in foo
 //  MD//foo/:bar creates bar in \foo
-class MakeDirectory : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "MD";
-	}
-
-	DECLARE_DOSCMD_IMPL(MakeDirectory, "MAKEDIR")
-};
+DECLARE_DOSCMD_IMPL(MakeDirectory, "MAKEDIR|MD", QChar());
 
 // RD can only remove subdirectories of the current directory.
 // RD:foo       deletes foo
-class RemoveDirectory : public Command
-{
-public:
-	const QString abbrev()
-	{
-		return "RD";
-	}
-
-	DECLARE_DOSCMD_IMPL(RemoveDirectory, "RMDIR")
-};
+DECLARE_DOSCMD_IMPL(RemoveDirectory, "RMDIR|RD", QChar());
 
 
 // PARTITION - Create or Select a Partition on a 1581 floppy disk
