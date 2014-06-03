@@ -24,7 +24,7 @@ public:
 
 	const QStringList& extension() const
 	{
-#if !(defined(TARGET_OS_X) || defined(_MSC_VER))
+#if !(defined(__APPLE__) || defined(_MSC_VER))
 		static const QStringList ext( { "P00", "R00", "S00" } );
 #else
 		static QStringList ext;
