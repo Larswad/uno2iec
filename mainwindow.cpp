@@ -4,6 +4,8 @@
 // TODO: The error channel can be factored into a regular read-return of a buffer. The buffer is always by the result of the last command
 // executed, which might either be resulting error message or some result from a dos command, like M-R and so on.
 
+// TODO: Case handling in Linux, how to support this? Just returning all file entries as they are will not look to good, so best is
+// to keep toUpper() for this. But all CD operations and fopen operations need to be able to open file in case insensitive mode somehow.
 // TODO: Finalize M2I handling. What exactly is the point of that FS, is it to handle 8.3 filenames to cbm 16 byte lengths?
 // TODO: Finalize x00fs handling (P00, S00, R00). The x00fs format can actually handle multiple files as a sort of container to replace M2I. This should be supported.
 // TODO: Support x64 format, it should in fact be the preferred format today before D64, D71, D81.

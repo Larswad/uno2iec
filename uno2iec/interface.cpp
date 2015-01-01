@@ -73,15 +73,15 @@ void Interface::reset(void)
 void Interface::sendStatus(void)
 {
 	byte i, readResult;
-	Serial.write('E'); // ask for error string from the last queued error.
-	Serial.write(m_queuedError);
+	COMPORT.write('E'); // ask for error string from the last queued error.
+	COMPORT.write(m_queuedError);
 
 	// first sync the response.
 	do {
-		readResult = Serial.readBytes(serCmdIOBuf, 1);
+		readResult = COMPORT.readBytes(serCmdIOBuf, 1);
 	} while(readResult not_eq 1 or serCmdIOBuf[0] not_eq ':');
 	// get the string.
-	readResult = Serial.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf));
+	readResult = COMPORT.readBytesUntil('\r', serCmdIOBuf, sizeof(serCmdIOBuf));
 	if(not readResult)
 		return; // something went wrong with result from host.
 
@@ -132,15 +132,15 @@ void Interface::sendListing()
 	// Call the listing function
 	byte resp;
 	do {
-		Serial.write('L'); // initiate request.
-		Serial.readBytes(serCmdIOBuf, 2);
+		COMPORT.write('L'); // initiate request.
+		COMPORT.readBytes(serCmdIOBuf, 2);
 		resp = serCmdIOBuf[0];
 		if('L' == resp) { // Host system will give us something else if we're at last line to send.
 			// get the length as one byte: This is kind of specific: For listings we allow 256 bytes length. Period.
 			byte len = serCmdIOBuf[1];
 			// WARNING: Here we might need to read out the data in portions. The serCmdIOBuf might just be too small
 			// for very long lines.
-			byte actual = Serial.readBytes(serCmdIOBuf, len);
+			byte actual = COMPORT.readBytes(serCmdIOBuf, len);
 			if(len == actual) {
 				// send the bytes directly to CBM!
 				noInterrupts();
@@ -157,7 +157,7 @@ void Interface::sendListing()
 			if('l' not_eq resp) {
 				sprintf_P(serCmdIOBuf, (PGM_P)F("Ending at char: %d."), resp);
 				Log(Error, FAC_IFACE, serCmdIOBuf);
-				Serial.readBytes(serCmdIOBuf, sizeof(serCmdIOBuf));
+				COMPORT.readBytes(serCmdIOBuf, sizeof(serCmdIOBuf));
 				Log(Error, FAC_IFACE, serCmdIOBuf);
 			}
 		}
@@ -175,8 +175,8 @@ void Interface::sendFile()
 {
 	// Send file bytes, such that the last one is sent with EOI.
 	byte resp;
-	Serial.write('S'); // ask for file size.
-	byte len = Serial.readBytes(serCmdIOBuf, 3);
+	COMPORT.write('S'); // ask for file size.
+	byte len = COMPORT.readBytes(serCmdIOBuf, 3);
 	// it is supposed to answer with S<highByte><LowByte>
 	if(3 not_eq len or serCmdIOBuf[0] not_eq 'S')
 		return; // got some garbage response.
@@ -189,10 +189,10 @@ void Interface::sendFile()
 	bool success = true;
 	// Initial request for a bunch of bytes, here we specify the read size for every subsequent 'R' command.
 	// This begins the transfer "game".
-	Serial.write('N');											// ask for a byte/bunch of bytes
-	Serial.write(MAX_BYTES_PER_REQUEST);		// specify the arduino serial library buffer limit for best performance / throughput.
+	COMPORT.write('N');											// ask for a byte/bunch of bytes
+	COMPORT.write(MAX_BYTES_PER_REQUEST);		// specify the arduino serial library buffer limit for best performance / throughput.
 	do {
-		len = Serial.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
+		len = COMPORT.readBytes(serCmdIOBuf, 2); // read the ack type ('B' or 'E')
 		if(2 not_eq len) {
 			strcpy_P(serCmdIOBuf, (PGM_P)F("2 Host bytes expected, stopping"));
 			Log(Error, FAC_IFACE, serCmdIOBuf);
@@ -202,7 +202,7 @@ void Interface::sendFile()
 		resp = serCmdIOBuf[0];
 		len = serCmdIOBuf[1];
 		if('B' == resp or 'E' == resp) {
-			byte actual = Serial.readBytes(serCmdIOBuf, len);
+			byte actual = COMPORT.readBytes(serCmdIOBuf, len);
 			if(actual not_eq len) {
 				strcpy_P(serCmdIOBuf, (PGM_P)F("Host bytes expected, stopping"));
 				success = false;
@@ -211,7 +211,7 @@ void Interface::sendFile()
 			}
 #ifdef EXPERIMENTAL_SPEED_FIX
 			if('E' not_eq resp) // if not received the final buffer, initiate a new buffer request while we're feeding the CBM.
-				Serial.write('R'); // ask for a byte/bunch of bytes
+				COMPORT.write('R'); // ask for a byte/bunch of bytes
 #endif
 			// so we get some bytes, send them to CBM.
 			for(byte i = 0; success and i < len; ++i) { // End if sending to CBM fails.
@@ -235,7 +235,7 @@ void Interface::sendFile()
 			}
 #ifndef EXPERIMENTAL_SPEED_FIX
 			if('E' not_eq resp) // if not received the final buffer, initiate a new buffer request while we're feeding the CBM.
-				Serial.write('R'); // ask for a byte/bunch of bytes
+				COMPORT.write('R'); // ask for a byte/bunch of bytes
 #endif
 		}
 		else {
@@ -245,9 +245,9 @@ void Interface::sendFile()
 		}
 	} while(resp == 'B' and success); // keep asking for more as long as we don't get the 'E' or something else (indicating out of sync).
 	// If something failed and we have serial bytes in recieve queue we need to flush it out.
-	if(not success and Serial.available()) {
-		while(Serial.available())
-			Serial.read();
+	if(not success and COMPORT.available()) {
+		while(COMPORT.available())
+			COMPORT.read();
 	}
 #ifdef USE_LED_DISPLAY
 	if(0 not_eq m_pDisplay)
@@ -275,8 +275,8 @@ void Interface::saveFile()
 		} while(bytesInBuffer < sizeof(serCmdIOBuf) and not done);
 		// indicate to media host that we want to write a buffer. Give the total length including the heading 'W'+length bytes.
 		serCmdIOBuf[1] = bytesInBuffer;
-		Serial.write((const byte*)serCmdIOBuf, bytesInBuffer);
-		Serial.flush();
+		COMPORT.write((const byte*)serCmdIOBuf, bytesInBuffer);
+		COMPORT.flush();
 	} while(not done);
 } // saveFile
 
@@ -454,7 +454,7 @@ void Interface::handleATNCmdCodeOpen(IEC::ATNCmd& cmd)
 	// Set the length so that receiving side know how much to read out.
 	serCmdIOBuf[1] = length;
 	// NOTE: Host side handles BOTH file open command AND the command channel command (from the cmd.code).
-	Serial.write((const byte*)serCmdIOBuf, length);
+	COMPORT.write((const byte*)serCmdIOBuf, length);
 } // handleATNCmdCodeOpen
 
 
@@ -468,7 +468,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 
 	serCmdIOBuf[0] = 0;
 	do {
-		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
+		lengthOrResult = COMPORT.readBytes(serCmdIOBuf, 1);
 	} while(lengthOrResult not_eq 1 or serCmdIOBuf[0] not_eq '>');
 
 	if(not lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
@@ -477,7 +477,7 @@ void Interface::handleATNCmdCodeDataTalk(byte chan)
 		Log(Error, FAC_IFACE, serCmdIOBuf);
 	}
 	else {
-		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
+		if(lengthOrResult = COMPORT.readBytes(serCmdIOBuf, 2)) {
 			if(2 == lengthOrResult) {
 				lengthOrResult = serCmdIOBuf[0];
 				wasSuccess = true;
@@ -539,7 +539,7 @@ void Interface::handleATNCmdCodeDataListen()
 
 	serCmdIOBuf[0] = 0;
 	do {
-		lengthOrResult = Serial.readBytes(serCmdIOBuf, 1);
+		lengthOrResult = COMPORT.readBytes(serCmdIOBuf, 1);
 	} while(lengthOrResult not_eq 1 or serCmdIOBuf[0] not_eq '>');
 
 	if(not lengthOrResult or '>' not_eq serCmdIOBuf[0]) {
@@ -549,7 +549,7 @@ void Interface::handleATNCmdCodeDataListen()
 		Log(Error, FAC_IFACE, serCmdIOBuf);
 	}
 	else {
-		if(lengthOrResult = Serial.readBytes(serCmdIOBuf, 2)) {
+		if(lengthOrResult = COMPORT.readBytes(serCmdIOBuf, 2)) {
 			if(2 == lengthOrResult) {
 				lengthOrResult = serCmdIOBuf[0];
 				wasSuccess = true;
@@ -570,13 +570,13 @@ void Interface::handleATNCmdCodeDataListen()
 void Interface::handleATNCmdClose()
 {
 	// handle close of file. Host system will return the name of the last loaded file to us.
-	Serial.print("C");
-	Serial.readBytes(serCmdIOBuf, 2);
+	COMPORT.print("C");
+	COMPORT.readBytes(serCmdIOBuf, 2);
 	byte resp = serCmdIOBuf[0];
 	if('N' == resp or 'n' == resp) { // N indicates we have a name. Case determines whether we loaded or saved data.
 		// get the length of the name as one byte.
 		byte len = serCmdIOBuf[1];
-		byte actual = Serial.readBytes(serCmdIOBuf, len);
+		byte actual = COMPORT.readBytes(serCmdIOBuf, len);
 		if(len == actual) {
 #ifdef USE_LED_DISPLAY
 			serCmdIOBuf[len] = '\0';
