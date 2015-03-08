@@ -1,4 +1,5 @@
 #include <QFileDialog>
+#include <iso646.h>
 #include "mountspecificfile.h"
 #include "ui_mountspecificfile.h"
 

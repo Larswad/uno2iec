@@ -5,7 +5,7 @@
 #include <QStandardItemModel>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
-#include <qextserialport.h>
+#include <QtSerialPort/QtSerialPort>
 #include <QMap>
 #include "interface.hpp"
 #include "logger.hpp"
@@ -111,12 +111,12 @@ private:
 	void cbmCursorVisible(bool visible = true);
 
 	Ui::MainWindow *ui;
-	QextSerialPort m_port;
+	QSerialPort m_port;
 	QByteArray m_pendingBuffer;
 	bool m_isConnected;
 	FacilityMap m_clientFacilities;
 	Interface m_iface;
-	QextPortInfoList m_ports;
+	QList<QSerialPortInfo> m_ports;
 	QStandardItemModel* m_dirListItemModel;
 	QFileInfoList m_filteredInfoList;
 	QFileInfoList m_infoList;

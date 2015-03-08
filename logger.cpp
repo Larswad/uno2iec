@@ -1,4 +1,5 @@
 #include "logger.hpp"
+#include <iso646.h>
 #include <QDate>
 #include <QSettings>
 

@@ -105,14 +105,6 @@ files in release and debug folders under the source folder.
 
 Build a single executable without dependencies:
 -----------------------------------------------
-
-
-REQUIREMENTS: (external dependencies):
-QextSerialPort project:
-https://code.google.com/p/qextserialport/
-
-The QextSerialPort project should be located on the same directory level as the "rpi2iec" project.
-
 Optional: Max7219 driver library (modified by Lars Wadefalk to c++ with support for progress bar display and scroller).
 Github project:
 https://github.com/Larswad/arduino_max7219.git

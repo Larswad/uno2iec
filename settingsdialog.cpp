@@ -1,15 +1,16 @@
 #include <QFileDialog>
+#include <iso646.h>
 
 #include "settingsdialog.hpp"
 #include "ui_settingsdialog.h"
 
-SettingsDialog::SettingsDialog(QextPortInfoList& ports, AppSettings& settings, QWidget *parent) :
+SettingsDialog::SettingsDialog(QPortInfoList& ports, AppSettings& settings, QWidget *parent) :
 	QDialog(parent), ui(new Ui::SettingsDialog), m_settings(settings), m_borderValidator(0, 100, this)
 {
 	ui->setupUi(this);
 
-	foreach(QextPortInfo info, ports)
-		ui->comPort->addItem(info.friendName);
+	foreach(QSerialPortInfo info, ports)
+		ui->comPort->addItem(info.portName());
 
 	ui->comPort->setCurrentIndex(ui->comPort->findText(m_settings.portName));
 	ui->baudRate->setCurrentIndex(ui->baudRate->findText(QString::number(m_settings.baudRate)));
