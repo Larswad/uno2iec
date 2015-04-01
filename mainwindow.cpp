@@ -85,6 +85,15 @@ const uint DEFAULT_SRQIN_PIN = 2;
 
 const QString PROGRAM_VERSION_HISTORY = qApp->tr(
 		"<hr>"
+		"<ul>"
+		"<li>CHANGE: Dropped need for QextSerialPort, now using Qt's native QSerialPort library."
+		"<li>CHANGE: Arduino MEGA variants use the SECOND serial port for communication leaving the "
+		" USB port free for debugging."
+		"<li>FIX: uchar_prog definition obsoleted, changed to PROGMEM."
+		"<li>FIX: Fixed conditional compilation so that it is done for all APPLE-based OSes instead of just OSX."
+		"<li>FIX: Compilation now working again under Windows, Linux AND with multicore build."
+		"</ul>"
+		"<span style=\" font-weight:600; color:#0404c2;\">Application Version 0.4.0:</span><hr>"
 		"<ul><li>NEW: Saving support in 1541 normal speed."
 		"<li>CHG: Changed much on the UI. Nice icons for all buttons. Separate configuration dialog from main window. "
 		"Now using Qt Theming, choosing best fit depending on OS. Event log is now dockable and can be hidden or detached. "
