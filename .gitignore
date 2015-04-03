@@ -1,3 +1,4 @@
+*.orig
 *creator.user*
 *.user
 *.o

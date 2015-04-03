@@ -13,10 +13,17 @@ TEMPLATE = app
 
 DEFINES += CONSOLE_DEBUG
 
+win32-msvc* {
+	# Multiple build processes with jom
+	# only works in .pro file for MSVC compilers, for gnu add -j8 in projects / make
+	QMAKE_CXXFLAGS += /MP
+}
+else {
+	# explicit enabling of c++11 under all gnu compilers.
+	QMAKE_CXXFLAGS += -std=gnu++0x
+}
 
 win32 {
-	# Multiple build processes.
-	QMAKE_CXXFLAGS += /MP
 	# version resource and appicon.
 	RC_FILE = rpi2iec.rc
 	OBJPRE = win
@@ -24,9 +31,6 @@ win32 {
 	# QMAKE_LFLAGS += -static-libgcc -static-libstdc++ -static
 }
 
-!win32 {
-	QMAKE_CXXFLAGS += -std=gnu++0x
-}
 
 unix {
 	OBJPRE = nix

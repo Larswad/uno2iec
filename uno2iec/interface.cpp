@@ -584,7 +584,7 @@ void Interface::handleATNCmdClose()
 				strcpy_P((char*)scrollBuffer, (PGM_P)F(" SAVED: "));
 			else
 				strcpy_P((char*)scrollBuffer, (PGM_P)F(" LOADED: "));
-			strcat((char*)scrollBuffer, serCmdIOBuf);
+			strncat_P((char*)scrollBuffer, (char*)serCmdIOBuf, sizeof(scrollBuffer) - strlen_P((char*)scrollBuffer));
 
 			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);
