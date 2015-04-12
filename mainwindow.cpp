@@ -286,7 +286,7 @@ void MainWindow::enumerateComPorts()
 #elif defined(Q_OS_MAC)
 	QDir dev("/dev", "tty.usbmodem*", QDir::Name,QDir::Files bitor QDir::Readable bitor QDir::Writable bitor QDir::System);
 	foreach(const QFileInfo entry, dev.entryInfoList()) {
-		static QSerialPortInfo macPort(entry.fileName); /* = { entry.absoluteFilePath(), entry.fileName(), entry.fileName(), "", 0, 0 };*/
+        static QSerialPortInfo macPort(entry.fileName()); /* = { entry.absoluteFilePath(), entry.fileName(), entry.fileName(), "", 0, 0 };*/
 		m_ports.insert(0, macPort);
 	}
 #endif
@@ -298,7 +298,7 @@ void MainWindow::usePortByFriendlyName(const QString& friendlyName)
 	foreach(QSerialPortInfo port, m_ports) {
 		if(port.portName() == friendlyName) {
 			// found it, set it and be done.
-			m_port.setPort(port);
+            m_port.setPort(port);
 			break;
 		}
 	}
