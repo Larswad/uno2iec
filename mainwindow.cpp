@@ -331,7 +331,7 @@ void MainWindow::on_actionSettings_triggered()
 	enumerateComPorts();
 
 	AppSettings oldSettings = m_appSettings;
-	SettingsDialog settings(m_ports, m_appSettings);
+	SettingsDialog settings(m_ports, m_appSettings, this);
 	if(QDialog::Accepted == settings.exec()) { // user pressed Ok?
 		if(m_appSettings.cbmBorderWidth not_eq oldSettings.cbmBorderWidth)
 			updateDirListColors();
