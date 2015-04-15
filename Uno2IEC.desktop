@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Encoding=UTF-8
+Name=Uno2IEC
+Comment=The 1541 disk drive on Arduino.
+Exec=/home/lars/Skrivbord/uno2iec
+Icon=/usr/share/icons/hicolor/48x48/apps/uno2iec.png
+Terminal=false
+
