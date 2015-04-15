@@ -42,7 +42,7 @@ namespace {
 char serCmdIOBuf[MAX_BYTES_PER_REQUEST];
 
 #ifdef USE_LED_DISPLAY
-byte scrollBuffer[35];
+byte scrollBuffer[50];
 #endif
 
 } // unnamed namespace
@@ -584,7 +584,7 @@ void Interface::handleATNCmdClose()
 				strcpy_P((char*)scrollBuffer, (PGM_P)F(" SAVED: "));
 			else
 				strcpy_P((char*)scrollBuffer, (PGM_P)F(" LOADED: "));
-			strncat_P((char*)scrollBuffer, (char*)serCmdIOBuf, sizeof(scrollBuffer) - strlen_P((char*)scrollBuffer));
+			strncat((char*)scrollBuffer, (char*)serCmdIOBuf, sizeof(scrollBuffer) - strlen((char*)scrollBuffer));
 
 			if(0 not_eq m_pDisplay)
 				m_pDisplay->resetScrollText(scrollBuffer);

@@ -8,7 +8,7 @@
 
 static Max7219* pMax;
 // Put ANYTHING cool in here you want to scroll as an initial text on your MAX7219!
-static const byte myText[] PROGMEM = "   WELCOME TO THE NEW PORT OF MMC2IEC ARDUINO BY LARS WADEFALK IN 2013...    ";
+static const byte PROGMEM myText[] = "   WELCOME TO UNO2IEC, 1541 ON ARDUINO BY LARS WADEFALK IN 2015...    ";
 // Note: This is the pin configuration for the MAX7219 display, if used (not IEC related).
 static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 #endif
@@ -69,7 +69,7 @@ void setup()
 	iec.init();
 
 #ifdef USE_LED_DISPLAY
-	pMax->resetScrollText(myText);
+	pMax->resetScrollText_p(myText);
 #endif
 
 	lastMillis = millis();
@@ -88,7 +88,7 @@ void loop()
 	if(IEC::ATN_RESET == iface.handler()) {
 
 #ifdef USE_LED_DISPLAY
-		pMax->resetScrollText(myText);
+		pMax->resetScrollText_p(myText);
 		// Indicate that IEC is in reset state.
 		pMax->setToCharacter('R');
 #endif

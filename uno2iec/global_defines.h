@@ -5,6 +5,7 @@
 // Reason for defining this is only that Qt Creator should understand the define when browsing the source files
 // It won't be defined like this when compiling under arduino tools.
 #define PROGMEM
+#define __flash
 #endif
 
 typedef unsigned long ulong;
