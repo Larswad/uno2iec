@@ -286,7 +286,7 @@ void MainWindow::enumerateComPorts()
 #elif defined(Q_OS_MAC)
 	QDir dev("/dev", "tty.usbmodem*", QDir::Name,QDir::Files bitor QDir::Readable bitor QDir::Writable bitor QDir::System);
 	foreach(const QFileInfo entry, dev.entryInfoList()) {
-        static QSerialPortInfo macPort(entry.fileName()); /* = { entry.absoluteFilePath(), entry.fileName(), entry.fileName(), "", 0, 0 };*/
+				static QSerialPortInfo macPort(entry.fileName()); /* = { entry.absoluteFilePath(), entry.fileName(), entry.fileName(), "", 0, 0 };*/
 		m_ports.insert(0, macPort);
 	}
 #endif
@@ -298,7 +298,7 @@ void MainWindow::usePortByFriendlyName(const QString& friendlyName)
 	foreach(QSerialPortInfo port, m_ports) {
 		if(port.portName() == friendlyName) {
 			// found it, set it and be done.
-            m_port.setPort(port);
+						m_port.setPort(port);
 			break;
 		}
 	}
@@ -483,29 +483,31 @@ void LogHexData(const QByteArray& bytes, const QString& header = QString("R#%1:"
 } // LogHexData
 
 
-bool MainWindow::checkConnectRequest()
+bool MainWindow::checkConnectRequest(QByteArray& buffer)
 {
-	int connectPos = m_pendingBuffer.indexOf(ConnectionString);
+	int connectPos = buffer.indexOf(ConnectionString);
 	if(-1 == connectPos)
 		return false;
-	int crPos = m_pendingBuffer.indexOf('\r', connectPos);
-	if(-1 == connectPos)
+	int crPos = buffer.indexOf('\r', connectPos);
+	if(-1 == crPos)
 		return false;
 
 	// extract version number.
-	const QString verString(m_pendingBuffer.mid(connectPos + ConnectionString.length(), crPos - connectPos));
+	const QString verString(buffer.mid(connectPos + ConnectionString.length(), crPos - connectPos));
 	ushort receivedProtoVersion = verString.toInt();
 	if(CURRENT_UNO2IEC_PROTOCOL_VERSION not_eq receivedProtoVersion) {
 		Log("MAIN", error, QString("Received connection string from arduino, but the protocol version (%1) mismatched our "
 				"version (%2). Not accepting connection, please upgrade the Arduino!")
 				.arg(receivedProtoVersion).arg(CURRENT_UNO2IEC_PROTOCOL_VERSION));
 		m_pendingBuffer.clear();
+		m_unexpectedBuffer.clear();
 		// Negative response, make it stop connection attempts.
 		m_port.write(NOkString.toLatin1().data());
 		return false;
 	}
 
 	m_pendingBuffer.clear();
+	m_unexpectedBuffer.clear();
 	// Assume connected, maybe a real ack sequence is needed here from the client?
 	// Are we already connected? If so,
 	if(not m_isConnected) {
@@ -539,7 +541,7 @@ void MainWindow::onDataAvailable()
 {
 	m_pendingBuffer.append(m_port.readAll());
 //	if(not m_isConnected) {
-		checkConnectRequest();
+		checkConnectRequest(m_pendingBuffer);
 //		return;
 //	}
 	if(m_isConnected)
@@ -781,7 +783,8 @@ void MainWindow::processData(void)
 		int crIndex =	cmdString.indexOf('\r');
 
 		// Get the first waiting character, which should be the command to perform.
-		switch(cmdString.at(0).toLatin1()) {
+		char cmdChar(cmdString.at(0).toLatin1());
+		switch(cmdChar) {
 			case '!': // register facility string.
 				if(-1 == crIndex)
 					hasDataToProcess = false; // escape from here, command is incomplete.
@@ -877,16 +880,13 @@ void MainWindow::processData(void)
 				break;
 
 			default:
+				// got something, might be in middle of something and with no CR, just get out.
+				//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
+				m_unexpectedBuffer.append(cmdChar);
+				m_pendingBuffer.remove(0, 1);
 				// See if it is a reconnection attempt.
-			if(not checkConnectRequest()) {
-					// Got some command with CR, but not in sync or unrecognized. Take it out of buffer.
-					if(-1 not_eq crIndex) {
-						m_pendingBuffer.remove(0, crIndex + 1);
-					}
-					else // got something, might be in middle of something and with no CR, just get out.
-						m_pendingBuffer.remove(0, 1);
-					//				Log("MAIN", warning, QString("Got unknown char %1").arg(cmdString.at(0).toLatin1()));
-				}
+				if(checkConnectRequest(m_unexpectedBuffer))
+					hasDataToProcess = false;
 				break;
 		}
 		// if we want to continue processing, but have no data in buffer, get out anyway and wait for more data.

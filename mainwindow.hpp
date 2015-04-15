@@ -93,7 +93,7 @@ private slots:
 	void on_actionSingle_file_mount_triggered();
 
 private:
-	bool checkConnectRequest();
+	bool checkConnectRequest(QByteArray& buffer);
 	void enumerateComPorts();
 	void usePortByFriendlyName(const QString &friendlyName);
 	void processDebug(const QString &str);
@@ -113,6 +113,7 @@ private:
 	Ui::MainWindow *ui;
 	QSerialPort m_port;
 	QByteArray m_pendingBuffer;
+	QByteArray m_unexpectedBuffer;
 	bool m_isConnected;
 	FacilityMap m_clientFacilities;
 	Interface m_iface;
