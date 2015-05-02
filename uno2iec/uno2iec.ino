@@ -160,4 +160,6 @@ static void waitForPeer()
 	Log(Information, 'M', tempBuffer);
 	sprintf_P(tempBuffer, (PGM_P)F("Arduino time set to: %04u-%02u-%02u.%02u:%02u:%02u"), year, month, day, hour, minute, second);
 	Log(Information, 'M', tempBuffer);
+
+    Log(Information, 'M', "WILLY WAS HERE");
 } // waitForPeer

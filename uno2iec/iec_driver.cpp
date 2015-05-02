@@ -431,11 +431,14 @@ boolean IEC::init()
 	pinMode(m_atnPin, OUTPUT);
 	pinMode(m_dataPin, OUTPUT);
 	pinMode(m_clockPin, OUTPUT);
-	pinMode(m_resetPin, OUTPUT);
 	digitalWrite(m_atnPin, false);
 	digitalWrite(m_dataPin, false);
 	digitalWrite(m_clockPin, false);
+
+#ifdef RESET_C64
+	pinMode(m_resetPin, OUTPUT);
 	digitalWrite(m_resetPin, false);	// only early C64's could be reset by a slave going high.
+#endif
 
 	// initial pin modes in GPIO.
 	pinMode(m_atnPin, INPUT);
