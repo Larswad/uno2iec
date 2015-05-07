@@ -272,7 +272,7 @@ void Interface::saveFile()
 			serCmdIOBuf[bytesInBuffer++] = m_iec.receive();
 			interrupts();
 			done = (m_iec.state() bitand IEC::eoiFlag) or (m_iec.state() bitand IEC::errorFlag);
-		} while(bytesInBuffer < sizeof(serCmdIOBuf) and not done);
+		} while((bytesInBuffer < 0xf0) and not done);
 		// indicate to media host that we want to write a buffer. Give the total length including the heading 'W'+length bytes.
 		serCmdIOBuf[1] = bytesInBuffer;
 		COMPORT.write((const byte*)serCmdIOBuf, bytesInBuffer);
