@@ -278,8 +278,6 @@ void Interface::saveFile()
 		COMPORT.write((const byte*)serCmdIOBuf, bytesInBuffer);
 		COMPORT.flush();
 	} while(not done);
-
-    Log(Information, 'M', "END");
 } // saveFile
 
 
