@@ -49,4 +49,7 @@ typedef unsigned long ulong;
 #define COMPORT Serial
 #endif
 
+// Define this to reset the commodore 64 when the ino2iec is reset
+//#define RESET_C64
+
 #endif // GLOBAL_DEFINES_HPP
