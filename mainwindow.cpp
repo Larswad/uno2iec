@@ -187,22 +187,23 @@ MainWindow::MainWindow(QWidget* parent) :
 		on_resetArduino_clicked();
 #endif
 
-	emulatorPalettes["vice"] = viceColors;
-	emulatorPalettes["ccs64"] = ccs64Colors;
-	emulatorPalettes["frodo"] = frodoColors;
-	emulatorPalettes["c64s"] = c64sColors;
-	emulatorPalettes["c64hq"] = c64hqColors;
-	emulatorPalettes["godot"] = godotColors;
-	emulatorPalettes["pc64"] = pc64Colors;
-	emulatorPalettes["default"] = defaultColors;
-	emulatorPalettes["vic20"] = vic20Colors;
-	emulatorPalettes["plus4"] = plus4Colors;
+    // palettes and themes must be named exactly after action labels
+    emulatorPalettes["&vice"] = viceColors;
+    emulatorPalettes["ccs6&4"] = ccs64Colors;
+    emulatorPalettes["&frodo"] = frodoColors;
+    emulatorPalettes["c&64s"] = c64sColors;
+    emulatorPalettes["&c64hq"] = c64hqColors;
+    emulatorPalettes["&godot"] = godotColors;
+    emulatorPalettes["&pc64"] = pc64Colors;
+    emulatorPalettes["&default"] = defaultColors;
+    emulatorPalettes["vic&20"] = vic20Colors;
+    emulatorPalettes["p&lus4"] = plus4Colors;
 
-	machineThemes["VIC 20"] = &Vic20Theme;
-	machineThemes["C 64"] = &C64Theme;
-	machineThemes["C 128"] = &C128Theme;
-	machineThemes["C 128 (80 Col)"] = &C128_80Theme;
-	machineThemes["Plus 4"] = &Plus4Theme;
+    machineThemes["&VIC 20"] = &Vic20Theme;
+    machineThemes["&C 64"] = &C64Theme;
+    machineThemes["C &128"] = &C128Theme;
+    machineThemes["C 128 (&80 Col)"] = &C128_80Theme;
+    machineThemes["&Plus 4"] = &Plus4Theme;
 
 	setupActionGroups();
 
@@ -1419,8 +1420,9 @@ void MainWindow::cbmCursorVisible(bool visible)
 
 void MainWindow::getMachineAndPaletteTheme(CbmMachineTheme*& pMachine, const QRgb*& pEmulatorPalette)
 {
-	pMachine = 0;
-	pEmulatorPalette = 0;
+    // setting up valid defaults for invalid settings
+    pMachine = &C64Theme;
+    pEmulatorPalette = ccs64Colors;
 	EmulatorPaletteMap::iterator itEmulatorPalette(emulatorPalettes.find(m_appSettings.emulatorPalette));
 	CbmMachineThemeMap::iterator itMachineTheme(machineThemes.find(m_appSettings.cbmMachine));
 	if(itEmulatorPalette not_eq emulatorPalettes.end())
