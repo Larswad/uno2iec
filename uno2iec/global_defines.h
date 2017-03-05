@@ -26,7 +26,7 @@ typedef unsigned long ulong;
 // What it does is showing loading progress on the display and some nice scrolling of the filename and other
 // stuff on the display. The display hardware can be bought cheap here at dx.com:
 // http://dx.com/p/max7219-dot-matrix-module-w-5-dupont-lines-184854
-#define USE_LED_DISPLAY
+//#define USE_LED_DISPLAY
 
 // Define this if you want to configure a HC-06 bluetooth module connected to the arduino and make the communication
 // with the commodore machine completely wireless. Defining this will configure the BT module in the main sketch.
@@ -38,7 +38,7 @@ typedef unsigned long ulong;
 //#define EXPERIMENTAL_SPEED_FIX
 
 // For serial communication. 115200 Works fine, but probably use 57600 for bluetooth dongle for stability.
-#define DEFAULT_BAUD_RATE 57600
+#define DEFAULT_BAUD_RATE 115200
 #define SERIAL_TIMEOUT_MSECS 1000
 
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1284__) \
