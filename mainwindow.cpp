@@ -204,6 +204,7 @@ MainWindow::MainWindow(QWidget* parent) :
     machineThemes["C &128"] = &C128Theme;
     machineThemes["C 128 (&80 Col)"] = &C128_80Theme;
     machineThemes["&Plus 4"] = &Plus4Theme;
+    machineThemes["C 1&6"] = &C16Theme;
 
 	setupActionGroups();
 
@@ -245,7 +246,8 @@ void MainWindow::setupActionGroups()
 	cbmMachineGroup->addAction(ui->actionVic_20);
 	cbmMachineGroup->addAction(ui->actionC_128_80_Col);
 	cbmMachineGroup->addAction(ui->actionPlus_4);
-	connect(cbmMachineGroup, SIGNAL(triggered(QAction*)), this, SLOT(onCbmMachineSelected(QAction*)));
+    cbmMachineGroup->addAction(ui->actionC_16);
+    connect(cbmMachineGroup, SIGNAL(triggered(QAction*)), this, SLOT(onCbmMachineSelected(QAction*)));
 	selectActionByName(ui->menuMachine->actions(), m_appSettings.cbmMachine);
 } // setupActionGroup
 

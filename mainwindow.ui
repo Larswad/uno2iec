@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>634</width>
+    <width>673</width>
     <height>609</height>
    </rect>
   </property>
@@ -427,31 +427,32 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>634</width>
-     <height>21</height>
+     <width>673</width>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMain">
     <property name="title">
-     <string>Main</string>
+     <string>&amp;Main</string>
     </property>
     <widget class="QMenu" name="menuDirectory_Listing_Colors">
      <property name="title">
-      <string>Directory Listing Theme</string>
+      <string>&amp;Directory Listing Theme</string>
      </property>
      <widget class="QMenu" name="menuMachine">
       <property name="title">
-       <string>Machine</string>
+       <string>&amp;Machine</string>
       </property>
       <addaction name="actionVic_20"/>
       <addaction name="actionCommodore_64"/>
       <addaction name="actionC128"/>
       <addaction name="actionC_128_80_Col"/>
       <addaction name="actionPlus_4"/>
+      <addaction name="actionC_16"/>
      </widget>
      <widget class="QMenu" name="menuEmulator_Palette">
       <property name="title">
-       <string>Emulator Palette</string>
+       <string>&amp;Emulator Palette</string>
       </property>
       <addaction name="actionInternal"/>
       <addaction name="actionDefault"/>
@@ -493,7 +494,7 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="minimumSize">
     <size>
-     <width>535</width>
+     <width>673</width>
      <height>200</height>
     </size>
    </property>
@@ -505,7 +506,7 @@ p, li { white-space: pre-wrap; }
     <set>Qt::BottomDockWidgetArea|Qt::TopDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>Event Log</string>
+    <string>Event &amp;Log</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -690,7 +691,7 @@ p, li { white-space: pre-wrap; }
      <normaloff>:/icons/icons/exit.png</normaloff>:/icons/icons/exit.png</iconset>
    </property>
    <property name="text">
-    <string>Quit</string>
+    <string>&amp;Quit</string>
    </property>
    <property name="shortcut">
     <string>Esc</string>
@@ -702,7 +703,7 @@ p, li { white-space: pre-wrap; }
      <normaloff>:/icons/icons/1541.ico</normaloff>:/icons/icons/1541.ico</iconset>
    </property>
    <property name="text">
-    <string>About</string>
+    <string>&amp;About</string>
    </property>
   </action>
   <action name="actionSettings">
@@ -711,7 +712,7 @@ p, li { white-space: pre-wrap; }
      <normaloff>:/icons/icons/settings.png</normaloff>:/icons/icons/settings.png</iconset>
    </property>
    <property name="text">
-    <string>Settings</string>
+    <string>&amp;Settings</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
@@ -733,7 +734,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Disk Write Protected</string>
+    <string>Disk &amp;Write Protected</string>
    </property>
    <property name="toolTip">
     <string>Prevents writing files on disk image or native file system.</string>
@@ -747,7 +748,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>frodo</string>
+    <string>&amp;frodo</string>
    </property>
   </action>
   <action name="actionVic_20">
@@ -755,7 +756,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>VIC 20</string>
+    <string>&amp;VIC 20</string>
    </property>
   </action>
   <action name="actionCommodore_64">
@@ -763,7 +764,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>C 64</string>
+    <string>&amp;C 64</string>
    </property>
   </action>
   <action name="actionC128">
@@ -771,7 +772,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>C 128</string>
+    <string>C &amp;128</string>
    </property>
   </action>
   <action name="actionVice">
@@ -779,7 +780,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>vice</string>
+    <string>&amp;vice</string>
    </property>
   </action>
   <action name="actionCcs64">
@@ -787,7 +788,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>ccs64</string>
+    <string>ccs6&amp;4</string>
    </property>
   </action>
   <action name="actionPc64">
@@ -795,7 +796,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>pc64</string>
+    <string>&amp;pc64</string>
    </property>
   </action>
   <action name="actionC64hq">
@@ -803,7 +804,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>c64hq</string>
+    <string>&amp;c64hq</string>
    </property>
   </action>
   <action name="actionC64s">
@@ -811,7 +812,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>c64s</string>
+    <string>c&amp;64s</string>
    </property>
   </action>
   <action name="actionDefault">
@@ -819,7 +820,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>default</string>
+    <string>&amp;default</string>
    </property>
   </action>
   <action name="actionInternal">
@@ -827,7 +828,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>internal</string>
+    <string>&amp;internal</string>
    </property>
   </action>
   <action name="actionGodot">
@@ -835,7 +836,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>godot</string>
+    <string>&amp;godot</string>
    </property>
   </action>
   <action name="actionVic20">
@@ -843,7 +844,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>vic20</string>
+    <string>vic&amp;20</string>
    </property>
   </action>
   <action name="actionC_128_80_Col">
@@ -851,7 +852,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>C 128 (80 Col)</string>
+    <string>C 128 (&amp;80 Col)</string>
    </property>
   </action>
   <action name="actionPlus_4">
@@ -859,7 +860,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Plus 4</string>
+    <string>&amp;Plus 4</string>
    </property>
   </action>
   <action name="actionPlus4">
@@ -867,7 +868,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>plus4</string>
+    <string>p&amp;lus4</string>
    </property>
   </action>
   <action name="actionSingle_file_mount">
@@ -876,13 +877,21 @@ p, li { white-space: pre-wrap; }
      <normaloff>:/icons/icons/floppy_mount.png</normaloff>:/icons/icons/floppy_mount.png</iconset>
    </property>
    <property name="text">
-    <string>Mount specific file</string>
+    <string>&amp;Mount specific file</string>
    </property>
    <property name="toolTip">
     <string>Mount specific image file on any location</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+M</string>
+   </property>
+  </action>
+  <action name="actionC_16">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>C 1&amp;6</string>
    </property>
   </action>
  </widget>
