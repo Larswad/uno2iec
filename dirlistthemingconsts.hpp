@@ -26,7 +26,11 @@ C128_80Theme = { "\n                     COMMODORE BASIC V7.0 122365 BYTES FREE\
 
 Plus4Theme = { "\n COMMODORE BASIC V3.5 60671 BYTES FREE\n"
 							 " 3-PLUS-1 ON KEY F1\n\n"
-							 "READY.\n", "12pt \"Pet Me 64\"", 0, 4, 15, 16};
+                             "READY.\n", "12pt \"Pet Me 64\"", 0, 4, 15, 16},
+
+C16Theme = { "\n COMMODORE BASIC V3.5 12277 BYTES FREE\n"
+                             "READY.\n", "12pt \"Pet Me 64\"", 0, 14, 1, 16};
+
 
 // BLACK, WHITE, RED, CYAN, PURPLE, GREEN, BLUE, YELLOW
 // ORANGE, BROWN, LIGHT RED, DARK GRAY, MEDIUM GRAY, LIGHT GREEN, LIGHT BLUE, LIGHT GRAY
