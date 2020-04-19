@@ -32,11 +32,11 @@ using namespace CBM;
 
 // The IEC bus pin configuration on the Arduino side
 // NOTE: Deprecated: Only startup values used in ctor, this will be defined from host side.
-#define DEFAULT_ATN_PIN 5
-#define DEFAULT_DATA_PIN 3
-#define DEFAULT_CLOCK_PIN 4
-#define DEFAULT_SRQIN_PIN 6
-#define DEFAULT_RESET_PIN 7
+#define DEFAULT_ATN_PIN 19
+#define DEFAULT_DATA_PIN 21
+#define DEFAULT_CLOCK_PIN 20
+#define DEFAULT_SRQIN_PIN 18
+#define DEFAULT_RESET_PIN 17
 
 // See timeoutWait below.
 #define TIMEOUT  65000

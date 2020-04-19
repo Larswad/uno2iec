@@ -57,8 +57,8 @@ namespace {
 EmulatorPaletteMap emulatorPalettes;
 CbmMachineThemeMap machineThemes;
 
-const QString OkString = "OK>%1|%2|%3|%4|%5|%6|%7.%8\r";
-const QString NOkString = "NOK>\r";
+const QString OkString = "OK>%1|%2|%3|%4|%5|%6|%7.%8\n";
+const QString NOkString = "NOK>\n";
 const QString ConnectionString = "connect_arduino:";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
 
@@ -491,12 +491,14 @@ bool MainWindow::checkConnectRequest(QByteArray& buffer)
 	int connectPos = buffer.indexOf(ConnectionString);
 	if(-1 == connectPos)
 		return false;
-	int crPos = buffer.indexOf('\r', connectPos);
+	int crPos = buffer.indexOf('\n', connectPos);
 	if(-1 == crPos)
 		return false;
 
 	// extract version number.
-	const QString verString(buffer.mid(connectPos + ConnectionString.length(), crPos - connectPos));
+	const QString verString(buffer.mid(connectPos + ConnectionString.length(), 1));
+	Log("MAIN", info, QString("Received connection string: %1")
+			.arg(QString::fromStdString(buffer.mid(connectPos + ConnectionString.length(), crPos - connectPos).toStdString())));
 	ushort receivedProtoVersion = verString.toInt();
 	if(CURRENT_UNO2IEC_PROTOCOL_VERSION not_eq receivedProtoVersion) {
 		Log("MAIN", error, QString("Received connection string from arduino, but the protocol version (%1) mismatched our "
@@ -543,6 +545,9 @@ bool MainWindow::checkConnectRequest(QByteArray& buffer)
 void MainWindow::onDataAvailable()
 {
 	m_pendingBuffer.append(m_port.readAll());
+	qDebug() << "READ BYTES";
+	qDebug() << m_pendingBuffer.toHex();
+	qDebug() << QString::fromStdString(m_pendingBuffer.toStdString());
 //	if(not m_isConnected) {
 		checkConnectRequest(m_pendingBuffer);
 //		return;
@@ -597,10 +602,15 @@ void MainWindow::simTimerExpiredNoResp() {}
 void MainWindow::writePort(const QByteArray &data, bool flush)
 {
 	if(simsOff == m_simulatedState) {
+		qDebug() << "WRITE BYTES";
+		qDebug() << data.toHex();
+		qDebug() << QString::fromStdString(data.toStdString());
 		if(m_port.isOpen()) {
 			m_port.write(data);
-			if(flush)
+			if(flush) {
 				m_port.flush();
+				qDebug() << "FLUSH";
+			}
 		}
 	}
 	else {
@@ -783,7 +793,7 @@ void MainWindow::processData(void)
 	//		LogHexData(buffer);
 	while(hasDataToProcess) {
 		QString cmdString(m_pendingBuffer);
-		int crIndex =	cmdString.indexOf('\r');
+		int crIndex =	cmdString.indexOf('\n');
 
 		// Get the first waiting character, which should be the command to perform.
 		char cmdChar(cmdString.at(0).toLatin1());

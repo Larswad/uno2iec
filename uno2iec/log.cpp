@@ -17,9 +17,10 @@ void registerFacilities(void)
 		sprintf_P(strBuf, (PGM_P)F("!%c"), pgm_read_byte(&facilities[i].abbreviated));
 		strcat_P(strBuf, (PGM_P)facilities[i].string);
 		COMPORT.print(strBuf);
-		COMPORT.print('\r');
+		COMPORT.print('\n');
 	}
 	COMPORT.flush();
+  //COMPORT.send_now();
 } // registerFacilities
 
 
@@ -30,7 +31,8 @@ void Log(byte severity, char facility, char* msg)
 	// NOTE: Queueing possible, polling of queue could be handled (called) from 'loop()'.
 	COMPORT.print(strBuf);
 	COMPORT.print(msg);
-	COMPORT.print('\r');
+	COMPORT.print('\n');
+  //COMPORT.send_now();
 } // Log
 
 #endif
