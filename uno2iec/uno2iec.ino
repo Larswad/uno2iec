@@ -14,9 +14,9 @@ static const byte PROGMEM MAX_INPIN = 11, MAX_LOADPIN = 13, MAX_CLOCKPIN = 12;
 #endif
 
 // Pin 13 has a LED connected on most Arduino boards.
-const byte ledPort = 13;
+const byte ledPort = 11;
 const byte numBlinks = 4;
-const char connectionString[] PROGMEM = "connect_arduino:%u\r";
+const char connectionString[] PROGMEM = "connect_arduino:%u\n";
 const char okString[] PROGMEM = "OK>";
 
 static void waitForPeer();
@@ -127,6 +127,7 @@ static void waitForPeer()
 		//strcpy_P(tempBuffer, connectionString);
 		COMPORT.print(tempBuffer);
 		COMPORT.flush();
+    //COMPORT.send_now();
 		// Indicate to user we are waiting for connection.
 		for(byte i = 0; i < numBlinks; ++i) {
 			digitalWrite(ledPort, HIGH);   // turn the LED on (HIGH is the voltage level)
@@ -139,7 +140,7 @@ static void waitForPeer()
 	} // while(not connected)
 
 	// Now read the whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
-	if(COMPORT.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
+	if(COMPORT.readBytesUntil('\n', tempBuffer, sizeof(tempBuffer))) {
 		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u|%u|%u-%u-%u.%u:%u:%u"),
 						 &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin, &srqInPin,
 						 &year, &month, &day, &hour, &minute, &second);
