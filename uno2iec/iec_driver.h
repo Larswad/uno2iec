@@ -90,6 +90,7 @@ public:
 	byte deviceNumber() const;
 	void setDeviceNumber(const byte deviceNumber);
 	void setPins(byte atn, byte clock, byte data, byte srqIn, byte reset);
+	void setResetC64(boolean resetC64);
 	IECState state() const;
 
 #ifdef DEBUGLINES
@@ -169,6 +170,7 @@ private:
 	byte m_clockPin;
 	byte m_srqInPin;
 	byte m_resetPin;
+	boolean m_resetC64;
 };
 
 #endif

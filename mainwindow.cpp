@@ -57,7 +57,7 @@ namespace {
 EmulatorPaletteMap emulatorPalettes;
 CbmMachineThemeMap machineThemes;
 
-const QString OkString = "OK>%1|%2|%3|%4|%5|%6|%7.%8\r";
+const QString OkString = "OK>%1|%2|%3|%4|%5|%6|%7|%8.%9\r";
 const QString NOkString = "NOK>\r";
 const QString ConnectionString = "connect_arduino:";
 const QColor logLevelColors[] = { QColor(Qt::red), QColor("orange"), QColor(Qt::blue), QColor(Qt::darkGreen) };
@@ -527,6 +527,7 @@ bool MainWindow::checkConnectRequest(QByteArray& buffer)
 			.arg(QString::number(m_appSettings.dataPin))
 			.arg(QString::number(m_appSettings.resetPin))
 			.arg(QString::number(m_appSettings.srqInPin))
+			.arg(ui->resetCBM->isChecked())
 			.arg(QDate::currentDate().toString("yyyy-MM-dd"))
 			.arg(QTime::currentTime().toString("hh:mm:ss"));
 

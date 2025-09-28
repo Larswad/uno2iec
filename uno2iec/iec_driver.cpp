@@ -435,10 +435,11 @@ boolean IEC::init()
 	digitalWrite(m_dataPin, false);
 	digitalWrite(m_clockPin, false);
 
-#ifdef RESET_C64
-	pinMode(m_resetPin, OUTPUT);
-	digitalWrite(m_resetPin, false);	// only early C64's could be reset by a slave going high.
-#endif
+	if (m_resetC64) {
+		pinMode(m_resetPin, OUTPUT);
+		digitalWrite(m_resetPin, false); // only early C64's could be reset by a slave going high.
+		delay(50);
+	}
 
 	// initial pin modes in GPIO.
 	pinMode(m_atnPin, INPUT);
@@ -512,6 +513,12 @@ void IEC::setPins(byte atn, byte clock, byte data, byte srqIn, byte reset)
 	m_resetPin = reset;
 	m_srqInPin = srqIn;
 } // setPins
+
+
+void IEC::setResetC64(boolean resetC64)
+{
+	m_resetC64 = resetC64;
+} // setResetC64
 
 
 IEC::IECState IEC::state() const

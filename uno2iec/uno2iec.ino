@@ -112,7 +112,7 @@ void loop()
 static void waitForPeer()
 {
 	char tempBuffer[80];
-	unsigned deviceNumber, atnPin, clockPin, dataPin, resetPin, srqInPin,
+	unsigned deviceNumber, atnPin, clockPin, dataPin, resetPin, srqInPin, resetC64,
 			hour, minute, second, year, month, day;
 
 	// initialize the digital LED pin as an output.
@@ -140,13 +140,14 @@ static void waitForPeer()
 
 	// Now read the whole configuration string from host, ends with CR. If we don't get THIS string, we're in a bad state.
 	if(COMPORT.readBytesUntil('\r', tempBuffer, sizeof(tempBuffer))) {
-		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u|%u|%u-%u-%u.%u:%u:%u"),
-						 &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin, &srqInPin,
+		sscanf_P(tempBuffer, (PGM_P)F("%u|%u|%u|%u|%u|%u|%u|%u-%u-%u.%u:%u:%u"),
+						 &deviceNumber, &atnPin, &clockPin, &dataPin, &resetPin, &srqInPin, &resetC64,
 						 &year, &month, &day, &hour, &minute, &second);
 
 		// we got the config from the HOST.
 		iec.setDeviceNumber(deviceNumber);
 		iec.setPins(atnPin, clockPin, dataPin, srqInPin, resetPin);
+		iec.setResetC64(resetC64);
 		iface.setDateTime(year, month, day, hour, minute, second);
 	}
 	registerFacilities();
