@@ -65,7 +65,7 @@ At bootup, Arduino tries continuously to connect to host with:
 connect_arduino:<protocol_version><CR>
 
 response should from host when ready then be (if protocol matches):
-OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<srqinpin>|<resetpin>|yyyy-mm-dd.hh:mm:ss<CR>
+OK><deviceNumber>|<atnpin>|<clockpin>|<datapin>|<srqinpin>|<resetpin>|<resetC64>|yyyy-mm-dd.hh:mm:ss<CR>
 Whereupon client could set the pin configuration according to the returned string.
 But if protocol mismatch the host should return:
 NOK><CR>

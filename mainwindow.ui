@@ -355,6 +355,20 @@ p, li { white-space: pre-wrap; }
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="resetCBM">
+        <property name="text">
+         <string>Reset CBM</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="progressInfoText">
         <property name="enabled">
          <bool>false</bool>
