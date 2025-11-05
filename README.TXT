@@ -1,5 +1,7 @@
 														UNO2IEC README
 
+SOME news:
+I update software for work over QT Creator 16.0.0.  
 
 DISCLAIMER:
 The author is in no way responsible for any problems or damage caused by
@@ -8,7 +10,6 @@ using this code. Use at your own risk.
 LICENSE:
 This code is distributed under the GNU Public License
 which can be found at http://www.gnu.org/licenses/gpl.txt
-
 
 
 ================================================================================
